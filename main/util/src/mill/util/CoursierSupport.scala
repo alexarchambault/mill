@@ -236,7 +236,7 @@ trait CoursierSupport {
     }
 
     if (useNewCoursierApi) {
-      ctx.foreach { _.log.info("Using new coursier API") }
+//      ctx.foreach { _.log.debug("Using new coursier API") }
 
       val resolutionParams = ResolutionParams()
         .withForceVersion(forceVersions)
