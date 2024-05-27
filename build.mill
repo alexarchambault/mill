@@ -378,7 +378,7 @@ trait MillPublishJavaModule extends MillJavaModule with PublishModule {
 /**
  * Some custom scala settings and test convenience
  */
-trait MillScalaModule extends ScalaModule with MillJavaModule with ScalafixModule { outer =>
+trait MillScalaModule extends ScalaModule with MillJavaModule with ScalafixModule {
   def scalaVersion = Deps.scalaVersion
   def scalafixScalaBinaryVersion = ZincWorkerUtil.scalaBinaryVersion(scalaVersion())
   def semanticDbVersion = Deps.semanticDBscala.version
@@ -399,7 +399,9 @@ trait MillScalaModule extends ScalaModule with MillJavaModule with ScalafixModul
   def mandatoryIvyDeps =
     super.mandatoryIvyDeps() ++
       Agg.when(scalaVersion().startsWith("2.13."))(Deps.millModuledefs)
+}
 
+trait MillScalaModuleWithTest extends MillScalaModule { outer =>
   /** Default tests module. */
   lazy val test: MillScalaTests = new MillScalaTests {}
   trait MillScalaTests extends ScalaTests with MillJavaModule with MillBaseTestsModule {
@@ -437,7 +439,7 @@ trait MillBaseTestsModule extends TestModule {
 trait MillPublishScalaModule extends MillScalaModule with MillPublishJavaModule
 
 /** Publishable module which contains strictly handled API. */
-trait MillStableScalaModule extends MillPublishScalaModule with Mima {
+trait MillStableScalaModule extends MillPublishScalaModule with MillScalaModuleWithTest with Mima {
   import com.github.lolgab.mill.mima._
   override def mimaBinaryIssueFilters: T[Seq[ProblemFilter]] = Seq(
     // (5x) MIMA doesn't properly ignore things which are nested inside other private things
@@ -705,7 +707,7 @@ def launcherScript(
   )
 }
 
-object idea extends MillPublishScalaModule {
+object idea extends MillPublishScalaModule with MillScalaModuleWithTest {
   def moduleDeps = Seq(build.scalalib, build.runner)
 }
 

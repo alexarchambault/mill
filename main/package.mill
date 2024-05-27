@@ -88,7 +88,7 @@ object `package` extends RootModule with build.MillStableScalaModule with BuildI
     def ivyDeps = Agg(build.Deps.coursier, build.Deps.jline)
   }
 
-  object codesig extends build.MillPublishScalaModule {
+  object codesig extends build.MillPublishScalaModule with build.MillScalaModuleWithTest {
     override def ivyDeps = Agg(build.Deps.asmTree, build.Deps.osLib, build.Deps.pprint)
     def moduleDeps = Seq(util)
 
