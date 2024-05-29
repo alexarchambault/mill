@@ -2,7 +2,7 @@ package build.testrunner
 // imports
 import mill._
 
-object `package` extends RootModule with build.MillPublishScalaModule {
+object `package` extends RootModule with build.MillPublishScalaModule with build.MillScalaModuleWithTest {
   def moduleDeps = Seq(build.scalalib.api, build.main.util, entrypoint)
 
   object entrypoint extends build.MillPublishJavaModule {
