@@ -113,7 +113,8 @@ object `package` extends RootModule with build.MillStableScalaModule with BuildI
       }
 
       object cases extends Cross[CaseModule](caseKeys)
-      trait CaseModule extends ScalaModule with Cross.Module[String] {
+      trait CaseModule extends ScalaModule with Cross.Module[String] with mill.contrib.bloop.Bloop.Module {
+        def skipBloop = true
         def caseName = crossValue
         object external extends ScalaModule {
           def scalaVersion = build.Deps.scalaVersion

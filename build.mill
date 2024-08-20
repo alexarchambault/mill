@@ -1027,7 +1027,8 @@ implicit object DepSegment extends Cross.ToSegments[Dep]({ dep =>
  * and bump dependency versions we use at runtime
  */
 object dummy extends Cross[DependencyFetchDummy](dummyDeps)
-trait DependencyFetchDummy extends ScalaModule with Cross.Module[Dep] {
+trait DependencyFetchDummy extends ScalaModule with Cross.Module[Dep] with mill.contrib.bloop.Bloop.Module {
+  def skipBloop = true
   def scalaVersion = Deps.scalaVersion
   def compileIvyDeps = Agg(crossValue)
 }
