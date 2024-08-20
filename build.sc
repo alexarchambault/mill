@@ -7,6 +7,7 @@ import $ivy.`com.github.lolgab::mill-mima::0.1.1`
 import $ivy.`net.sourceforge.htmlcleaner:htmlcleaner:2.29`
 import $ivy.`com.lihaoyi::mill-contrib-buildinfo:`
 import $ivy.`com.goyeau::mill-scalafix::0.4.0`
+import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 
 // imports
 import com.github.lolgab.mill.mima.{CheckDirection, ProblemFilter, Mima}
@@ -22,6 +23,7 @@ import mill.scalalib.api.ZincWorkerUtil
 import mill.scalalib.publish._
 import mill.util.Jvm
 import mill.resolve.SelectMode
+import mill.contrib.bloop.Bloop
 import mill.contrib.buildinfo.BuildInfo
 import mill.scalalib.api.Versions
 import mill.T
@@ -672,7 +674,8 @@ object main extends MillStableScalaModule with BuildInfo {
       }
 
       object cases extends Cross[CaseModule](caseKeys)
-      trait CaseModule extends ScalaModule with Cross.Module[String] {
+      trait CaseModule extends ScalaModule with Cross.Module[String] with Bloop.Module {
+        def skipBloop = true
         def caseName = crossValue
         object external extends ScalaModule {
           def scalaVersion = Deps.scalaVersion
@@ -1170,7 +1173,8 @@ trait IntegrationTestModule extends MillScalaModule {
   }
 }
 
-trait IntegrationTestCrossModule extends IntegrationTestModule with Cross.Module[String] {
+trait IntegrationTestCrossModule extends IntegrationTestModule with Cross.Module[String] with Bloop.Module {
+  def skipBloop = true
   def repoSlug = crossValue
   def millSourcePath = super.millSourcePath / repoSlug
 
@@ -2095,7 +2099,8 @@ implicit object DepSegment extends Cross.ToSegments[Dep]({ dep =>
  * and bump dependency versions we use at runtime
  */
 object dummy extends Cross[DependencyFetchDummy](dummyDeps)
-trait DependencyFetchDummy extends ScalaModule with Cross.Module[Dep] {
+trait DependencyFetchDummy extends ScalaModule with Cross.Module[Dep] with Bloop.Module {
+  def skipBloop = true
   def scalaVersion = Deps.scalaVersion
   def compileIvyDeps = Agg(crossValue)
 }
