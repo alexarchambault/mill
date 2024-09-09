@@ -64,6 +64,7 @@ jobs:
           git config --global user.email "mill-ci@localhost"
 
       - name: Run '${{ inputs.buildcmd }}'
+        shell: bash
         run: ${{ inputs.buildcmd }}
         if: inputs.buildcmd != ''
 

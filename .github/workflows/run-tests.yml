@@ -33,6 +33,7 @@ jobs:
       java-version: '11'
       millargs: __.compile
       populate_cache: true
+      buildcmd: '.github/scripts/coursier-snapshot.sh'
 
   windows:
     needs: build-windows
@@ -58,3 +59,4 @@ jobs:
       os: windows-latest
       java-version: ${{ matrix.java-version }}
       millargs: ${{ matrix.millargs }}
+      buildcmd: '.github/scripts/coursier-snapshot.sh'
