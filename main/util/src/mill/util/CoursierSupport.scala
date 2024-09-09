@@ -293,7 +293,7 @@ trait CoursierSupport {
         .withResolutionParams(resolutionParams)
 
       val resolution0 = retry(
-        ctx = ctx,
+        debug = ctx.map(c => c.log.debug(_)).getOrElse(_ => ()),
         errorMsgExtractor = (r: Resolution) => r.errors.flatMap(_._2)
       )(resolve.run)
 
