@@ -13,19 +13,6 @@ import scala.collection.mutable
 trait CoursierSupport {
   import CoursierSupport._
 
-  private val CoursierRetryCount = 5
-
-  private def retryableCoursierError(s: String) = s match {
-    case s"${_}concurrent download${_}" => true
-    case s"${_}checksum not found${_}" => true
-    case s"${_}download error${_}" => true
-    case s"${_}(Access is denied)${_}" => true
-    case s"${_}The process cannot access the file because it is being used by another process${_}" =>
-      true
-    case s"${_}->${_}__sha1.computed" => true
-    case _ => false
-  }
-
   /**
    * Resolve dependencies using Coursier.
    *
