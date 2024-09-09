@@ -308,31 +308,32 @@ trait CoursierSupport {
     }
   }
 
-  @deprecated(
-    "Compatibility shim. Use the overload with parameter sameDependencyVersions instead",
-    "Mill after 0.11.7"
-  )
-  def resolveDependenciesMetadata(
-      repositories: Seq[Repository],
-      deps: IterableOnce[Dependency],
-      force: IterableOnce[Dependency],
-      mapDependencies: Option[Dependency => Dependency],
-      customizer: Option[Resolution => Resolution],
-      ctx: Option[mill.api.Ctx.Log],
-      coursierCacheCustomizer: Option[
-        coursier.cache.FileCache[Task] => coursier.cache.FileCache[Task]
-      ]
-  ): (Seq[Dependency], Resolution) =
-    resolveDependenciesMetadata(
-      repositories = repositories,
-      deps = deps,
-      force = force,
-      mapDependencies = mapDependencies,
-      customizer = customizer,
-      ctx = ctx,
-      coursierCacheCustomizer = coursierCacheCustomizer,
-      sameDependencyVersions = Seq()
-    )
+
+  // @deprecated(
+  //   "Compatibility shim. Use the overload with parameter sameDependencyVersions instead",
+  //   "Mill after 0.11.7"
+  // )
+  // def resolveDependenciesMetadata(
+  //     repositories: Seq[Repository],
+  //     deps: IterableOnce[Dependency],
+  //     force: IterableOnce[Dependency],
+  //     mapDependencies: Option[Dependency => Dependency],
+  //     customizer: Option[Resolution => Resolution],
+  //     ctx: Option[mill.api.Ctx.Log],
+  //     coursierCacheCustomizer: Option[
+  //       coursier.cache.FileCache[Task] => coursier.cache.FileCache[Task]
+  //     ]
+  // ): (Seq[Dependency], Resolution) =
+  //   resolveDependenciesMetadata(
+  //     repositories = repositories,
+  //     deps = deps,
+  //     force = force,
+  //     mapDependencies = mapDependencies,
+  //     customizer = customizer,
+  //     ctx = ctx,
+  //     coursierCacheCustomizer = coursierCacheCustomizer,
+  //     sameDependencyVersions = Seq()
+  //   )
 
 }
 
