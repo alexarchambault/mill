@@ -16,7 +16,6 @@ trait CoursierSupport {
   private val CoursierRetryCount = 5
 
   private def retryableCoursierError(s: String) = s match {
-    case s"${_}concurrent download${_}" => true
     case s"${_}checksum not found${_}" => true
     case s"${_}download error${_}" => true
     case s"${_}(Access is denied)${_}" => true
