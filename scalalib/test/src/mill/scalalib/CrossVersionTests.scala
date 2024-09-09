@@ -119,7 +119,16 @@ object CrossVersionTests extends TestSuite {
 
   }
 
-  def init() = UnitTester(TestCases, null)
+<<<<<<< HEAD
+  def init() = UnitTester(TestCases, null, enableTicker = false)
+=======
+  def init()(implicit tp: TestPath) = {
+    val eval = new TestEvaluator(TestCases, enableTicker = false)
+    os.remove.all(eval.outPath)
+    os.makeDir.all(TestCases.millSourcePath / os.up)
+    eval
+  }
+>>>>>>> 09109b6ecb (Disable ticker in output test)
 
   import TestCases._
 
@@ -138,8 +147,9 @@ object CrossVersionTests extends TestSuite {
       if (!scala.util.Properties.isWin) {
         // Escape-sequence formatting isn't working under bare Windows
         val expectedDepsTree = tree
-        val depsTree =
-          os.read(eval.evaluator.pathsResolver.resolveDest(mod.ivyDepsTree(IvyDepsTreeArgs())).log)
+        val logFile =
+          eval.evaluator.pathsResolver.resolveDest(mod.ivyDepsTree(IvyDepsTreeArgs())).log
+        val depsTree = os.read(logFile)
         assert(depsTree == expectedDepsTree)
       }
     }
