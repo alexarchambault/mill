@@ -53,7 +53,8 @@ class UnitTester(
     inStream: InputStream,
     debugEnabled: Boolean,
     env: Map[String, String],
-    resetSourcePath: Boolean
+    resetSourcePath: Boolean,
+    enableTicker: Boolean = false
 )(implicit fullName: sourcecode.FullName) extends AutoCloseable {
   val outPath: os.Path = module.millSourcePath / "out"
 
@@ -68,7 +69,7 @@ class UnitTester(
 
   object logger extends mill.util.PrintLogger(
         colored = true,
-        enableTicker = true,
+        enableTicker = enableTicker,
         mill.util.Colors.Default.info,
         mill.util.Colors.Default.error,
         new SystemStreams(out = outStream, err = errStream, in = inStream),
