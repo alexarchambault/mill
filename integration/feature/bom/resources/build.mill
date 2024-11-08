@@ -1,0 +1,81 @@
+package build
+
+import mill._
+import mill.scalalib._
+import mill.scalalib.publish._
+
+trait TestPublishModule extends PublishModule {
+  def pomSettings = PomSettings(
+    description = artifactName(),
+    organization = "com.lihaoyi.mill-tests",
+    url = "https://github.com/com-lihaoyi/mill",
+    licenses = Seq(License.`Apache-2.0`),
+    versionControl = VersionControl.github("com-lihaoyi", "mill"),
+    developers = Nil
+  )
+  def publishVersion = "0.1.0-SNAPSHOT"
+}
+
+object bom extends Module {
+  object placeholder extends JavaModule with TestPublishModule {
+    def bomDeps = Agg(
+      ivy"com.google.cloud:libraries-bom:26.50.0"
+    )
+    def ivyDeps = Agg(
+      ivy"com.google.protobuf:protobuf-java:_"
+    )
+
+    object dependee extends JavaModule with TestPublishModule {
+      def moduleDeps = Seq(
+        placeholder
+      )
+    }
+
+    object subDependee extends JavaModule with TestPublishModule {
+      def moduleDeps = Seq(
+        dependee
+      )
+    }
+
+    object check extends JavaModule {
+      def ivyDeps = Agg(
+        ivy"com.google.protobuf:protobuf-java:_"
+      )
+    }
+  }
+
+  object versionOverride extends JavaModule with TestPublishModule {
+    def bomDeps = Agg(
+      ivy"com.google.cloud:libraries-bom:26.50.0"
+    )
+    def ivyDeps = Agg(
+      ivy"com.thesamet.scalapb:scalapbc_2.13:0.9.8"
+    )
+
+    object dependee extends JavaModule with TestPublishModule {
+      def moduleDeps = Seq(
+        versionOverride
+      )
+    }
+
+    object subDependee extends JavaModule with TestPublishModule {
+      def moduleDeps = Seq(
+        dependee
+      )
+    }
+
+    object check extends JavaModule {
+      def ivyDeps = Agg(
+        ivy"com.thesamet.scalapb:scalapbc_2.13:0.9.8"
+      )
+    }
+  }
+
+  object invalid extends Module {
+    object exclude extends JavaModule {
+      def bomDeps = Agg(
+        ivy"com.google.cloud:libraries-bom:26.50.0".exclude(("foo", "thing"))
+      )
+    }
+  }
+}

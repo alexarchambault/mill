@@ -7,7 +7,7 @@ import coursier.params.ResolutionParams
 import coursier.parse.RepositoryParser
 import coursier.jvm.{JvmCache, JvmChannel, JvmIndex, JavaHome}
 import coursier.util.Task
-import coursier.{Artifacts, Classifier, Dependency, Repository, Resolution, Resolve, Type}
+import coursier.{Artifacts, Classifier, Dependency, Module, Repository, Resolution, Resolve, Type}
 import mill.api.Loose.Agg
 import mill.api.{Ctx, PathRef, Result}
 
@@ -31,6 +31,20 @@ trait CoursierSupport {
         ctx.fold(cache)(c => cache.withLogger(new TickerResolutionLogger(c)))
       }
 
+  def isLocalTestDep(dep: Dependency): Option[Seq[PathRef]] = {
+    val org = dep.module.organization.value
+    val name = dep.module.name.value
+    val classpathKey = s"$org-$name"
+
+    val classpathResourceText =
+      try Some(os.read(
+          os.resource(getClass.getClassLoader) / "mill/local-test-overrides" / classpathKey
+        ))
+      catch { case e: os.ResourceNotFoundException => None }
+
+    classpathResourceText.map(_.linesIterator.map(s => PathRef(os.Path(s))).toSeq)
+  }
+
   /**
    * Resolve dependencies using Coursier.
    *
@@ -49,28 +63,11 @@ trait CoursierSupport {
       coursierCacheCustomizer: Option[FileCache[Task] => FileCache[Task]] = None,
       resolveFilter: os.Path => Boolean = _ => true,
       artifactTypes: Option[Set[Type]] = None,
-      resolutionParams: ResolutionParams = ResolutionParams()
+      resolutionParams: ResolutionParams = ResolutionParams(),
+      bomDeps: IterableOnce[(Module, String)] = Nil
   ): Result[Agg[PathRef]] = {
-    def isLocalTestDep(dep: Dependency): Option[Seq[PathRef]] = {
-      val org = dep.module.organization.value
-      val name = dep.module.name.value
-      val classpathKey = s"$org-$name"
-
-      val classpathResourceText =
-        try Some(os.read(
-            os.resource(getClass.getClassLoader) / "mill/local-test-overrides" / classpathKey
-          ))
-        catch { case e: os.ResourceNotFoundException => None }
-
-      classpathResourceText.map(_.linesIterator.map(s => PathRef(os.Path(s))).toSeq)
-    }
-
-    val (localTestDeps, remoteDeps) = deps.iterator.toSeq.partitionMap(d =>
-      isLocalTestDep(d) match {
-        case None => Right(d)
-        case Some(vs) => Left(vs)
-      }
-    )
+    val (localTestDeps, remoteDeps) =
+      deps.iterator.toSeq.partitionMap(d => isLocalTestDep(d).toLeft(d))
 
     val resolutionRes = resolveDependenciesMetadataSafe(
       repositories,
@@ -80,7 +77,8 @@ trait CoursierSupport {
       customizer,
       ctx,
       coursierCacheCustomizer,
-      resolutionParams
+      resolutionParams,
+      bomDeps
     )
 
     resolutionRes.flatMap { resolution =>
@@ -193,7 +191,8 @@ trait CoursierSupport {
       customizer,
       ctx,
       coursierCacheCustomizer,
-      ResolutionParams()
+      ResolutionParams(),
+      Nil
     )
     (deps0, res.getOrThrow)
   }
@@ -257,12 +256,15 @@ trait CoursierSupport {
       customizer: Option[Resolution => Resolution] = None,
       ctx: Option[mill.api.Ctx.Log] = None,
       coursierCacheCustomizer: Option[FileCache[Task] => FileCache[Task]] = None,
-      resolutionParams: ResolutionParams = ResolutionParams()
+      resolutionParams: ResolutionParams = ResolutionParams(),
+      bomDeps: IterableOnce[(Module, String)] = Nil
   ): Result[Resolution] = {
 
     val rootDeps = deps.iterator
       .map(d => mapDependencies.fold(d)(_.apply(d)))
       .toSeq
+
+    val bomDeps0 = bomDeps.iterator.toSeq
 
     val forceVersions = force.iterator
       .map(mapDependencies.getOrElse(identity[Dependency](_)))
@@ -277,6 +279,7 @@ trait CoursierSupport {
     val resolve = Resolve()
       .withCache(coursierCache0)
       .withDependencies(rootDeps)
+      .withBomModuleVersions(bomDeps0)
       .withRepositories(repositories)
       .withResolutionParams(resolutionParams0)
       .withMapDependenciesOpt(mapDependencies)

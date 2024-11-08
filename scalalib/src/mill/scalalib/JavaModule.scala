@@ -140,10 +140,15 @@ trait JavaModule
   def ivyDeps: T[Agg[Dep]] = Task { Agg.empty[Dep] }
 
   /**
-   * Aggregation of mandatoryIvyDeps and ivyDeps.
+   * Aggregation of mandatoryIvyDeps and ivyDeps, with BOMs added to each of them.
    * In most cases, instead of overriding this Target you want to override `ivyDeps` instead.
    */
-  def allIvyDeps: T[Agg[Dep]] = Task { ivyDeps() ++ mandatoryIvyDeps() }
+  def allIvyDeps: T[Agg[Dep]] = Task {
+    val bomDeps0 = allBomDeps().toSeq
+    val rawDeps = ivyDeps() ++ mandatoryIvyDeps()
+    if (bomDeps0.isEmpty) rawDeps
+    else rawDeps.map(dep => dep.copy(dep = dep.dep.addBoms(bomDeps0)))
+  }
 
   /**
    * Same as `ivyDeps`, but only present at compile time. Useful for e.g.
@@ -158,6 +163,39 @@ trait JavaModule
    * code has already been compiled.
    */
   def runIvyDeps: T[Agg[Dep]] = Task { Agg.empty[Dep] }
+
+  /**
+   * Any BOM dependencies you want to add to this Module, in the format
+   * ivy"org:name:version"
+   */
+  def bomDeps: T[Agg[Dep]] = Task { Agg.empty[Dep] }
+
+  def allBomDeps: Task[Agg[(coursier.core.Module, String)]] = Task.Anon {
+    val modVerOrMalformed =
+      bomDeps().map(bindDependency()).map { bomDep =>
+        val fromModVer = coursier.core.Dependency(bomDep.dep.module, bomDep.dep.version)
+          .withConfiguration(coursier.core.Configuration.defaultCompile)
+        if (fromModVer == bomDep.dep)
+          Right((bomDep.dep.module, bomDep.dep.version))
+        else
+          Left(bomDep)
+      }
+
+    val malformed = modVerOrMalformed.collect {
+      case Left(malformedBomDep) =>
+        malformedBomDep
+    }
+    if (malformed.isEmpty)
+      modVerOrMalformed.collect {
+        case Right(modVer) => modVer
+      }
+    else
+      throw new Exception(
+        "Found BOM dependencies with invalid parameters:" + System.lineSeparator() +
+          malformed.map("- " + _.dep + System.lineSeparator()).mkString +
+          "Only organization, name, and version are accepted."
+      )
+  }
 
   /**
    * Default artifact types to fetch and put in the classpath. Add extra types
@@ -608,7 +646,8 @@ trait JavaModule
   def resolvedIvyDeps: T[Agg[PathRef]] = Task {
     defaultResolver().resolveDeps(
       transitiveCompileIvyDeps() ++ transitiveIvyDeps(),
-      artifactTypes = Some(artifactTypes())
+      artifactTypes = Some(artifactTypes()),
+      bomDeps = allBomDeps()
     )
   }
 
@@ -623,7 +662,8 @@ trait JavaModule
   def resolvedRunIvyDeps: T[Agg[PathRef]] = Task {
     defaultResolver().resolveDeps(
       transitiveRunIvyDeps() ++ transitiveIvyDeps(),
-      artifactTypes = Some(artifactTypes())
+      artifactTypes = Some(artifactTypes()),
+      bomDeps = allBomDeps()
     )
   }
 
@@ -890,7 +930,8 @@ trait JavaModule
         Some(mapDependencies()),
         customizer = resolutionCustomizer(),
         coursierCacheCustomizer = coursierCacheCustomizer(),
-        resolutionParams = resolutionParams()
+        resolutionParams = resolutionParams(),
+        bomDeps = allBomDeps()
       ).getOrThrow
 
       val roots = whatDependsOn match {
@@ -1101,13 +1142,15 @@ trait JavaModule
         Task.Anon {
           defaultResolver().resolveDeps(
             transitiveCompileIvyDeps() ++ transitiveIvyDeps(),
-            sources = true
+            sources = true,
+            bomDeps = allBomDeps()
           )
         },
         Task.Anon {
           defaultResolver().resolveDeps(
             transitiveRunIvyDeps() ++ transitiveIvyDeps(),
-            sources = true
+            sources = true,
+            bomDeps = allBomDeps()
           )
         }
       )
