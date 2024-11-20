@@ -27,11 +27,17 @@ object BomTests extends UtestIntegrationTestSuite {
       ujson.read(res.out).arr.map(v => os.Path(v.str.split(":").last).last).toSeq
     }
 
-    def compileClasspathContains(module: String, fileName: String)(implicit
+    def compileClasspathContains(
+        module: String,
+        fileName: String,
+        jarCheck: Option[String => Boolean]
+    )(implicit
         tester: IntegrationTester
     ) = {
       val fileNames = compileClasspathFileNames(module)
       assert(fileNames.contains(fileName))
+      for (check <- jarCheck; fileName <- fileNames)
+        assert(check(fileName))
     }
 
     def publishLocalAndResolve(
@@ -90,15 +96,23 @@ object BomTests extends UtestIntegrationTestSuite {
         module: String,
         jarName: String,
         dependencyModules: Seq[String] = Nil,
+        jarCheck: Option[String => Boolean] = None,
+        ivy2LocalCheck: Boolean = true,
         scalaSuffix: String = ""
     )(implicit tester: IntegrationTester): Unit = {
-      compileClasspathContains(module, jarName)
+      compileClasspathContains(module, jarName, jarCheck)
 
-      val resolvedCp = publishLocalAndResolve(module, dependencyModules, scalaSuffix)
-      assert(resolvedCp.map(_.last).contains(jarName))
+      if (ivy2LocalCheck) {
+        val resolvedCp = publishLocalAndResolve(module, dependencyModules, scalaSuffix)
+        assert(resolvedCp.map(_.last).contains(jarName))
+        for (check <- jarCheck; fileName <- resolvedCp.map(_.last))
+          assert(check(fileName))
+      }
 
       val resolvedM2Cp = publishM2LocalAndResolve(module, dependencyModules, scalaSuffix)
       assert(resolvedM2Cp.map(_.last).contains(jarName))
+      for (check <- jarCheck; fileName <- resolvedM2Cp.map(_.last))
+        assert(check(fileName))
     }
 
     test("bom") {
@@ -211,6 +225,78 @@ object BomTests extends UtestIntegrationTestSuite {
           assert(
             res.err.contains(
               "Found parent or BOM dependencies with invalid parameters:"
+            )
+          )
+        }
+      }
+    }
+
+    test("depMgmt") {
+      test("override") - integrationTest { implicit tester =>
+        isInClassPath("depMgmt", expectedProtobufJarName)
+      }
+
+      test("transitiveOverride") - integrationTest { implicit tester =>
+        isInClassPath("depMgmt.transitive", expectedProtobufJarName, Seq("depMgmt"))
+      }
+
+      test("exclude") - integrationTest { implicit tester =>
+        isInClassPath(
+          "depMgmt.exclude",
+          "Java-WebSocket-1.5.2.jar",
+          jarCheck = Some { jarName =>
+            !jarName.startsWith("slf4j-api-")
+          },
+          ivy2LocalCheck = false // dep mgmt excludes can't be put in ivy.xml
+        )
+      }
+
+      test("transitiveExclude") - integrationTest { implicit tester =>
+        isInClassPath(
+          "depMgmt.exclude.transitive",
+          "Java-WebSocket-1.5.2.jar",
+          Seq("depMgmt.exclude"),
+          jarCheck = Some { jarName =>
+            !jarName.startsWith("slf4j-api-")
+          },
+          ivy2LocalCheck = false // dep mgmt excludes can't be put in ivy.xml
+        )
+      }
+
+      test("onlyExclude") - integrationTest { implicit tester =>
+        isInClassPath(
+          "depMgmt.onlyExclude",
+          "Java-WebSocket-1.5.3.jar",
+          jarCheck = Some { jarName =>
+            !jarName.startsWith("slf4j-api-")
+          },
+          ivy2LocalCheck = false // dep mgmt excludes can't be put in ivy.xml
+        )
+      }
+
+      test("transitiveOnlyExclude") - integrationTest { implicit tester =>
+        isInClassPath(
+          "depMgmt.onlyExclude.transitive",
+          "Java-WebSocket-1.5.3.jar",
+          Seq("depMgmt.onlyExclude"),
+          jarCheck = Some { jarName =>
+            !jarName.startsWith("slf4j-api-")
+          },
+          ivy2LocalCheck = false // dep mgmt excludes can't be put in ivy.xml
+        )
+      }
+
+      test("invalid") {
+        test - integrationTest { tester =>
+          import tester._
+
+          val res = eval(
+            ("show", "depMgmt.invalid.transitive"),
+            check = false
+          )
+          assert(
+            res.err.contains(
+              "Found dependency management entries with invalid values."
             )
           )
         }

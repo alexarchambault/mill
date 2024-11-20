@@ -1,7 +1,7 @@
 package mill
 package scalalib
 
-import coursier.core.Resolution
+import coursier.core.{Configuration, DependencyManagement, Resolution}
 import coursier.parse.JavaOrScalaModule
 import coursier.parse.ModuleParser
 import coursier.util.ModuleMatcher
@@ -140,14 +140,22 @@ trait JavaModule
   def ivyDeps: T[Agg[Dep]] = Task { Agg.empty[Dep] }
 
   /**
-   * Aggregation of mandatoryIvyDeps and ivyDeps, with BOMs added to each of them.
+   * Aggregation of mandatoryIvyDeps and ivyDeps, with BOMs and dependency management data
+   * added to each of them.
    * In most cases, instead of overriding this Target you want to override `ivyDeps` instead.
    */
   def allIvyDeps: T[Agg[Dep]] = Task {
     val bomDeps0 = allBomDeps().toSeq
     val rawDeps = ivyDeps() ++ mandatoryIvyDeps()
-    if (bomDeps0.isEmpty) rawDeps
-    else rawDeps.map(dep => dep.copy(dep = dep.dep.addBoms(bomDeps0)))
+    val depsWithBoms =
+      if (bomDeps0.isEmpty) rawDeps
+      else rawDeps.map(dep => dep.copy(dep = dep.dep.addBoms(bomDeps0)))
+    val depMgmt = dependencyManagementDict()
+    if (depMgmt.isEmpty)
+      depsWithBoms
+    else
+      depsWithBoms
+        .map(dep => dep.copy(dep = dep.dep.withOverrides(dep.dep.overrides ++ depMgmt)))
   }
 
   /**
@@ -198,6 +206,74 @@ trait JavaModule
           "Only organization, name, and version are accepted."
       )
   }
+
+  /**
+   * Dependency management data
+   *
+   * Versions and exclusions in dependency management override those of transitive dependencies,
+   * while they have no effect if the corresponding dependency isn't pulled during dependency
+   * resolution.
+   *
+   * For example, the following forces com.lihaoyi::os-lib to version 0.11.3, and
+   * excludes org.slf4j:slf4j-api from com.lihaoyi::cask that it forces to version 0.9.4
+   * {{{
+   *   def dependencyManagement = super.dependencyManagement() ++ Agg(
+   *     ivy"com.lihaoyi::os-lib:0.11.3",
+   *     ivy"com.lihaoyi::cask:0.9.4".exclude("org.slf4j", "slf4j-api")
+   *   )
+   * }}}
+   */
+  def dependencyManagement: T[Agg[Dep]] = Task { Agg.empty[Dep] }
+
+  /**
+   * Data from dependencyManagement, converted to a type ready to be passed to coursier
+   * for dependency resolution
+   */
+  def dependencyManagementDict: Task[Seq[(DependencyManagement.Key, DependencyManagement.Values)]] =
+    Task.Anon {
+      val keyValuesOrErrors =
+        dependencyManagement().toSeq.map(bindDependency()).map(_.dep).map { depMgmt =>
+          val fromUsedValues = coursier.core.Dependency(depMgmt.module, depMgmt.version)
+            .withPublication(coursier.core.Publication(
+              "",
+              depMgmt.publication.`type`,
+              coursier.core.Extension.empty,
+              depMgmt.publication.classifier
+            ))
+            .withMinimizedExclusions(depMgmt.minimizedExclusions)
+            .withOptional(depMgmt.optional)
+            .withConfiguration(Configuration.defaultCompile)
+          if (fromUsedValues == depMgmt) {
+            val key = DependencyManagement.Key(
+              depMgmt.module.organization,
+              depMgmt.module.name,
+              if (depMgmt.publication.`type`.isEmpty) coursier.core.Type.jar
+              else depMgmt.publication.`type`,
+              depMgmt.publication.classifier
+            )
+            val values = DependencyManagement.Values(
+              Configuration.empty,
+              if (depMgmt.version == "_") "" // shouldn't be needed with future coursier versions
+              else depMgmt.version,
+              depMgmt.minimizedExclusions,
+              depMgmt.optional
+            )
+            Right(key -> values)
+          } else
+            Left(depMgmt)
+        }
+
+      val errors = keyValuesOrErrors.collect {
+        case Left(errored) => errored
+      }
+      if (errors.isEmpty)
+        keyValuesOrErrors.collect { case Right(kv) => kv }
+      else
+        throw new Exception(
+          "Found dependency management entries with invalid values. Only organization, name, version, type, classifier, exclusions, and optionality can be specified" + System.lineSeparator() +
+            errors.map("- " + _ + System.lineSeparator()).mkString
+        )
+    }
 
   /**
    * Default artifact types to fetch and put in the classpath. Add extra types
