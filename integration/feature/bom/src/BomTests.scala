@@ -301,6 +301,18 @@ object BomTests extends UtestIntegrationTestSuite {
           )
         }
       }
+
+      test("placeholder") - integrationTest { implicit tester =>
+        isInClassPath("depMgmt.placeholder", expectedProtobufJarName)
+      }
+
+      test("transitivePlaceholder") - integrationTest { implicit tester =>
+        isInClassPath(
+          "depMgmt.placeholder.transitive",
+          expectedProtobufJarName,
+          Seq("depMgmt.placeholder")
+        )
+      }
     }
   }
 }

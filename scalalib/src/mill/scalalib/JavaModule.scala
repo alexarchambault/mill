@@ -153,9 +153,26 @@ trait JavaModule
     val depMgmt = dependencyManagementDict()
     if (depMgmt.isEmpty)
       depsWithBoms
-    else
+    else {
+      lazy val depMgmtMap = depMgmt.toMap
       depsWithBoms
         .map(dep => dep.copy(dep = dep.dep.withOverrides(dep.dep.overrides ++ depMgmt)))
+        .map { dep =>
+          val key = DependencyManagement.Key(
+            dep.dep.module.organization,
+            dep.dep.module.name,
+            coursier.core.Type.jar,
+            dep.dep.publication.classifier
+          )
+          val versionOverride =
+            if (dep.dep.version == "_") depMgmtMap.get(key).map(_.version)
+            else None
+          dep.copy(
+            dep = dep.dep
+              .withVersion(versionOverride.getOrElse(dep.dep.version))
+          )
+        }
+    }
   }
 
   /**
