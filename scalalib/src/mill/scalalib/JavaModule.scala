@@ -164,6 +164,8 @@ trait JavaModule
    */
   def runIvyDeps: T[Agg[Dep]] = Task { Agg.empty[Dep] }
 
+  def parentDep: T[Option[Dep]] = Task { None }
+
   /**
    * Any BOM dependencies you want to add to this Module, in the format
    * ivy"org:name:version"
@@ -172,7 +174,7 @@ trait JavaModule
 
   def allBomDeps: Task[Agg[(coursier.core.Module, String)]] = Task.Anon {
     val modVerOrMalformed =
-      bomDeps().map(bindDependency()).map { bomDep =>
+      (Agg(parentDep().toSeq: _*) ++ bomDeps()).map(bindDependency()).map { bomDep =>
         val fromModVer = coursier.core.Dependency(bomDep.dep.module, bomDep.dep.version)
           .withConfiguration(coursier.core.Configuration.defaultCompile)
         if (fromModVer == bomDep.dep)
@@ -191,7 +193,7 @@ trait JavaModule
       }
     else
       throw new Exception(
-        "Found BOM dependencies with invalid parameters:" + System.lineSeparator() +
+        "Found parent or BOM dependencies with invalid parameters:" + System.lineSeparator() +
           malformed.map("- " + _.dep + System.lineSeparator()).mkString +
           "Only organization, name, and version are accepted."
       )

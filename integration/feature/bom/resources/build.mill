@@ -79,3 +79,38 @@ object bom extends Module {
     }
   }
 }
+
+object parent extends JavaModule with TestPublishModule {
+  def parentDep = Some(ivy"org.apache.spark:spark-parent_2.13:3.5.3")
+  def ivyDeps = Agg(
+    ivy"org.apache.commons:commons-compress:_"
+  )
+
+  object dependee extends JavaModule with TestPublishModule {
+    def moduleDeps = Seq(
+      parent
+    )
+  }
+
+    object subDependee extends JavaModule with TestPublishModule {
+      def moduleDeps = Seq(
+        dependee
+      )
+    }
+
+  object scala extends ScalaModule with TestPublishModule {
+    def scalaVersion = _root_.scala.util.Properties.versionNumberString
+    def parentDep = Some(ivy"org.apache.spark::spark-parent:3.5.3")
+    def ivyDeps = Agg(
+      ivy"org.apache.commons:commons-compress:_"
+    )
+  }
+
+  object invalid extends Module {
+    object exclude extends JavaModule {
+      def parentDep = Some(
+        ivy"org.apache.spark:spark-parent_2.13:3.5.3".exclude(("foo", "thing"))
+      )
+    }
+  }
+}

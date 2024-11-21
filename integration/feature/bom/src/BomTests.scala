@@ -10,8 +10,10 @@ object BomTests extends UtestIntegrationTestSuite {
   def tests: Tests = Tests {
 
     def expectedProtobufJavaVersion = "4.28.3"
+    def expectedCommonsCompressVersion = "1.23.0"
 
     def expectedProtobufJarName = s"protobuf-java-$expectedProtobufJavaVersion.jar"
+    def expectedCommonsCompressJarName = s"commons-compress-$expectedCommonsCompressVersion.jar"
 
     def compileClasspathFileNames(moduleName: String)(implicit
         tester: IntegrationTester
@@ -170,7 +172,45 @@ object BomTests extends UtestIntegrationTestSuite {
           )
           assert(
             res.err.contains(
-              "Found BOM dependencies with invalid parameters:"
+              "Found parent or BOM dependencies with invalid parameters:"
+            )
+          )
+        }
+      }
+    }
+
+    test("parent") {
+      test("simple") - integrationTest { implicit tester =>
+        isInClassPath("parent", expectedCommonsCompressJarName)
+      }
+
+      test("dependee") - integrationTest { implicit tester =>
+        isInClassPath("parent.dependee", expectedCommonsCompressJarName, Seq("parent"))
+      }
+
+      test("subDependee") - integrationTest { implicit tester =>
+        isInClassPath(
+          "parent.subDependee",
+          expectedCommonsCompressJarName,
+          Seq("parent", "parent.dependee")
+        )
+      }
+
+      test("scala") - integrationTest { implicit tester =>
+        isInClassPath("parent.scala", expectedCommonsCompressJarName, scalaSuffix = "_2.13")
+      }
+
+      test("invalid") {
+        test - integrationTest { tester =>
+          import tester._
+
+          val res = eval(
+            ("show", "parent.invalid.exclude"),
+            check = false
+          )
+          assert(
+            res.err.contains(
+              "Found parent or BOM dependencies with invalid parameters:"
             )
           )
         }
