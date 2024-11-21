@@ -167,9 +167,14 @@ trait JavaModule
           val versionOverride =
             if (dep.dep.version == "_") depMgmtMap.get(key).map(_.version)
             else None
+          val exclusions = depMgmtMap.get(key)
+            .map(_.minimizedExclusions)
+            .map(dep.dep.minimizedExclusions.join(_))
+            .getOrElse(dep.dep.minimizedExclusions)
           dep.copy(
             dep = dep.dep
               .withVersion(versionOverride.getOrElse(dep.dep.version))
+              .withMinimizedExclusions(exclusions)
           )
         }
     }
