@@ -21,6 +21,9 @@ runs:
     - run: cat .mill-jvm-version
       shell: ${{ inputs.shell }}
 
+    - run: ./mill -i show dist.native.nativeImageTool
+      shell: ${{ inputs.shell }}
+
     - run: ./mill -i -k selective.resolve ${{ inputs.millargs }}
       shell: ${{ inputs.shell }}
 
