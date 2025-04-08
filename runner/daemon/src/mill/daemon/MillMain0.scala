@@ -353,6 +353,10 @@ object MillMain0 {
 
                         val res = Watching.futureWatchWait(watchRes.watched, sessionResultFuture)
 
+                        // Suspend any BSP request until the next call to startSession
+                        // (that is, until we've attempted to re-compile the build)
+                        bspServerHandle.resetSession()
+
                         res match {
                           case None =>
                           // Some watched meta-build files changed
