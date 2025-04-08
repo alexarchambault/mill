@@ -346,6 +346,15 @@ object `package` extends RootModule with InstallModule {
 
     object JvmWorkerGraalvm extends JvmWorkerModule {
       def jvmId = build.Settings.graalvmJvmId
+      def javaHome = Task {
+        super.javaHome().map { pathRef =>
+          val dest = T.dest
+          os.makeDir.all(dest)
+          for (elem <- os.list(pathRef.path))
+            os.copy(elem, dest / elem.last)
+          PathRef(dest, quick = true)
+        }
+      }
     }
   }
 }
