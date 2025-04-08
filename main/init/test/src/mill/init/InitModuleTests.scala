@@ -45,6 +45,8 @@ object InitModuleTests extends TestSuite {
         )).executionResults
         assert(results.transitiveFailing.size == 1)
         val err = errStream.toString
+        pprint.err.log(outStream.toString)
+        pprint.err.log(errStream.toString)
         assert(err.contains(initmodule.moduleNotExistMsg(nonExistingModuleId)))
       }
     }

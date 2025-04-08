@@ -235,6 +235,9 @@ object MainModuleTests extends TestSuite {
         val strippedErr =
           fansi.Str(errStream.toString, errorMode = fansi.ErrorMode.Sanitize).plainText
 
+        pprint.err.log(outStream.toString)
+        pprint.err.log(errStream.toString)
+
         assert(strippedErr.contains("Hello System Stdout"))
         assert(strippedErr.contains("Hello System Stderr"))
         assert(strippedErr.contains("Hello Console Stdout"))
