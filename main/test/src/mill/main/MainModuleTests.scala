@@ -270,6 +270,9 @@ object MainModuleTests extends TestSuite {
         val strippedErr =
           fansi.Str(errStream.toString, errorMode = fansi.ErrorMode.Sanitize).plainText
 
+        pprint.err.log(outStream.toString)
+        pprint.err.log(errStream.toString)
+
         assert(strippedErr.contains("Hello2 System Stdout"))
         assert(strippedErr.contains("Hello2 System Stderr"))
         assert(strippedErr.contains("Hello2 Console Stdout"))
