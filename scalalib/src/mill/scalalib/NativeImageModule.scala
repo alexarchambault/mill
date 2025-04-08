@@ -49,6 +49,36 @@ trait NativeImageModule extends WithJvmWorker {
     PathRef(executable)
   }
 
+  def nativeImageCopyJvm: T[Boolean] =
+    if (Properties.isWin)
+      Task {
+        val home = nativeImageOriginalJavaHome()
+        // In https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-23.0.1/graalvm-community-jdk-23.0.1_windows-x64_bin.zip,
+        // the max length of a header file path relative to the JVM root is 56.
+        // The paths passed to CL.EXE should be at most 260 in length. So 200 is a reasonable limit.
+        home.toString.length >= 200
+      }
+    else
+      Task(false)
+
+  private def nativeImageOriginalJavaHome: Task[os.Path] = Task.Anon {
+    jvmWorker().javaHome().map(_.path)
+      .orElse(sys.env.get("GRAALVM_HOME").map(os.Path(_))).getOrElse {
+        throw new RuntimeException("JvmWorkerModule.javaHome/GRAALVM_HOME not defined")
+      }
+  }
+
+  def nativeImageJavaHome: Task[PathRef] = Task {
+    if (nativeImageCopyJvm()) {
+      val dest = T.dest
+      os.makeDir.all(dest)
+      for (elem <- os.list(nativeImageOriginalJavaHome()))
+        os.copy(elem, dest / elem.last)
+      PathRef(dest, quick = true)
+    } else
+      PathRef(nativeImageOriginalJavaHome(), quick = true)
+  }
+
   /**
    * The classpath to use to generate the native image. Defaults to [[runClasspath]].
    */
@@ -70,15 +100,10 @@ trait NativeImageModule extends WithJvmWorker {
    * @note The task fails if the `native-image` Tool is not found.
    */
   def nativeImageTool: T[PathRef] = Task {
-    jvmWorker().javaHome().map(_.path)
-      .orElse(sys.env.get("GRAALVM_HOME").map(os.Path(_))) match {
-      case Some(home) =>
-        val tool = if (Properties.isWin) "native-image.cmd" else "native-image"
-        val path = home / "bin" / tool
-        if (os.exists(path)) PathRef(path)
-        else throw new RuntimeException(s"$path not found")
-      case None =>
-        throw new RuntimeException("JvmWorkerModule.javaHome/GRAALVM_HOME not defined")
-    }
+    val home = nativeImageJavaHome()
+    val tool = if (Properties.isWin) "native-image.cmd" else "native-image"
+    val path = home / "bin" / tool
+    if (os.exists(path)) PathRef(path)
+    else throw new RuntimeException(s"$path not found")
   }
 }
