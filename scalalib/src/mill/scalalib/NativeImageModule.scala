@@ -100,7 +100,7 @@ trait NativeImageModule extends WithJvmWorker {
    * @note The task fails if the `native-image` Tool is not found.
    */
   def nativeImageTool: T[PathRef] = Task {
-    val home = nativeImageJavaHome()
+    val home = nativeImageJavaHome().path
     val tool = if (Properties.isWin) "native-image.cmd" else "native-image"
     val path = home / "bin" / tool
     if (os.exists(path)) PathRef(path)
