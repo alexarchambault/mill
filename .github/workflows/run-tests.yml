@@ -86,4 +86,4 @@ jobs:
       # running the graal native image binary on windows
       coursierarchive: "C:/coursier-arc"
       shell: powershell
-      install-sbt: ${{ matrix.install-sbt }}
+      install-sbt: ${{ matrix.install-sbt || false }}
