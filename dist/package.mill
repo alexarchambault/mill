@@ -342,10 +342,18 @@ object `package` extends RootModule with InstallModule {
 
     def nativeImageOptions = Seq("--no-fallback", "--enable-url-protocols=https", "-Os")
 
+    def nativeImageTool = Task {
+      super.nativeImageTool().withRevalidateOnce
+    }
+
     def jvmWorker = ModuleRef(JvmWorkerGraalvm)
 
     object JvmWorkerGraalvm extends JvmWorkerModule {
       def jvmId = build.Settings.graalvmJvmId
+      def javaHome = Task {
+        // Remove after re-bootstrapping Mill
+        super.javaHome().map(_.withRevalidateOnce)
+      }
     }
   }
 }
