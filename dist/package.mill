@@ -321,6 +321,35 @@ object `package` extends RootModule with InstallModule {
 
     def nativeImageClasspath = build.runner.client.runClasspath()
 
+    def nativeImageTool: T[PathRef] = Task {
+      jvmWorker().javaHome().map(_.path)
+        .orElse(sys.env.get("GRAALVM_HOME").map(os.Path(_))) match {
+        case Some(home) =>
+          val tool = if (scala.util.Properties.isWin) "native-image.cmd" else "native-image"
+          val path = home / "bin" / tool
+          if (os.exists(path)) PathRef(path).withRevalidateOnce
+          else {
+            pprint.err.log(jvmWorker().javaHome().map(_.path))
+            pprint.err.log(sys.env.get("GRAALVM_HOME"))
+            pprint.err.log(home)
+            pprint.err.log(os.exists(home))
+            if (os.exists(home))
+              pprint.err.log(os.walk(home).map(_.relativeTo(home).asSubPath))
+            else {
+              var dir = home
+              while (!os.exists(dir))
+                dir = dir / os.up
+              pprint.err.log(
+                os.walk(dir).map(_.relativeTo(dir).asSubPath)
+              )
+            }
+            throw new RuntimeException(s"$path not found")
+          }
+        case None =>
+          throw new RuntimeException("JvmWorkerModule.javaHome/GRAALVM_HOME not defined")
+      }
+    }
+
     def localBinName = "mill-native"
 
     def cacheBinarySuffix = "-native"
