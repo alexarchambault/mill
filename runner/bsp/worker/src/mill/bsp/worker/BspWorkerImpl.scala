@@ -11,8 +11,7 @@ import org.eclipse.lsp4j.jsonrpc.Launcher
 import java.io.PrintWriter
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, ThreadFactory}
-import scala.concurrent.{Await, CancellationException, Promise}
-import scala.concurrent.duration.Duration
+import scala.concurrent.{CancellationException, Future, Promise}
 
 object BspWorkerImpl {
 
@@ -68,13 +67,14 @@ object BspWorkerImpl {
       lazy val listening = launcher.startListening()
 
       val bspServerHandle = new BspServerHandle {
-        override def runSession(evaluators: Seq[EvaluatorApi]): BspServerResult = {
-          millServer.updateEvaluator(Some(evaluators))
-          millServer.sessionResult = Promise()
-          val res = Await.result(millServer.sessionResult.future, Duration.Inf)
-          millServer.updateEvaluator(None)
-          streams.err.println(s"Reload finished, result: $res")
-          res
+        override def startSession(
+            evaluators: Seq[EvaluatorApi],
+            errored: Boolean
+        ): Future[BspServerResult] = {
+          val sessionResultPromise = Promise[BspServerResult]()
+          millServer.sessionResult = sessionResultPromise
+          millServer.updateEvaluator(Some(evaluators), errored = errored)
+          sessionResultPromise.future
         }
 
         override def close(): Unit = {

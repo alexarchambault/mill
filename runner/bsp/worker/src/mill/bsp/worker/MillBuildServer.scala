@@ -51,7 +51,7 @@ private class MillBuildServer(
   // progresses through:
   //
   // Set when the client connects
-  protected var client: BuildClient = scala.compiletime.uninitialized
+  protected var client: BuildClient = null
   // Set when the `buildInitialize` message comes in
   protected var sessionInfo: SessionInfo = scala.compiletime.uninitialized
   private var bspEvaluatorsOpt: Option[BspEvaluators] = None
@@ -62,16 +62,86 @@ private class MillBuildServer(
 
   def initialized = sessionInfo != null
 
-  def updateEvaluator(evaluatorsOpt: Option[Seq[EvaluatorApi]]): Unit = {
+  def updateEvaluator(evaluatorsOpt: Option[Seq[EvaluatorApi]], errored: Boolean): Unit = {
     baseLogger.debug(s"Updating Evaluator: $evaluatorsOpt")
+    val currentBspEvaluatorOpt = bspEvaluatorsOpt
     bspEvaluatorsOpt = None
+    val previousTargetIds = currentBspEvaluatorOpt
+      .map(_.bspModulesIdList.map {
+        case (id, (_, ev)) =>
+          id -> ev
+      })
+      .getOrElse(Nil)
+    val previousOpt =
+      if (errored) currentBspEvaluatorOpt.map(_.evaluators)
+      else None
     evaluatorsOpt.foreach { evaluators =>
+      val updatedEvaluators = previousOpt match {
+        case Some(previous) =>
+          evaluators.headOption match {
+            case None => // ???
+              previous
+            case Some(headEvaluator) =>
+              val idx = previous.indexWhere(_.outPathJava == headEvaluator.outPathJava)
+              if (idx < 0) // ???
+                evaluators
+              else
+                previous.take(idx) ++ evaluators
+          }
+        case None => evaluators
+      }
       val evaluators0 = new BspEvaluators(
         topLevelProjectRoot,
-        evaluators,
+        updatedEvaluators,
         s => baseLogger.debug(s())
       )
       bspEvaluatorsOpt = Some(evaluators0)
+      if (client != null) {
+        val newTargetIds = evaluators0.bspModulesIdList.map {
+          case (id, (_, ev)) =>
+            id -> ev
+        }
+        val newTargetIdsMap = newTargetIds.toMap
+
+        val deleted0 = previousTargetIds.filterNot {
+          case (id, _) =>
+            newTargetIdsMap.contains(id)
+        }
+        val previousTargetIdsMap = previousTargetIds.toMap
+        val (modified0, created0) = newTargetIds.partition {
+          case (id, _) =>
+            previousTargetIdsMap.contains(id)
+        }
+
+        val deletedEvents = deleted0.map {
+          case (id, _) =>
+            val event = new bsp4j.BuildTargetEvent(id)
+            event.setKind(bsp4j.BuildTargetEventKind.DELETED)
+            event
+        }
+        val createdEvents = created0.map {
+          case (id, _) =>
+            val event = new bsp4j.BuildTargetEvent(id)
+            event.setKind(bsp4j.BuildTargetEventKind.CREATED)
+            event
+        }
+        val modifiedEvents = modified0
+          .filter {
+            case (id, ev) =>
+              !previousTargetIdsMap.get(id).contains(ev)
+          }
+          .map {
+            case (id, ev) =>
+              val event = new bsp4j.BuildTargetEvent(id)
+              event.setKind(bsp4j.BuildTargetEventKind.CHANGED)
+              event
+          }
+
+        val allEvents = deletedEvents ++ createdEvents ++ modifiedEvents
+
+        if (allEvents.nonEmpty)
+          client.onBuildTargetDidChange(new bsp4j.DidChangeBuildTarget(allEvents.asJava))
+      }
     }
   }
 
@@ -90,7 +160,7 @@ private class MillBuildServer(
       val supportedLangs = Constants.languages.asJava
       val capabilities = new BuildServerCapabilities
 
-      capabilities.setBuildTargetChangedProvider(false)
+      capabilities.setBuildTargetChangedProvider(true)
       capabilities.setCanReload(canReload)
       capabilities.setCompileProvider(new CompileProvider(supportedLangs))
       capabilities.setDebugProvider(new DebugProvider(Seq().asJava))

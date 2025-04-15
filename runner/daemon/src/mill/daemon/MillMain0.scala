@@ -1,6 +1,6 @@
 package mill.daemon
 
-import mill.api.internal.{BspServerResult, internal}
+import mill.api.internal.{BspServerHandle, BspServerResult, internal}
 import mill.api.{Logger, MillException, Result, SystemStreams}
 import mill.bsp.BSP
 import mill.client.lock.{DoubleLock, Lock}
@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock
 import scala.collection.immutable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-import scala.util.{Properties, Using}
+import scala.util.{Failure, Properties, Success, Using}
 
 @internal
 object MillMain0 {
@@ -327,23 +327,48 @@ object MillMain0 {
 
                     if (bspMode) {
                       val bspLogger = getBspLogger(streams, config)
-                      runBspSession(
-                        streams0,
-                        streams,
-                        prevRunnerState => {
-                          val initCommandLogger = new PrefixLogger(bspLogger, Seq("init"))
-                          runMillBootstrap(
-                            false,
-                            prevRunnerState,
-                            Seq("version"),
-                            initCommandLogger.streams,
-                            "BSP:initialize",
-                            loggerOpt = Some(initCommandLogger)
-                          ).result
-                        },
-                        outLock,
-                        bspLogger
-                      )
+                      var prevRunnerStateOpt = Option.empty[RunnerState]
+                      val bspServerHandle = startBspServer(streams0, outLock, bspLogger)
+                      var keepGoing = true
+                      while (keepGoing) {
+                        val initCommandLogger = new PrefixLogger(bspLogger, Seq("init"))
+                        val watchRes = runMillBootstrap(
+                          false,
+                          prevRunnerStateOpt,
+                          Seq("version"),
+                          initCommandLogger.streams,
+                          "BSP:initialize",
+                          loggerOpt = Some(initCommandLogger)
+                        )
+
+                        for (err <- watchRes.error)
+                          streams.err.println(err)
+
+                        prevRunnerStateOpt = Some(watchRes.result)
+
+                        val sessionResultFuture = bspServerHandle.startSession(
+                          watchRes.result.frames.flatMap(_.evaluator),
+                          errored = watchRes.error.nonEmpty
+                        )
+
+                        val res = Watching.futureWatchWait(watchRes.watched, sessionResultFuture)
+
+                        res match {
+                          case None =>
+                          // Some watched meta-build files changed
+                          case Some(Failure(ex)) =>
+                          // What does this correspond to?
+                          case Some(Success(BspServerResult.ReloadWorkspace)) =>
+                          // reload asked by client
+                          case Some(Success(BspServerResult.Shutdown)) =>
+                            // shutdown asked by client
+                            keepGoing = false
+                            // should make the lsp4j-managed BSP server exit
+                            streams.in.close()
+                        }
+                      }
+
+                      streams.err.println("Exiting BSP runner loop")
 
                       (true, RunnerState(None, Nil, None))
                     } else if (
@@ -401,25 +426,22 @@ object MillMain0 {
     }
 
   /**
-   * Runs the BSP server, and exits when the server is done
+   * Starts the BSP server
    *
    * @param bspStreams Streams to use for BSP JSONRPC communication with the BSP client
-   * @param logStreams Streams to use for logging
-   * @param runMillBootstrap Load the Mill build, building / updating meta-builds along the way
    */
-  def runBspSession(
+  def startBspServer(
       bspStreams: SystemStreams,
-      logStreams: SystemStreams,
-      runMillBootstrap: Option[RunnerState] => RunnerState,
       outLock: Lock,
       bspLogger: Logger
-  ): Result[BspServerResult] = {
+  ): BspServerHandle = {
     bspLogger.info("Trying to load BSP server...")
 
     val wsRoot = BuildCtx.workspaceRoot
     val logDir = wsRoot / OutFiles.out / "mill-bsp"
-    val bspServerHandleRes = {
-      os.makeDir.all(logDir)
+    os.makeDir.all(logDir)
+
+    val bspServerHandleRes =
       mill.bsp.worker.BspWorkerImpl.startBspServer(
         define.BuildCtx.workspaceRoot,
         bspStreams,
@@ -428,38 +450,11 @@ object MillMain0 {
         outLock,
         bspLogger,
         wsRoot / OutFiles.out
-      )
-    }
+      ).get
 
     bspLogger.info("BSP server started")
 
-    val runSessionRes = bspServerHandleRes.flatMap { bspServerHandle =>
-      try {
-        var repeatForBsp = true
-        var bspRes: Option[Result[BspServerResult]] = None
-        var prevRunnerState: Option[RunnerState] = None
-        while (repeatForBsp) {
-          repeatForBsp = false
-          val runnerState = runMillBootstrap(prevRunnerState)
-          val runSessionRes =
-            bspServerHandle.runSession(runnerState.frames.flatMap(_.evaluator))
-          prevRunnerState = Some(runnerState)
-          repeatForBsp = runSessionRes == BspServerResult.ReloadWorkspace
-          bspRes = Some(runSessionRes)
-          bspLogger.info(s"BSP session returned with $runSessionRes")
-        }
-
-        // should make the lsp4j-managed BSP server exit
-        bspStreams.in.close()
-
-        bspRes.get
-      } finally bspServerHandle.close()
-    }
-
-    bspLogger.info(
-      s"Exiting BSP runner loop. Stopping BSP server. Last result: $runSessionRes"
-    )
-    runSessionRes
+    bspServerHandleRes
   }
 
   private[mill] def parseThreadCount(
