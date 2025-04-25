@@ -80,7 +80,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
       else if (JvmWorkerUtil.isScala3(scalaVersion()))
         Seq("scala3-library", "scala3-compiler")
       else
-        Seq("scala-library", "scala-compiler", "scala-reflect")
+        Seq("scala-compiler", "scala-reflect")
     val constraint = coursier.version.VersionConstraint(scalaVersion())
     val forced = scalaModuleNames.map { name =>
       val mod = coursier.core.Module(
