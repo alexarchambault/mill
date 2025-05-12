@@ -13,6 +13,7 @@ import collection.mutable.LinkedHashMap
 class RefCountedClassLoaderCache(
     sharedLoader: ClassLoader = null,
     sharedPrefixes: Seq[String] = Nil,
+    sharedClass: Option[Class[?]] = None,
     parent: ClassLoader = null
 ) {
 
@@ -44,12 +45,25 @@ class RefCountedClassLoaderCache(
         cl
       case _ =>
         // the Scala compiler must load the `xsbti.*` classes from the same loader as `JvmWorkerImpl`
-        val cl = mill.util.Jvm.createClassLoader(
-          combinedCompilerJars.map(_.path),
-          parent = parent,
-          sharedLoader = sharedLoader,
-          sharedPrefixes = sharedPrefixes
-        )(e)
+
+        // When started with layered class loaders, likely by CoursierClient,
+        // rely on that to get a clean base class loader to load the worker.
+        // Else, likely when run from integration tests in local mode, fallback
+        // on the shared class loader hack.
+        val cl = sharedClass match {
+          case Some(sharedClass0) =>
+            mill.util.Jvm.createClassLoader(
+              combinedCompilerJars.map(_.path),
+              parent = sharedClass0.getClassLoader
+            )(e)
+          case None =>
+            mill.util.Jvm.createClassLoader(
+              combinedCompilerJars.map(_.path),
+              parent = parent,
+              sharedLoader = sharedLoader,
+              sharedPrefixes = sharedPrefixes
+            )(e)
+        }
         cache.update(compilersSig, (cl, 1))
         cl
     }

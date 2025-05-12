@@ -118,7 +118,8 @@ class JvmWorkerImpl(
 
   private val classloaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
-    sharedPrefixes = Seq("xsbti")
+    sharedPrefixes = Seq("xsbti"),
+    sharedClass = Some(classOf[xsbti.api.DependencyContext]).filter(_.getClassLoader != getClass.getClassLoader)
   ) {
     override def extraRelease(cl: ClassLoader) = {
 
