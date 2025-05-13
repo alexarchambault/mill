@@ -31,6 +31,7 @@ class RefCountedClassLoaderCache(
         cl.close()
         None
       case Some((cl, n)) if n > 1 => Some((cl, n - 1))
+      case None => None
       case v => sys.error("Unknown: " + v) // No other cases; n should never be zero or negative
     }
 
