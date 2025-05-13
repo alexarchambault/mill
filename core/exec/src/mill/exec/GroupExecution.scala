@@ -317,7 +317,8 @@ private trait GroupExecution {
             counterMsg,
             destCreator,
             getEvaluator().asInstanceOf[Evaluator],
-            terminal
+            terminal,
+            rootModule.getClass.getClassLoader
           ) {
             try {
               task.evaluate(args) match {
@@ -530,7 +531,8 @@ private object GroupExecution {
       counterMsg: String,
       destCreator: DestCreator,
       evaluator: Evaluator,
-      terminal: Task[?]
+      terminal: Task[?],
+      classLoader: ClassLoader
   )(t: => T): T = {
     val isCommand = terminal.isInstanceOf[Task.Command[?]]
     val isInput = terminal.isInstanceOf[Task.Input[?]]
@@ -564,20 +566,22 @@ private object GroupExecution {
     os.dynamicPwdFunction.withValue(destFunc) {
       os.checker.withValue(executionChecker) {
         mill.define.SystemStreams.withStreams(streams) {
-          val exposedEvaluator =
-            if (exclusive) evaluator.asInstanceOf[Evaluator]
-            else new EvaluatorProxy(() =>
-              sys.error(
-                "No evaluator available here; Evaluator is only available in exclusive commands"
+          mill.api.ClassLoader.withContextClassLoader(classLoader) {
+            val exposedEvaluator =
+              if (exclusive) evaluator.asInstanceOf[Evaluator]
+              else new EvaluatorProxy(() =>
+                sys.error(
+                  "No evaluator available here; Evaluator is only available in exclusive commands"
+                )
               )
-            )
 
-          Evaluator.withCurrentEvaluator(exposedEvaluator) {
-            if (!exclusive) t
-            else {
-              logger.prompt.reportKey(Seq(counterMsg))
-              logger.prompt.withPromptPaused {
-                t
+            Evaluator.withCurrentEvaluator(exposedEvaluator) {
+              if (!exclusive) t
+              else {
+                logger.prompt.reportKey(Seq(counterMsg))
+                logger.prompt.withPromptPaused {
+                  t
+                }
               }
             }
           }
