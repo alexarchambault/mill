@@ -307,9 +307,8 @@ class JvmWorkerImpl(
     os.makeDir.all(compileDest)
 
     val sourceFolder = os.unzip(compilerBridgeSourcesJar, workingDir / "unpacked")
-    val classloader = mill.util.Jvm.createClassLoader(
-      compilerClasspath.map(_.path).toSeq,
-      null
+    val classloader = mill.util.Jvm.createIsolatedClassLoader(
+      compilerClasspath.map(_.path).toSeq
     )
 
     try {

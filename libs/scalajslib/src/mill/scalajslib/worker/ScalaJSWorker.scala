@@ -17,10 +17,7 @@ private[scalajslib] class ScalaJSWorker(jobs: Int)
     extends CachedFactory[Seq[mill.PathRef], (URLClassLoader, workerApi.ScalaJSWorkerApi)] {
 
   override def setup(key: Seq[PathRef]) = {
-    val cl = mill.util.Jvm.createClassLoader(
-      key.map(_.path).toVector,
-      getClass.getClassLoader
-    )
+    val cl = mill.util.Jvm.createClassLoader(key.map(_.path).toVector)
     val bridge = cl
       .loadClass("mill.scalajslib.worker.ScalaJSWorkerImpl")
       .getDeclaredConstructor()
