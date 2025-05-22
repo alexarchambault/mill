@@ -674,7 +674,7 @@ private class MillBuildServer(
       logger,
       checkInitialized,
       bspEvaluators.future
-    )(block(_, logger))(name)
+    )(block(_, logger))(using name)
   }
 
   protected def handlerRaw[V](
@@ -688,7 +688,7 @@ private class MillBuildServer(
       logger,
       checkInitialized,
       scala.concurrent.Future.successful(())
-    )(_ => block(logger))(name)
+    )(_ => block(logger))(using name)
   }
 
   /**
