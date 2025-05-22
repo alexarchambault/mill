@@ -1,5 +1,8 @@
 package mill.constants;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Central place containing all the files that live inside the `out/` folder
  * and documentation about what they do
@@ -18,6 +21,8 @@ public class OutFiles {
    * Path of the Mill `out/` folder
    */
   public static final String out = envOutOrNull == null ? defaultOut : envOutOrNull;
+
+  public static final Path workspaceRootJava;
 
   /**
    * Path of the Mill "meta-build", used to compile the `build.sc` file so we can
@@ -81,4 +86,10 @@ public class OutFiles {
    * Any active Mill command that is currently run, for debugging purposes
    */
   public static final String millJavaHome = "mill-java-home";
+
+  static {
+    String workspaceStr = System.getenv(EnvVars.MILL_WORKSPACE_ROOT);
+    if (workspaceStr == null) workspaceStr = "";
+    workspaceRootJava = Paths.get(workspaceStr).toAbsolutePath();
+  }
 }

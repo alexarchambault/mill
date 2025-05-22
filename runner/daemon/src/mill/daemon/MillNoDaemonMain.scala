@@ -2,7 +2,7 @@ package mill.daemon
 
 import mill.client.lock.{DoubleLock, Lock}
 import mill.constants.{DaemonFiles, OutFiles, Util}
-import mill.daemon.MillMain0.{handleMillException, main0, outMemoryLock}
+import mill.daemon.MillMain0.{handleMillException, main0}
 import mill.define.BuildCtx
 import mill.server.Server
 import scala.jdk.CollectionConverters._
@@ -27,11 +27,6 @@ object MillNoDaemonMain {
       }
     )
 
-    val outLock = new DoubleLock(
-      outMemoryLock,
-      Lock.file((out / OutFiles.millOutLock).toString)
-    )
-
     val daemonDir = os.Path(args.head)
     val (result, _) =
       try main0(
@@ -44,8 +39,7 @@ object MillNoDaemonMain {
           userSpecifiedProperties0 = Map(),
           initialSystemProperties = sys.props.toMap,
           systemExit = i => sys.exit(i),
-          daemonDir = daemonDir,
-          outLock = outLock
+          daemonDir = daemonDir
         )
       catch handleMillException(initialSystemStreams.err, ())
 

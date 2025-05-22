@@ -19,7 +19,6 @@ object BspWorkerImpl {
       streams: SystemStreams,
       logDir: os.Path,
       canReload: Boolean,
-      outLock: Lock,
       baseLogger: Logger
   ): mill.api.Result[BspServerHandle] = {
 
@@ -37,7 +36,6 @@ object BspWorkerImpl {
           canReload = canReload,
           debugMessages = Option(System.getenv("MILL_BSP_DEBUG")).contains("true"),
           onShutdown = () => listening.cancel(true),
-          outLock = outLock,
           baseLogger = baseLogger
         ) with MillJvmBuildServer with MillJavaBuildServer with MillScalaBuildServer
 

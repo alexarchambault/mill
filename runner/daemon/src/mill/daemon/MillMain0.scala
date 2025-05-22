@@ -47,7 +47,7 @@ object MillMain0 {
       io.github.alexarchambault.windowsansi.WindowsAnsi.setup()
 
     val processId = Server.computeProcessId()
-    val out = os.Path(OutFiles.out, BuildCtx.workspaceRoot)
+    val out = Server.out
     Server.watchProcessIdFile(
       out / OutFiles.millNoDaemon / processId / DaemonFiles.processId,
       processId,
@@ -56,11 +56,6 @@ object MillMain0 {
         System.err.println(msg)
         System.exit(0)
       }
-    )
-
-    val outLock = new DoubleLock(
-      outMemoryLock,
-      Lock.file((out / OutFiles.millOutLock).toString)
     )
 
     val daemonDir = os.Path(args.head)
@@ -75,15 +70,12 @@ object MillMain0 {
           userSpecifiedProperties0 = Map(),
           initialSystemProperties = sys.props.toMap,
           systemExit = i => sys.exit(i),
-          daemonDir = daemonDir,
-          outLock = outLock
+          daemonDir = daemonDir
         )
       catch handleMillException(initialSystemStreams.err, ())
 
     System.exit(if (result) 0 else 1)
   }
-
-  val outMemoryLock = Lock.memory()
 
   private def withStreams[T](
       bspMode: Boolean,
@@ -129,8 +121,7 @@ object MillMain0 {
       userSpecifiedProperties0: Map[String, String],
       initialSystemProperties: Map[String, String],
       systemExit: Int => Nothing,
-      daemonDir: os.Path,
-      outLock: Lock
+      daemonDir: os.Path
   ): (Boolean, RunnerState) =
     mill.api.internal.MillScalaParser.current.withValue(MillScalaParserImpl) {
       os.SubProcess.env.withValue(env) {
@@ -271,10 +262,8 @@ object MillMain0 {
                     ) = Server.withOutLock(
                       config.noBuildLock.value,
                       config.noWaitForBuildLock.value,
-                      out,
                       millActiveCommandMessage,
-                      streams,
-                      outLock
+                      streams
                     ) {
                       def proceed(logger: Logger): Watching.Result[RunnerState] = {
                         // Enter key pressed, removing mill-selective-execution.json to
@@ -351,7 +340,6 @@ object MillMain0 {
                               loggerOpt = Some(initCommandLogger)
                             ).result
                           ,
-                          outLock,
                           bspLogger
                         )
                       }
@@ -422,7 +410,6 @@ object MillMain0 {
       bspStreams: SystemStreams,
       logStreams: SystemStreams,
       runMillBootstrap: Option[RunnerState] => RunnerState,
-      outLock: Lock,
       bspLogger: Logger
   ): Result[BspServerResult] = {
 
@@ -437,7 +424,6 @@ object MillMain0 {
         bspStreams,
         logDir,
         true,
-        outLock,
         bspLogger
       )
     }

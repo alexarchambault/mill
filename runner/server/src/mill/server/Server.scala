@@ -29,8 +29,8 @@ abstract class Server[T](
     testLogEvenWhenServerIdWrong: Boolean = false
 ) {
 
-  def outLock: mill.client.lock.Lock
-  def out: os.Path
+  def outLock: mill.client.lock.Lock = Server.outLock
+  def out: os.Path = Server.out
 
   @volatile var running = true
   def exitServer(): Unit = running = false
@@ -212,14 +212,14 @@ abstract class Server[T](
         Server.withOutLock(
           noBuildLock = false,
           noWaitForBuildLock = false,
-          out = out,
           millActiveCommandMessage = "checking server mill version and java version",
           streams = new mill.api.SystemStreams(
             new PrintStream(mill.api.DummyOutputStream),
             new PrintStream(mill.api.DummyOutputStream),
             mill.api.DummyInputStream
           ),
-          outLock = outLock
+          outLock = outLock,
+          out = out
         ) {
           if (millVersionChanged) {
             stderr.println(
@@ -373,10 +373,10 @@ object Server {
   def withOutLock[T](
       noBuildLock: Boolean,
       noWaitForBuildLock: Boolean,
-      out: os.Path,
       millActiveCommandMessage: String,
       streams: SystemStreams,
-      outLock: Lock
+      outLock: Lock = outLock,
+      out: os.Path = out
   )(t: => T): T = {
     if (noBuildLock) t
     else {
@@ -404,4 +404,11 @@ object Server {
     }
   }
 
+  lazy val out: os.Path =
+    os.Path(OutFiles.out, os.Path(OutFiles.workspaceRootJava))
+
+  lazy val outLock: Lock = new DoubleLock(
+    Lock.memory(),
+    Lock.file((out / OutFiles.millOutLock).toString)
+  )
 }

@@ -9,6 +9,9 @@ import mill.api.Segment.Label
 import mill.bsp.Constants
 import mill.bsp.worker.Utils.{makeBuildTarget, outputPaths, sanitizeUri}
 import mill.client.lock.Lock
+import mill.constants.OutFiles
+import mill.define.BuildCtx
+import mill.internal.PrefixLogger
 import mill.server.Server
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 
@@ -23,7 +26,6 @@ import scala.reflect.ClassTag
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import mill.internal.PrefixLogger
 
 private class MillBuildServer(
     topLevelProjectRoot: os.Path,
@@ -34,7 +36,6 @@ private class MillBuildServer(
     canReload: Boolean,
     debugMessages: Boolean,
     onShutdown: () => Unit,
-    outLock: Lock,
     baseLogger: Logger
 )(implicit ec: scala.concurrent.ExecutionContext) extends BuildServer {
 
@@ -778,10 +779,8 @@ private class MillBuildServer(
     Server.withOutLock(
       noBuildLock = false,
       noWaitForBuildLock = false,
-      out = os.Path(evaluator.outPathJava),
       millActiveCommandMessage = "IDE-BSP:" + name.value,
-      streams = logger0.streams,
-      outLock = outLock
+      streams = logger0.streams
     ) {
       val goalCount = goals.length
       logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
