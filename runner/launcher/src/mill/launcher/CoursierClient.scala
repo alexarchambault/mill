@@ -23,7 +23,6 @@ import coursier.jvm.{JavaHome, JvmCache, JvmChannel, JvmIndex}
 import coursier.params.ResolutionParams
 import coursier.parse.RepositoryParser
 import coursier.util.Task
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import coursier.core.{ArtifactSource, Extension, Info, Module, Project, Publication}
