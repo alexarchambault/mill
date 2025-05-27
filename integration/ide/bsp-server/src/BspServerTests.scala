@@ -241,7 +241,9 @@ object BspServerTests extends UtestIntegrationTestSuite {
           os.sub / "hello-scala" -> Seq(
             os.sub / "hello-scala/src/hello/Hello.scala.semanticdb"
           ),
-          os.sub / "mill-build" -> Nil
+          os.sub / "mill-build" -> Seq(
+            os.sub / "build.mill.semanticdb"
+          )
         )
 
         {
