@@ -18,7 +18,8 @@ object ResolveDepsTests extends TestSuite {
 
   def evalDeps(deps: Seq[Dep]): Result[Seq[PathRef]] = Lib.resolveDependencies(
     repos,
-    deps.map(Lib.depToBoundDep(_, scala212Version, ""))
+    deps.map(Lib.depToBoundDep(_, scala212Version, "")),
+    config = ???
   )
 
   def assertRoundTrip(deps: Seq[Dep], simplified: Boolean) = {

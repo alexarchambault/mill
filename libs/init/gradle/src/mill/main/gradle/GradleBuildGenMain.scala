@@ -59,7 +59,10 @@ object GradleBuildGenMain extends BuildGenBase.MavenAndGradle[ProjectModel, Dep]
     val args =
       cfg.shared.basicConfig.jvmId.map { id =>
         println(s"resolving Java home for jvmId $id")
-        val home = Jvm.resolveJavaHome(id).get
+        val home = Jvm.resolveJavaHome(
+          id,
+          config = ???
+        ).get
         s"-Dorg.gradle.java.home=$home"
       } ++ Seq("--init-script", writeGradleInitScript.toString())
 

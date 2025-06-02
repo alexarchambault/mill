@@ -31,7 +31,8 @@ private[mill] object MillModuleUtil {
           coursier.VersionConstraint(BuildInfo.millVersion)
         )
       ),
-      force = Nil
+      force = Nil,
+      config = ???
     ).map(_.map(_.withRevalidateOnce))
   }
 

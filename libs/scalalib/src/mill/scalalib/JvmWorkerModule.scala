@@ -71,7 +71,8 @@ trait JvmWorkerModule extends OfflineSupportModule with CoursierModule {
         coursierCacheCustomizer = coursierCacheCustomizer(),
         ctx = Some(Task.ctx()),
         jvmIndexVersion = jvmIndexVersion(),
-        useShortPaths = useShortJvmPath(id)
+        useShortPaths = useShortJvmPath(id),
+        config = CoursierConfigModule.coursierConfig()
       ).get
       // Java home is externally managed, better revalidate it at least once
       PathRef(path, quick = true).withRevalidateOnce
