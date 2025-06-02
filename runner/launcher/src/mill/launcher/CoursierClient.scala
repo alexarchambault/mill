@@ -2,14 +2,14 @@ package mill.launcher
 
 import coursier.{Artifacts, Dependency, ModuleName, Organization, Resolve, VersionConstraint}
 import coursier.cache.{ArchiveCache, FileCache}
+import coursier.core.Module
 import coursier.jvm.{JavaHome, JvmCache, JvmChannel, JvmIndex}
 import coursier.util.Task
-import coursier.core.Module
+import mill.coursierutil.TestOverridesRepo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import mill.coursierutil.TestOverridesRepo
 
 object CoursierClient {
   def resolveMillDaemon() = {
