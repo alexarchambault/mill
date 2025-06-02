@@ -184,6 +184,7 @@ object Deps {
   val zinc = ivy"org.scala-sbt::zinc:1.10.7"
   // keep in sync with doc/antora/antory.yml
   val bsp4j = ivy"ch.epfl.scala:bsp4j:2.2.0-M2"
+  val gson = mvn"com.google.code.gson:gson:2.10.1"
   val fansi = ivy"com.lihaoyi::fansi:0.5.0"
   val jarjarabrams = ivy"com.eed3si9n.jarjarabrams::jarjar-abrams-core:1.14.0"
   val requests = ivy"com.lihaoyi::requests:0.9.0"
@@ -248,7 +249,7 @@ object Deps {
   lazy val transitiveDeps = Seq(
     ivy"org.apache.ant:ant:1.10.15",
     Deps.commonsIo,
-    ivy"com.google.code.gson:gson:2.11.0",
+    Deps.gson,
     ivy"com.google.protobuf:protobuf-java:4.29.3",
     ivy"com.google.guava:guava:33.4.0-jre",
     ivy"org.yaml:snakeyaml:2.3",
