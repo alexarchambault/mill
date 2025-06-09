@@ -1,0 +1,10 @@
+{
+  "items": [
+    {
+      "target": {
+        "uri": "file:///workspace/hello-scala"
+      },
+      "classes": []
+    }
+  ]
+}
