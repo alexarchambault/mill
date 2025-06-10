@@ -121,7 +121,7 @@ trait SemanticDbJavaModule extends CoursierModule with SemanticDbJavaModuleApi {
         compileClasspath =
           (compileClasspath() ++ resolvedSemanticDbJavaPluginMvnDeps()).map(_.path),
         javacOptions = javacOpts,
-        reporter = None,
+        reporter = Task.reporter.apply(hashCode),
         reportCachedProblems = zincReportCachedProblems(),
         incrementalCompilation = zincIncrementalCompilation()
       )
