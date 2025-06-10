@@ -61,6 +61,9 @@ class JvmWorkerImpl(
   val libraryJarNameGrep: (Seq[PathRef], String) => PathRef =
     JvmWorkerUtil.grepJar(_, "scala-library", _, sources = false)
 
+  private lazy val requireReporter: Boolean =
+    java.lang.Boolean.getBoolean("mill.jvm-worker.require-reporter")
+
   case class CompileCacheKey(
       scalaVersion: String,
       compilerClasspath: Seq[PathRef],
@@ -516,6 +519,9 @@ class JvmWorkerImpl(
       zincCache: os.SubPath = os.sub / "zinc"
   )(implicit ctx: JvmWorkerApi.Ctx): Result[CompilationResult] = {
     import JvmWorkerImpl.{ForwardingReporter, TransformingReporter, PositionMapper}
+
+    if (requireReporter && reporter.isEmpty)
+      sys.error("A reporter is required, but none was passed")
 
     os.makeDir.all(ctx.dest)
 
