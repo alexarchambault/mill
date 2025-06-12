@@ -467,16 +467,16 @@ object BspServerTests extends UtestIntegrationTestSuite {
         (os.sub / "mill-build", os.sub / "build.mill") ->
           Seq(
             Right(Seq(SimpleDiagnostic(
-              (87, 17),
-              (87, 22),
+              (85, 17),
+              (85, 22),
               "WARNING",
               // not sure why we still have colors here
               "\u001b[33mmethod\u001b[0m \u001b[35mthing\u001b[0m in \u001b[33mobject\u001b[0m \u001b[35mdiag\u001b[0m is deprecated since 0.0.1: deprecated"
             ))),
             Left(()),
             Right(Seq(SimpleDiagnostic(
-              (87, 17),
-              (87, 22),
+              (85, 17),
+              (85, 22),
               "WARNING",
               // not sure why we still have colors here
               "\u001b[33mmethod\u001b[0m \u001b[35mthing\u001b[0m in \u001b[33mobject\u001b[0m \u001b[35mdiag\u001b[0m is deprecated since 0.0.1: deprecated"
