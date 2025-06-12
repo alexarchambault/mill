@@ -26,6 +26,18 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/diag"
+      },
+      "sources": [
+        {
+          "uri": "file:///workspace/diag/src",
+          "kind": 2,
+          "generated": false
+        }
+      ]
+    },
+    {
+      "target": {
         "uri": "file:///workspace/hello-java"
       },
       "sources": [
