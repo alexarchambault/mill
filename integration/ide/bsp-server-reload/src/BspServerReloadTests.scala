@@ -26,7 +26,7 @@ object BspServerReloadTests extends UtestIntegrationTestSuite {
       os.copy.over(workspacePath / "build.mill.base", workspacePath / "build.mill")
 
       eval(
-        "mill.bsp.BSP/install",
+        ("--bsp-install", "--jobs", "1"),
         stdout = os.Inherit,
         stderr = os.Inherit,
         check = true,
