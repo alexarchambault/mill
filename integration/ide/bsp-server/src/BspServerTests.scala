@@ -466,16 +466,14 @@ object BspServerTests extends UtestIntegrationTestSuite {
               (101, 17),
               (101, 22),
               "WARNING",
-              // not sure why we still have colors here
-              "\u001b[33mmethod\u001b[0m \u001b[35mthing\u001b[0m in \u001b[33mobject\u001b[0m \u001b[35mdiag\u001b[0m is deprecated since 0.0.1: deprecated"
+              "method thing in object diag is deprecated since 0.0.1: deprecated"
             ))),
             Left(()),
             Right(Seq(SimpleDiagnostic(
               (101, 17),
               (101, 22),
               "WARNING",
-              // not sure why we still have colors here
-              "\u001b[33mmethod\u001b[0m \u001b[35mthing\u001b[0m in \u001b[33mobject\u001b[0m \u001b[35mdiag\u001b[0m is deprecated since 0.0.1: deprecated"
+              "method thing in object diag is deprecated since 0.0.1: deprecated"
             )))
           ),
         (os.sub / "diag", os.sub / "diag/src/DiagCheck.scala") ->
