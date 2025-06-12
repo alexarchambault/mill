@@ -1,4 +1,4 @@
-package build
+//
 
 import mill._
 
