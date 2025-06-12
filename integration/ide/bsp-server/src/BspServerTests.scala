@@ -28,7 +28,7 @@ object BspServerTests extends UtestIntegrationTestSuite {
     test("requestSnapshots") - integrationTest { tester =>
       import tester.*
       eval(
-        "--bsp-install",
+        ("--bsp-install", "--jobs", "1"),
         stdout = os.Inherit,
         stderr = os.Inherit,
         check = true,
@@ -333,7 +333,7 @@ object BspServerTests extends UtestIntegrationTestSuite {
     test("logging") - integrationTest { tester =>
       import tester.*
       eval(
-        "--bsp-install",
+        ("--bsp-install", "--jobs", "1"),
         stdout = os.Inherit,
         stderr = os.Inherit,
         check = true,
