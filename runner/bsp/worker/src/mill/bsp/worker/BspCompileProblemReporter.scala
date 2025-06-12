@@ -32,6 +32,9 @@ private class BspCompileProblemReporter(
   private var errors = 0
   private var warnings = 0
 
+  // no need of a limit here, there's no console not to flood in BSP mode
+  override def maxErrors: Int = Int.MaxValue
+
   def hasErrors: Boolean = errors > 0
 
   object diagnostics {
