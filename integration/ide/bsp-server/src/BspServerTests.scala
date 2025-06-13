@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.nio.file.Paths
 
+import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.given
 
@@ -250,7 +251,13 @@ object BspServerTests extends UtestIntegrationTestSuite {
           ),
           os.sub / "mill-build" -> Seq(
             os.sub / "build.mill.semanticdb"
-          )
+          ),
+          os.sub / "diag" -> Seq(
+            os.sub / "diag/src/DiagCheck.scala.semanticdb"
+          ),
+          os.sub / "errored/exception" -> Nil,
+          os.sub / "errored/compilation-error" -> Nil,
+          os.sub / "delayed" -> Nil
         )
 
         {
@@ -299,14 +306,18 @@ object BspServerTests extends UtestIntegrationTestSuite {
                 .relativeTo(workspacePath)
                 .asSubPath
               val classDir = os.Path(Paths.get(new URI(item.getClassDirectory)))
-              val semDbs = os.walk(classDir)
-                .filter(os.isFile)
-                .map(_.relativeTo(classDir).asSubPath)
-                .filter(_.last.endsWith(".semanticdb"))
-                .filter(_.startsWith(semDbPrefix))
-                .map(_.relativeTo(semDbPrefix).asSubPath)
-                .filter(!_.startsWith(os.sub / mill.constants.OutFiles.out))
-                .sorted
+              val semDbs =
+                if (os.exists(classDir))
+                  os.walk(classDir)
+                    .filter(os.isFile)
+                    .map(_.relativeTo(classDir).asSubPath)
+                    .filter(_.last.endsWith(".semanticdb"))
+                    .filter(_.startsWith(semDbPrefix))
+                    .map(_.relativeTo(semDbPrefix).asSubPath)
+                    .filter(!_.startsWith(os.sub / mill.constants.OutFiles.out))
+                    .sorted
+                else
+                  Nil
 
               shortId -> semDbs
             }
@@ -425,6 +436,111 @@ object BspServerTests extends UtestIntegrationTestSuite {
       )
       assert(expectedMessages == messages0)
     }
+
+    test("diagnostics") - integrationTest { tester =>
+      import tester.*
+      eval(
+        ("--bsp-install", "--jobs", "1"),
+        stdout = os.Inherit,
+        stderr = os.Inherit,
+        check = true,
+        env = Map("MILL_EXECUTABLE_PATH" -> tester.millExecutable.toString)
+      )
+
+      def uriAsSubPath(strUri: String): os.SubPath =
+        os.Path(Paths.get(new URI(strUri))).relativeTo(workspacePath).asSubPath
+
+      var messages = Seq.empty[b.ShowMessageParams]
+      val diagnostics = new mutable.HashMap[
+        (os.SubPath, os.SubPath),
+        mutable.ListBuffer[Either[Unit, Seq[SimpleDiagnostic]]]
+      ]
+      val client: b.BuildClient = new DummyBuildClient {
+        override def onBuildPublishDiagnostics(params: b.PublishDiagnosticsParams): Unit = {
+          val key = (
+            uriAsSubPath(params.getBuildTarget.getUri),
+            uriAsSubPath(params.getTextDocument.getUri)
+          )
+          // Not looking at diagnostics for generated sources of the build
+          val keep = key._1 != os.sub / "mill-build" || !key._2.startsWith(os.sub / OutFiles.out)
+          if (keep) {
+            lazy val buf = diagnostics.getOrElseUpdate(key, new mutable.ListBuffer)
+            if (params.getReset)
+              buf.append(Left(()))
+            if (!params.getDiagnostics.isEmpty())
+              buf.append(Right(params.getDiagnostics.asScala.toSeq.map(simpleDiagnostic)))
+          }
+        }
+        override def onBuildShowMessage(params: b.ShowMessageParams): Unit = {
+          messages = messages :+ params
+        }
+      }
+
+      val expectedDiagnostics = Map(
+        (os.sub / "mill-build", os.sub / "build.mill") ->
+          Seq(
+            Right(Seq(SimpleDiagnostic(
+              (103, 17),
+              (103, 22),
+              "WARNING",
+              // not sure why we still have colors here
+              "\u001b[33mmethod\u001b[0m \u001b[35mthing\u001b[0m in \u001b[33mobject\u001b[0m \u001b[35mdiag\u001b[0m is deprecated since 0.0.1: deprecated"
+            )))
+          ),
+        (os.sub / "diag", os.sub / "diag/src/DiagCheck.scala") ->
+          Seq(
+            // first diagnostics sent during compilation
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            ))),
+            // at the end of compilation, diagnostics are reset, and all are sent again
+            Left(()),
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            ))),
+            // end of second compilation, that generates semanticdbs, diagnostics are reset and all are sent again, a second time
+            Left(()),
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            )))
+          )
+      )
+
+      val stderr = new ByteArrayOutputStream
+      withBspServer(
+        workspacePath,
+        millTestSuiteEnv,
+        bspLog = Some((bytes, len) => stderr.write(bytes, 0, len)),
+        client = client
+      ) { (buildServer, _) =>
+        val targets = buildServer.workspaceBuildTargets().get().getTargets.asScala
+        val diagTargets = targets.filter(_.getDisplayName == "diag").map(_.getId).asJava
+        assert(!diagTargets.isEmpty())
+
+        buildServer
+          .buildTargetCompile(
+            new b.CompileParams(
+              targets.filter(_.getDisplayName == "diag").map(_.getId).asJava
+            )
+          )
+          .get()
+
+        if (expectedDiagnostics != diagnostics.toMap) {
+          pprint.err.log(expectedDiagnostics)
+          pprint.err.log(diagnostics.toMap)
+        }
+        assert(expectedDiagnostics == diagnostics.toMap)
+      }
+    }
   }
 
   private def cleanUpJvmTestEnvResult(res: b.JvmTestEnvironmentResult): res.type = {
@@ -442,4 +558,19 @@ object BspServerTests extends UtestIntegrationTestSuite {
   }
 
   private def semDbPrefix = os.sub / "META-INF/semanticdb"
+
+  private case class SimpleDiagnostic(
+      from: (Int, Int),
+      to: (Int, Int),
+      severity: String,
+      message: String
+  )
+
+  private def simpleDiagnostic(diag: b.Diagnostic): SimpleDiagnostic =
+    SimpleDiagnostic(
+      (diag.getRange.getStart.getLine, diag.getRange.getStart.getCharacter),
+      (diag.getRange.getEnd.getLine, diag.getRange.getEnd.getCharacter),
+      diag.getSeverity.toString,
+      diag.getMessage
+    )
 }
