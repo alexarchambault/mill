@@ -1,13 +1,17 @@
 package mill.integration
 
 import java.io.ByteArrayOutputStream
+import java.net.URI
+import java.nio.file.Paths
 
+import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.given
 
 import ch.epfl.scala.bsp4j as b
 import mill.api.BuildInfo
 import mill.bsp.Constants
+import mill.constants.OutFiles
 import mill.integration.BspServerTestUtil.*
 import mill.testkit.UtestIntegrationTestSuite
 import mill.testrunner.TestRunnerUtils
@@ -21,31 +25,11 @@ object BspServerTests extends UtestIntegrationTestSuite {
   override protected def workspaceSourcePath: os.Path =
     super.workspaceSourcePath / "project"
 
-  def transitiveDependenciesSubstitutions(
-      dependency: coursierapi.Dependency,
-      filter: coursierapi.Dependency => Boolean
-  ): Seq[(String, String)] = {
-    val fetchRes = coursierapi.Fetch.create()
-      .addDependencies(dependency)
-      .fetchResult()
-    fetchRes.getDependencies.asScala
-      .filter(filter)
-      .map { dep =>
-        val organization = dep.getModule.getOrganization
-        val name = dep.getModule.getName
-        val prefix = (organization.split('.') :+ name).mkString("/")
-        def basePath(version: String): String =
-          s"$prefix/$version/$name-$version"
-        basePath(dep.getVersion) -> basePath(s"<$name-version>")
-      }
-      .toSeq
-  }
-
   def tests: Tests = Tests {
     test("requestSnapshots") - integrationTest { tester =>
       import tester.*
       eval(
-        "--bsp-install",
+        ("--bsp-install", "--jobs", "1"),
         stdout = os.Inherit,
         stderr = os.Inherit,
         check = true,
@@ -56,25 +40,6 @@ object BspServerTests extends UtestIntegrationTestSuite {
         workspacePath,
         millTestSuiteEnv
       ) { (buildServer, initRes) =>
-        val scala2Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
-        val scala3Version = sys.props.getOrElse("MILL_SCALA_3_NEXT_VERSION", ???)
-        val scala2TransitiveSubstitutions = transitiveDependenciesSubstitutions(
-          coursierapi.Dependency.of(
-            "org.scala-lang",
-            "scala-compiler",
-            scala2Version
-          ),
-          _.getModule.getOrganization != "org.scala-lang"
-        )
-        val scala3TransitiveSubstitutions = transitiveDependenciesSubstitutions(
-          coursierapi.Dependency.of(
-            "org.scala-lang",
-            "scala3-compiler_3",
-            scala3Version
-          ),
-          _.getModule.getOrganization != "org.scala-lang"
-        )
-
         val kotlinVersion = sys.props.getOrElse("TEST_KOTLIN_VERSION", ???)
         val kotlinTransitiveSubstitutions = transitiveDependenciesSubstitutions(
           coursierapi.Dependency.of(
@@ -86,14 +51,8 @@ object BspServerTests extends UtestIntegrationTestSuite {
         )
 
         val normalizedLocalValues = normalizeLocalValuesForTesting(workspacePath) ++
-          scala2TransitiveSubstitutions ++
-          scala3TransitiveSubstitutions ++
-          kotlinTransitiveSubstitutions ++
-          Seq(
-            scala2Version -> "<scala-version>",
-            scala3Version -> "<scala3-version>",
-            kotlinVersion -> "<kotlin-version>"
-          )
+          scalaVersionNormalizedValues() ++
+          kotlinVersionNormalizedValues()
 
         compareWithGsonSnapshot(
           initRes,
@@ -111,14 +70,7 @@ object BspServerTests extends UtestIntegrationTestSuite {
           normalizedLocalValues = normalizedLocalValues
         )
 
-        val targetIds = buildTargets
-          .getTargets
-          .asScala
-          .filter(_.getDisplayName != "errored.exception")
-          .filter(_.getDisplayName != "errored.compilation-error")
-          .filter(_.getDisplayName != "delayed")
-          .map(_.getId)
-          .asJava
+        val targetIds = buildTargets.getTargets.asScala.map(_.getId).asJava
         val metaBuildTargetId = new b.BuildTargetIdentifier(
           (workspacePath / "mill-build").toNIO.toUri.toASCIIString.stripSuffix("/")
         )
@@ -190,7 +142,23 @@ object BspServerTests extends UtestIntegrationTestSuite {
 
         // compile
         compareWithGsonSnapshot(
-          buildServer.buildTargetCompile(new b.CompileParams(targetIds)).get(),
+          buildServer
+            .buildTargetCompile(
+              new b.CompileParams(
+                targetIds
+                  .asScala
+                  // No need to attempt to compile the failing targets.
+                  // The snapshot data for this request basically only contains
+                  // a global status, errored or success. By excluding these,
+                  // we get a success status.
+                  .filter(!_.getUri.endsWith("/errored/exception"))
+                  .filter(!_.getUri.endsWith("/errored/compilation-error"))
+                  .filter(!_.getUri.endsWith("/delayed"))
+                  .filter(!_.getUri.endsWith("/diag/many"))
+                  .asJava
+              )
+            )
+            .get(),
           snapshotsPath / "build-targets-compile.json",
           normalizedLocalValues = normalizedLocalValues
         )
@@ -243,6 +211,14 @@ object BspServerTests extends UtestIntegrationTestSuite {
           normalizedLocalValues = normalizedLocalValues
         )
 
+        compareWithGsonSnapshot(
+          buildServer
+            .buildTargetScalaMainClasses(new b.ScalaMainClassesParams(targetIdsSubset))
+            .get(),
+          snapshotsPath / "build-targets-scalac-main-classes.json",
+          normalizedLocalValues = normalizedLocalValues
+        )
+
         // Run without args
         compareWithGsonSnapshot(
           buildServer.buildTargetRun(new b.RunParams(appTargetId)).get(),
@@ -267,13 +243,116 @@ object BspServerTests extends UtestIntegrationTestSuite {
           assert(os.read(run3).trim() == "run-3")
         }
 
+        val scalacOptionsResult = buildServer
+          .buildTargetScalacOptions(new b.ScalacOptionsParams(targetIds))
+          .get()
+
+        val expectedScalaSemDbs = Map(
+          os.sub / "hello-scala" -> Seq(
+            os.sub / "hello-scala/src/Hello.scala.semanticdb"
+          ),
+          os.sub / "hello-scala/test" -> Seq(
+            os.sub / "hello-scala/test/src/HelloTest.scala.semanticdb"
+          ),
+          os.sub / "mill-build" -> Seq(
+            os.sub / "build.mill.semanticdb"
+          ),
+          os.sub / "diag" -> Seq(
+            os.sub / "diag/src/DiagCheck.scala.semanticdb"
+          ),
+          os.sub / "errored/exception" -> Nil,
+          os.sub / "errored/compilation-error" -> Nil,
+          os.sub / "delayed" -> Nil,
+          os.sub / "diag/many" -> Nil
+        )
+
+        {
+          // check that semanticdbs are generated for Scala modules
+          val semDbs = scalacOptionsResult
+            .getItems
+            .asScala
+            .map { item =>
+              val shortId = os.Path(Paths.get(new URI(item.getTarget.getUri)))
+                .relativeTo(workspacePath)
+                .asSubPath
+              val classDir = os.Path(Paths.get(new URI(item.getClassDirectory)))
+              val semDbs =
+                if (os.exists(classDir))
+                  os.walk(classDir)
+                    .filter(os.isFile)
+                    .map(_.relativeTo(classDir).asSubPath)
+                    .filter(_.last.endsWith(".semanticdb"))
+                    .filter(_.startsWith(semDbPrefix))
+                    .map(_.relativeTo(semDbPrefix).asSubPath)
+                    .filter(!_.startsWith(os.sub / OutFiles.out))
+                    .sorted
+                else
+                  Nil
+
+              shortId -> semDbs
+            }
+            .toMap
+          if (expectedScalaSemDbs != semDbs) {
+            pprint.err.log(expectedScalaSemDbs)
+            pprint.err.log(semDbs)
+          }
+          assert(expectedScalaSemDbs == semDbs)
+        }
+
+        {
+          // check that semanticdbs are generated for Java modules
+          val javacOptionsResult = buildServer
+            .buildTargetJavacOptions(new b.JavacOptionsParams(targetIds))
+            .get()
+          val semDbs = javacOptionsResult
+            .getItems
+            .asScala
+            .map { item =>
+              val shortId = os.Path(Paths.get(new URI(item.getTarget.getUri)))
+                .relativeTo(workspacePath)
+                .asSubPath
+              val classDir = os.Path(Paths.get(new URI(item.getClassDirectory)))
+              val semDbs =
+                if (os.exists(classDir))
+                  os.walk(classDir)
+                    .filter(os.isFile)
+                    .map(_.relativeTo(classDir).asSubPath)
+                    .filter(_.last.endsWith(".semanticdb"))
+                    .filter(_.startsWith(semDbPrefix))
+                    .map(_.relativeTo(semDbPrefix).asSubPath)
+                    .filter(!_.startsWith(os.sub / mill.constants.OutFiles.out))
+                    .sorted
+                else
+                  Nil
+
+              shortId -> semDbs
+            }
+            .toMap
+          val expectedJavaSemDbs = expectedScalaSemDbs ++ Seq(
+            os.sub / "app" -> Seq(
+              os.sub / "app/src/App.java.semanticdb"
+            ),
+            os.sub / "app/test" -> Nil,
+            os.sub / "hello-kotlin" -> Nil,
+            os.sub / "lib" -> Nil,
+            os.sub / "hello-java" -> Nil,
+            os.sub / "hello-java/test" -> Seq(
+              os.sub / "hello-java/test/src/HelloJavaTest.java.semanticdb"
+            )
+          )
+          if (expectedJavaSemDbs != semDbs) {
+            pprint.err.log(expectedJavaSemDbs)
+            pprint.err.log(semDbs)
+          }
+          assert(expectedJavaSemDbs == semDbs)
+        }
       }
     }
 
     test("logging") - integrationTest { tester =>
       import tester.*
       eval(
-        "--bsp-install",
+        ("--bsp-install", "--jobs", "1"),
         stdout = os.Inherit,
         stderr = os.Inherit,
         check = true,
@@ -339,12 +418,14 @@ object BspServerTests extends UtestIntegrationTestSuite {
       compareLogWithSnapshot(
         logs,
         snapshotsPath / "logging",
-        // ignoring compilation warnings that might go away in the future
         ignoreLine = {
+          // ignore watcher logs
+          val watchGlob = TestRunnerUtils.matchesGlob("[bsp-watch] *")
+          // ignoring compilation warnings that might go away in the future
           val warnGlob = TestRunnerUtils.matchesGlob("[bsp-init-build.mill-*] [warn] *")
           val waitingGlob = TestRunnerUtils.matchesGlob("[*] Another Mill process is running *")
           s =>
-            warnGlob(s) || waitingGlob(s) ||
+            watchGlob(s) || warnGlob(s) || waitingGlob(s) ||
               // Ignoring this one, that sometimes comes out of order.
               // If the request hasn't been cancelled, we'd see extra lines making the
               // test fail anyway.
@@ -361,6 +442,142 @@ object BspServerTests extends UtestIntegrationTestSuite {
       )
       assert(expectedMessages == messages0)
     }
+
+    test("diagnostics") - integrationTest { tester =>
+      import tester.*
+      eval(
+        ("--bsp-install", "--jobs", "1"),
+        stdout = os.Inherit,
+        stderr = os.Inherit,
+        check = true,
+        env = Map("MILL_EXECUTABLE_PATH" -> tester.millExecutable.toString)
+      )
+
+      def uriAsSubPath(strUri: String): os.SubPath =
+        os.Path(Paths.get(new URI(strUri))).relativeTo(workspacePath).asSubPath
+
+      var messages = Seq.empty[b.ShowMessageParams]
+      val diagnostics = new mutable.HashMap[
+        (os.SubPath, os.SubPath),
+        mutable.ListBuffer[Either[Unit, Seq[SimpleDiagnostic]]]
+      ]
+      val client: b.BuildClient = new DummyBuildClient {
+        override def onBuildPublishDiagnostics(params: b.PublishDiagnosticsParams): Unit = {
+          val key = (
+            uriAsSubPath(params.getBuildTarget.getUri),
+            uriAsSubPath(params.getTextDocument.getUri)
+          )
+          // Not looking at diagnostics for generated sources of the build
+          val keep = key._1 != os.sub / "mill-build" || !key._2.startsWith(os.sub / OutFiles.out)
+          if (keep) {
+            lazy val buf = diagnostics.getOrElseUpdate(key, new mutable.ListBuffer)
+            if (params.getReset)
+              buf.append(Left(()))
+            if (!params.getDiagnostics.isEmpty())
+              buf.append(Right(params.getDiagnostics.asScala.toSeq.map(simpleDiagnostic)))
+          }
+        }
+        override def onBuildShowMessage(params: b.ShowMessageParams): Unit = {
+          messages = messages :+ params
+        }
+      }
+
+      val expectedManyDiagnostics = {
+        def diag(index: Int) =
+          SimpleDiagnostic((9 + 5 * index, 4), (9 + 5 * index, 7), "ERROR", "not found: value foo")
+        (0 to 11).map(diag)
+      }
+      val expectedDiagnostics = Map(
+        (os.sub / "mill-build", os.sub / "build.mill") ->
+          Seq(
+            Right(Seq(SimpleDiagnostic(
+              (101, 17),
+              (101, 22),
+              "WARNING",
+              "method thing in object diag is deprecated since 0.0.1: deprecated"
+            ))),
+            Left(()),
+            Right(Seq(SimpleDiagnostic(
+              (101, 17),
+              (101, 22),
+              "WARNING",
+              "method thing in object diag is deprecated since 0.0.1: deprecated"
+            )))
+          ),
+        (os.sub / "diag", os.sub / "diag/src/DiagCheck.scala") ->
+          Seq(
+            // first diagnostics sent during compilation
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            ))),
+            // at the end of compilation, diagnostics are reset, and all are sent again
+            Left(()),
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            ))),
+            // end of second compilation, that generates semanticdbs, diagnostics are reset and all are sent again, a second time
+            Left(()),
+            Right(Seq(SimpleDiagnostic(
+              (7, 10),
+              (7, 15),
+              "WARNING",
+              "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
+            )))
+          ),
+        (os.sub / "diag/many", os.sub / "diag/many/src/WarningAndErrors.scala") -> {
+          // first diagnostics sent one-by-one during compilation
+          expectedManyDiagnostics.map(d => Right(Seq(d))) ++
+            Seq(
+              // at the end of compilation, diagnostics are reset, and all are sent again
+              Left(()),
+              Right(expectedManyDiagnostics)
+            ) ++
+            // second compilation attempt for semanticdbs
+            expectedManyDiagnostics.map(d => Right(Seq(d))) ++
+            Seq(
+              // at the end of compilation, diagnostics are reset, and all are sent again
+              Left(()),
+              Right(expectedManyDiagnostics)
+            )
+        }
+      )
+
+      withBspServer(
+        workspacePath,
+        millTestSuiteEnv,
+        client = client
+      ) { (buildServer, _) =>
+        val targets = buildServer.workspaceBuildTargets().get().getTargets.asScala
+        val diagTargets = targets.filter(_.getDisplayName == "diag").map(_.getId).asJava
+        val diagManyTargets = targets.filter(_.getDisplayName == "diag.many").map(_.getId).asJava
+        assert(!diagTargets.isEmpty())
+        assert(!diagManyTargets.isEmpty())
+
+        buildServer
+          .buildTargetCompile(new b.CompileParams(diagTargets))
+          .get()
+        buildServer
+          .buildTargetCompile(new b.CompileParams(diagManyTargets))
+          .get()
+
+        if (expectedDiagnostics != diagnostics.toMap) {
+          for (key <- expectedDiagnostics.keysIterator)
+            if (!diagnostics.get(key).contains(expectedDiagnostics(key))) {
+              pprint.err.log(key)
+              pprint.err.log(expectedDiagnostics(key))
+              pprint.err.log(diagnostics.get(key))
+            }
+          pprint.err.log(diagnostics.toMap.filterKeys(!expectedDiagnostics.contains(_)).toMap)
+        }
+        assert(expectedDiagnostics == diagnostics.toMap)
+      }
+    }
   }
 
   private def cleanUpJvmTestEnvResult(res: b.JvmTestEnvironmentResult): res.type = {
@@ -376,4 +593,21 @@ object BspServerTests extends UtestIntegrationTestSuite {
       )
     res
   }
+
+  private def semDbPrefix = os.sub / "META-INF/semanticdb"
+
+  private case class SimpleDiagnostic(
+      from: (Int, Int),
+      to: (Int, Int),
+      severity: String,
+      message: String
+  )
+
+  private def simpleDiagnostic(diag: b.Diagnostic): SimpleDiagnostic =
+    SimpleDiagnostic(
+      (diag.getRange.getStart.getLine, diag.getRange.getStart.getCharacter),
+      (diag.getRange.getEnd.getLine, diag.getRange.getEnd.getCharacter),
+      diag.getSeverity.toString,
+      diag.getMessage
+    )
 }

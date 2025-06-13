@@ -13,7 +13,7 @@ import ch.epfl.scala.bsp4j.{
   ScalacOptionsParams,
   ScalacOptionsResult
 }
-import mill.api.internal.{JavaModuleApi, TaskApi, TestModuleApi}
+import mill.api.internal.{JavaModuleApi, ScalaModuleApi, TaskApi, TestModuleApi}
 import mill.bsp.worker.Utils.sanitizeUri
 
 import java.util.concurrent.CompletableFuture
@@ -27,14 +27,15 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
         // We ignore all non-JavaModule
-        case m: JavaModuleApi =>
+        case m: ScalaModuleApi =>
           m.bspJavaModule().bspBuildTargetScalacOptions(
             sessionInfo.clientType.mergeResourcesIntoClasses,
             enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
             clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb
           )
       },
-      requestDescription = "Getting scalac options of {}"
+      requestDescription = "Getting scalac options of {}",
+      originId = ""
     ) {
       case (
             ev,
@@ -58,8 +59,9 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       : CompletableFuture[ScalaMainClassesResult] =
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
-      tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetScalaMainClasses },
-      requestDescription = "Getting main classes of {}"
+      tasks = { case m: ScalaModuleApi => m.bspJavaModule().bspBuildTargetScalaMainClasses },
+      requestDescription = "Getting main classes of {}",
+      originId = p.getOriginId
     ) {
       case (_, _, id, _, res) =>
         // We find all main classes, although we could also find only the configured one
@@ -81,9 +83,10 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
-        case m: TestModuleApi => m.bspBuildTargetScalaTestClasses
+        case m: ScalaModuleApi with TestModuleApi => m.bspBuildTargetScalaTestClasses
       },
-      requestDescription = "Getting test classes of {}"
+      requestDescription = "Getting test classes of {}",
+      originId = p.getOriginId
     ) {
       case (_, _, id, _, (frameworkName, classes)) =>
         val item = new ScalaTestClassesItem(id, classes.asJava)

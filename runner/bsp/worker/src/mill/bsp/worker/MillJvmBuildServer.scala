@@ -25,7 +25,8 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
       : CompletableFuture[JvmRunEnvironmentResult] = {
     jvmRunEnvironmentFor(
       params.getTargets.asScala,
-      new JvmRunEnvironmentResult(_)
+      new JvmRunEnvironmentResult(_),
+      params.getOriginId
     )
   }
 
@@ -33,24 +34,29 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
       : CompletableFuture[JvmTestEnvironmentResult] = {
     jvmTestEnvironmentFor(
       params.getTargets.asScala,
-      new JvmTestEnvironmentResult(_)
+      new JvmTestEnvironmentResult(_),
+      params.getOriginId
     )
   }
 
   private def jvmTestEnvironmentFor[V](
       targetIds: collection.Seq[BuildTargetIdentifier],
-      agg: java.util.List[JvmEnvironmentItem] => V
+      agg: java.util.List[JvmEnvironmentItem] => V,
+      originId: String
   )(implicit name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
-      tasks = { case m: RunModuleApi => m.bspRunModule().bspJvmTestEnvironment },
-      requestDescription = "Getting JVM test environment of {}"
+      tasks = { case m: (RunModuleApi & TestModuleApi & JavaModuleApi) =>
+        m.bspRunModule().bspJvmTestEnvironment
+      },
+      requestDescription = "Getting JVM test environment of {}",
+      originId = originId
     ) {
       case (
             _,
             _,
             id,
-            _: (TestModuleApi & JavaModuleApi),
+            _,
             (
               _,
               forkArgs,
@@ -74,9 +80,6 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
           fullMainArgs.asJava
         )).asJava)
         item
-
-      case other =>
-        throw new NotImplementedError(s"Unsupported target: ${pprint(other).plainText}")
     } {
       agg
     }
@@ -84,12 +87,14 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
 
   private def jvmRunEnvironmentFor[V](
       targetIds: collection.Seq[BuildTargetIdentifier],
-      agg: java.util.List[JvmEnvironmentItem] => V
+      agg: java.util.List[JvmEnvironmentItem] => V,
+      originId: String
   )(implicit name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
       tasks = { case m: RunModuleApi => m.bspRunModule().bspJvmRunEnvironment },
-      requestDescription = "Getting JVM run environment of {}"
+      requestDescription = "Getting JVM run environment of {}",
+      originId = originId
     ) {
       case (
             _,
@@ -130,7 +135,8 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
         case m: JavaModuleApi =>
           m.bspCompileClasspath(sessionInfo.clientType.mergeResourcesIntoClasses)
       },
-      requestDescription = "Getting JVM compile class path of {}"
+      requestDescription = "Getting JVM compile class path of {}",
+      originId = ""
     ) {
       case (ev, _, id, _, compileClasspath) =>
         new JvmCompileClasspathItem(id, compileClasspath(ev).asJava)

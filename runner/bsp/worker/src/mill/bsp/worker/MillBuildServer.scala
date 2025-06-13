@@ -9,6 +9,7 @@ import mill.api.Segment.Label
 import mill.bsp.Constants
 import mill.bsp.worker.Utils.{makeBuildTarget, outputPaths, sanitizeUri}
 import mill.client.lock.Lock
+import mill.define.internal.WatchSig
 import mill.internal.PrefixLogger
 import mill.server.Server
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
@@ -60,6 +61,9 @@ private class MillBuildServer(
   protected var sessionInfo: SessionInfo = scala.compiletime.uninitialized
   // Set when the `MillBuildBootstrap` completes and the evaluators are available
   private var bspEvaluators: Promise[BspEvaluators] = Promise[BspEvaluators]()
+  private def bspEvaluatorsOpt(): Option[BspEvaluators] =
+    bspEvaluators.future.value.flatMap(_.toOption)
+  private var savedPreviousEvaluators = Option.empty[BspEvaluators]
   // Set when a session is completed, either due to reload or shutdown
   private[worker] var sessionResult: Promise[BspServerResult] = Promise()
 
@@ -67,16 +71,96 @@ private class MillBuildServer(
 
   def initialized = sessionInfo != null
 
-  def updateEvaluator(evaluatorsOpt: Option[Seq[EvaluatorApi]]): Unit = {
-    baseLogger.debug(s"Updating Evaluator: $evaluatorsOpt")
+  def updateEvaluator(
+      evaluators: Seq[EvaluatorApi],
+      errored: Boolean,
+      watched: Seq[Watchable]
+  ): Unit = {
+    baseLogger.debug(s"Updating Evaluator: $evaluators")
+    val previousEvaluatorsOpt = bspEvaluatorsOpt().orElse(savedPreviousEvaluators)
     if (bspEvaluators.isCompleted) bspEvaluators = Promise[BspEvaluators]() // replace the promise
-    evaluatorsOpt.foreach { evaluators =>
-      bspEvaluators.success(new BspEvaluators(
-        topLevelProjectRoot,
-        evaluators,
-        s => baseLogger.debug(s())
-      ))
+    val updatedEvaluators =
+      if (errored)
+        previousEvaluatorsOpt.map(_.evaluators) match {
+          case Some(previous) =>
+            evaluators.headOption match {
+              case None => // ???
+                previous
+              case Some(headEvaluator) =>
+                val idx = previous.indexWhere(_.outPathJava == headEvaluator.outPathJava)
+                if (idx < 0) // ???
+                  evaluators
+                else
+                  previous.take(idx) ++ evaluators
+            }
+          case None => evaluators
+        }
+      else
+        evaluators
+    val evaluators0 = new BspEvaluators(
+      topLevelProjectRoot,
+      updatedEvaluators,
+      s => baseLogger.debug(s()),
+      watched
+    )
+    bspEvaluators.success(evaluators0)
+    if (client != null && previousEvaluatorsOpt.nonEmpty) {
+      val newTargetIds = evaluators0.bspModulesIdList.map {
+        case (id, (_, ev)) =>
+          id -> ev
+      }
+      val newTargetIdsMap = newTargetIds.toMap
+
+      val previousTargetIds = previousEvaluatorsOpt.map(_.bspModulesIdList).getOrElse(Nil).map {
+        case (id, (_, ev)) =>
+          id -> ev
+      }
+
+      val deleted0 = previousTargetIds.filterNot {
+        case (id, _) =>
+          newTargetIdsMap.contains(id)
+      }
+      val previousTargetIdsMap = previousTargetIds.toMap
+      val (modified0, created0) = newTargetIds.partition {
+        case (id, _) =>
+          previousTargetIdsMap.contains(id)
+      }
+
+      val deletedEvents = deleted0.map {
+        case (id, _) =>
+          val event = new bsp4j.BuildTargetEvent(id)
+          event.setKind(bsp4j.BuildTargetEventKind.DELETED)
+          event
+      }
+      val createdEvents = created0.map {
+        case (id, _) =>
+          val event = new bsp4j.BuildTargetEvent(id)
+          event.setKind(bsp4j.BuildTargetEventKind.CREATED)
+          event
+      }
+      val modifiedEvents = modified0
+        .filter {
+          case (id, ev) =>
+            !previousTargetIdsMap.get(id).contains(ev)
+        }
+        .map {
+          case (id, ev) =>
+            val event = new bsp4j.BuildTargetEvent(id)
+            event.setKind(bsp4j.BuildTargetEventKind.CHANGED)
+            event
+        }
+
+      val allEvents = deletedEvents ++ createdEvents ++ modifiedEvents
+
+      if (allEvents.nonEmpty)
+        client.onBuildTargetDidChange(new bsp4j.DidChangeBuildTarget(allEvents.asJava))
     }
+  }
+
+  def resetEvaluator(): Unit = {
+    baseLogger.debug("Resetting Evaluator")
+    savedPreviousEvaluators = bspEvaluatorsOpt().orElse(savedPreviousEvaluators)
+    if (bspEvaluators.isCompleted) bspEvaluators = Promise[BspEvaluators]()
   }
 
   def onConnectWithClient(buildClient: BuildClient): Unit = client = buildClient
@@ -102,7 +186,7 @@ private class MillBuildServer(
       val supportedLangs = Constants.languages.asJava
       val capabilities = new BuildServerCapabilities
 
-      capabilities.setBuildTargetChangedProvider(false)
+      capabilities.setBuildTargetChangedProvider(true)
       capabilities.setCanReload(canReload)
       capabilities.setCompileProvider(new CompileProvider(supportedLangs))
       capabilities.setDebugProvider(new DebugProvider(Seq().asJava))
@@ -175,7 +259,8 @@ private class MillBuildServer(
     handlerTasksEvaluators(
       targetIds = _.bspModulesIdList.map(_._1),
       tasks = { case m: BspModuleApi => m.bspBuildTargetData },
-      requestDescription = "Listing build targets"
+      requestDescription = "Listing build targets",
+      originId = ""
     ) { (ev, state, id, m: BspModuleApi, bspBuildTargetData) =>
       val depsIds = m match {
         case jm: JavaModuleApi =>
@@ -244,9 +329,10 @@ private class MillBuildServer(
       targetIds = _ => sourcesParams.getTargets.asScala,
       tasks = { case module: JavaModuleApi => module.bspJavaModule().bspBuildTargetSources },
       requestDescription =
-        s"Getting sources of ${sourcesParams.getTargets.asScala.map(_.getUri).mkString(", ")}"
+        s"Getting sources of ${sourcesParams.getTargets.asScala.map(_.getUri).mkString(", ")}",
+      originId = ""
     ) {
-      case (_, _, id, _: JavaModuleApi, result) => new SourcesItem(
+      case (_, _, id, _, result) => new SourcesItem(
           id,
           (
             result.sources.map(p => sourceItem(os.Path(p), false)) ++
@@ -301,7 +387,8 @@ private class MillBuildServer(
       targetIds = _ => p.getTargets.asScala,
       tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetDependencySources },
       requestDescription =
-        s"Getting dependency sources of ${p.getTargets.asScala.map(_.getUri).mkString(", ")}"
+        s"Getting dependency sources of ${p.getTargets.asScala.map(_.getUri).mkString(", ")}",
+      originId = ""
     ) {
       case (_, _, id, _, result) =>
         val cp = (result.resolvedDepsSources ++ result.unmanagedClasspath).map(sanitizeUri)
@@ -324,7 +411,8 @@ private class MillBuildServer(
     handlerTasks(
       targetIds = _ => params.getTargets.asScala,
       tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetDependencyModules },
-      requestDescription = "Getting external dependencies of {}"
+      requestDescription = "Getting external dependencies of {}",
+      originId = ""
     ) {
       case (_, _, id, _, result) =>
         val deps = result.mvnDeps.collect {
@@ -345,7 +433,8 @@ private class MillBuildServer(
     handlerTasks(
       targetIds = _ => p.getTargets.asScala,
       tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetResources },
-      requestDescription = "Getting resources of {}"
+      requestDescription = "Getting resources of {}",
+      originId = ""
     ) {
       case (_, _, id, _, resources) =>
         val resourcesUrls =
@@ -355,6 +444,22 @@ private class MillBuildServer(
     } { values =>
       new ResourcesResult(values.asScala.sortBy(_.getTarget.getUri).asJava)
     }
+
+  private def reporters(
+      originId: String,
+      state: BspEvaluators
+  ): (() => Boolean, Int => Option[CompileProblemReporter]) = {
+    val reporterMaker = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
+    val reporters = new ConcurrentHashMap[Int, Option[BspCompileProblemReporter]]
+    val getReporter: Int => Option[CompileProblemReporter] = { id =>
+      if (!reporters.contains(id))
+        reporters.putIfAbsent(id, reporterMaker(id))
+      reporters.get(id)
+    }
+    def hasCompilationErrors =
+      reporters.asScala.valuesIterator.flatMap(_.iterator).exists(_.hasErrors)
+    (() => hasCompilationErrors, getReporter)
+  }
 
   // TODO: if the client wants to give compilation arguments and the module
   // already has some from the build file, what to do?
@@ -374,13 +479,7 @@ private class MillBuildServer(
           )
       }
 
-      val reporterMaker = Utils.getBspLoggedReporterPool(p.getOriginId, state.bspIdByModule, client)
-      val reporters = new ConcurrentHashMap[Int, Option[BspCompileProblemReporter]]
-      val getReporter: Int => Option[CompileProblemReporter] = { id =>
-        if (!reporters.contains(id))
-          reporters.putIfAbsent(id, reporterMaker(id))
-        reporters.get(id)
-      }
+      val (hasCompilationErrors, getReporter) = reporters(p.getOriginId, state)
 
       val result = compileTasksEvs
         .groupMap(_._2)(_._1)
@@ -390,13 +489,11 @@ private class MillBuildServer(
             s"Compiling ${ts.map(_._1.bspDisplayName).mkString(", ")}",
             ts.map(_._2),
             logger,
-            getReporter,
+            reporter = getReporter,
             TestReporter.DummyTestReporter,
             errorOpt = { result =>
               val baseErrorOpt = evaluatorErrorOpt(result)
-              def hasCompilationErrors =
-                reporters.asScala.valuesIterator.flatMap(_.iterator).exists(_.hasErrors)
-              if (baseErrorOpt.isEmpty || hasCompilationErrors)
+              if (baseErrorOpt.isEmpty || hasCompilationErrors())
                 // No task errors, or some compilation errors were already reported:
                 // no need to tell more about this to users
                 None
@@ -519,7 +616,7 @@ private class MillBuildServer(
                 s"Running tests for ${testModule.bspDisplayName}",
                 Seq(testTask),
                 logger,
-                Utils.getBspLoggedReporterPool(
+                reporter = Utils.getBspLoggedReporterPool(
                   testParams.getOriginId,
                   state.bspIdByModule,
                   client
@@ -579,7 +676,8 @@ private class MillBuildServer(
               ev,
               s"Cleaning cache of ${module.bspDisplayName}",
               Seq(cleanTask),
-              logger = logger
+              logger = logger,
+              reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
             )
             val cleanedPaths =
               cleanResult.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
@@ -619,7 +717,8 @@ private class MillBuildServer(
   def handlerTasks[T, V, W](
       targetIds: BspEvaluators => collection.Seq[BuildTargetIdentifier],
       tasks: PartialFunction[BspModuleApi, TaskApi[W]],
-      requestDescription: String
+      requestDescription: String,
+      originId: String
   )(block: (
       evaluator: EvaluatorApi,
       bspEvaluators: BspEvaluators,
@@ -631,7 +730,7 @@ private class MillBuildServer(
       enclosing: sourcecode.Enclosing
   )
       : CompletableFuture[V] =
-    handlerTasksEvaluators[T, V, W](targetIds, tasks, requestDescription)(block)((l, _) =>
+    handlerTasksEvaluators[T, V, W](targetIds, tasks, requestDescription, originId)(block)((l, _) =>
       agg(l)
     )(using name, enclosing)
 
@@ -642,7 +741,8 @@ private class MillBuildServer(
   def handlerTasksEvaluators[T, V, W](
       targetIds: BspEvaluators => collection.Seq[BuildTargetIdentifier],
       tasks: PartialFunction[BspModuleApi, TaskApi[W]],
-      requestDescription: String
+      requestDescription: String,
+      originId: String
   )(block: (EvaluatorApi, BspEvaluators, BuildTargetIdentifier, BspModuleApi, W) => T)(agg: (
       java.util.List[T],
       BspEvaluators
@@ -657,22 +757,28 @@ private class MillBuildServer(
 
       // group by evaluator (different root module)
       val groups0 = groupList(tasksSeq)(_._2._1) {
-        case (tasks, (_, id, m)) => (id, m.bspDisplayName, tasks)
+        case (tasks, (_, id, m)) => (id, m, tasks)
       }
 
       val evaluated = groups0.flatMap {
         case (ev, targetIdTasks) =>
           val requestDescription0 = requestDescription.replace(
             "{}",
-            targetIdTasks.map(_._2).mkString(", ")
+            targetIdTasks.map(_._2.bspDisplayName).mkString(", ")
           )
-          val results = evaluate(ev, requestDescription0, targetIdTasks.map(_._3), logger = logger)
+          val results = evaluate(
+            ev,
+            requestDescription0,
+            targetIdTasks.map(_._3),
+            logger = logger,
+            reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
+          )
           val resultsById = targetIdTasks.flatMap {
-            case (id, _, task) =>
+            case (id, m, task) =>
               results.transitiveResultsApi(task)
                 .asSuccess
                 .map(_.value.value.asInstanceOf[W])
-                .map((id, _))
+                .map((id, m, _))
           }
 
           def logError(id: BuildTargetIdentifier, errorMsg: String): Unit = {
@@ -682,8 +788,8 @@ private class MillBuildServer(
           }
 
           resultsById.flatMap {
-            case (id, values) =>
-              try Seq(block(ev, state, id, state.bspModulesById(id)._1, values))
+            case (id, m, values) =>
+              try Seq(block(ev, state, id, m, values))
               catch {
                 case NonFatal(e) =>
                   logError(id, e.toString)
@@ -719,15 +825,19 @@ private class MillBuildServer(
                 streams = logger.streams,
                 outLock = outLock
               ) {
-                for (evaluator <- bspEvaluators.future.value.flatMap(_.toOption)) {
-                  elemOpt = None
-                  try block(evaluator)
-                  catch {
-                    case t: Throwable =>
-                      logger.error(s"Could not process request: $t")
-                      t.printStackTrace(logger.streams.err)
+                for (evaluator <- bspEvaluatorsOpt())
+                  if (evaluator.watched.forall(WatchSig.haveNotChanged)) {
+                    elemOpt = None
+                    try block(evaluator)
+                    catch {
+                      case t: Throwable =>
+                        logger.error(s"Could not process request: $t")
+                        t.printStackTrace(logger.streams.err)
+                    }
+                  } else {
+                    resetEvaluator()
+                    sessionResult.trySuccess(BspServerResult.ReloadWorkspace)
                   }
-                }
               }
             }
           }
@@ -848,7 +958,7 @@ private class MillBuildServer(
       requestDescription: String,
       goals: Seq[TaskApi[?]],
       logger: Logger,
-      reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
+      reporter: Int => Option[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       errorOpt: EvaluatorApi.Result[Any] => Option[String] = evaluatorErrorOpt(_)
   ): ExecutionResultsApi = {
@@ -895,7 +1005,8 @@ private class MillBuildServer(
             ev,
             s"Checking logging for ${ts.map(_._1.bspDisplayName).mkString(", ")}",
             ts.map(_._2),
-            logger
+            logger,
+            reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
           )
         }
         .toSeq

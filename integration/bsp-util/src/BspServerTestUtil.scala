@@ -176,18 +176,20 @@ object BspServerTestUtil {
       client: b.BuildClient = DummyBuildClient
   )(f: (MillBuildServer, b.InitializeBuildResult) => T): T = {
 
-    val bspMetadataFile = workspacePath / Constants.bspDir / s"${Constants.serverName}.json"
-    assert(os.exists(bspMetadataFile))
-    val contents = os.read(bspMetadataFile)
-    assert(
-      !contents.contains("--debug"),
-      contents.contains(s""""bspVersion":"$bsp4jVersion"""")
-    )
-
     val outputOnErrorOnly = System.getenv("CI") != null
 
-    val contentsJson = ujson.read(contents)
-    val bspCommand = contentsJson("argv").arr.map(_.str)
+    val bspCommand = {
+      val bspMetadataFile = workspacePath / Constants.bspDir / s"${Constants.serverName}.json"
+      assert(os.exists(bspMetadataFile))
+      val contents = os.read(bspMetadataFile)
+      assert(
+        !contents.contains("--debug"),
+        contents.contains(s""""bspVersion":"$bsp4jVersion"""")
+      )
+      val contentsJson = ujson.read(contents)
+      contentsJson("argv").arr.map(_.str)
+    }
+
     val stderr = new ByteArrayOutputStream
     val proc = os.proc(bspCommand).spawn(
       cwd = workspacePath,
@@ -224,15 +226,19 @@ object BspServerTestUtil {
 
       val buildServer = launcher.getRemoteProxy()
 
-      val initRes = buildServer.buildInitialize(
-        new b.InitializeBuildParams(
-          "Mill Integration",
-          BuildInfo.millVersion,
-          b.Bsp4j.PROTOCOL_VERSION,
-          workspacePath.toNIO.toUri.toASCIIString,
-          new b.BuildClientCapabilities(List("java", "scala", "kotlin").asJava)
-        )
-      ).get()
+      val initParams = new b.InitializeBuildParams(
+        "Mill Integration",
+        BuildInfo.millVersion,
+        b.Bsp4j.PROTOCOL_VERSION,
+        workspacePath.toNIO.toUri.toASCIIString,
+        new b.BuildClientCapabilities(List("java", "scala", "kotlin").asJava)
+      )
+      // Tell Mill BSP we want semanticdbs
+      initParams.setData(InitData(BuildInfo.semanticDBVersion, BuildInfo.semanticDbJavaVersion))
+      // This seems to be unused by Mill BSP for now, setting it just in case
+      initParams.setDataKind("scala")
+
+      val initRes = buildServer.buildInitialize(initParams).get()
 
       val value =
         try f(buildServer, initRes)
@@ -281,4 +287,70 @@ object BspServerTestUtil {
       millWorkspace.toString -> "/mill-workspace",
       os.home.toString -> "/user-home"
     )
+
+  def scalaVersionNormalizedValues(): Seq[(String, String)] = {
+    val scala2Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
+    val scala3Version = sys.props.getOrElse("MILL_SCALA_3_NEXT_VERSION", ???)
+    val scala2TransitiveSubstitutions = transitiveDependenciesSubstitutions(
+      coursierapi.Dependency.of(
+        "org.scala-lang",
+        "scala-compiler",
+        scala2Version
+      ),
+      _.getModule.getOrganization != "org.scala-lang"
+    )
+    val scala3TransitiveSubstitutions = transitiveDependenciesSubstitutions(
+      coursierapi.Dependency.of(
+        "org.scala-lang",
+        "scala3-compiler_3",
+        scala3Version
+      ),
+      _.getModule.getOrganization != "org.scala-lang"
+    )
+
+    scala2TransitiveSubstitutions ++ scala3TransitiveSubstitutions ++
+      Seq(
+        scala2Version -> "<scala-version>",
+        scala3Version -> "<scala3-version>"
+      )
+  }
+
+  def kotlinVersionNormalizedValues(): Seq[(String, String)] = {
+    val kotlinVersion = sys.props.getOrElse("TEST_KOTLIN_VERSION", ???)
+    val kotlinTransitiveSubstitutions = transitiveDependenciesSubstitutions(
+      coursierapi.Dependency.of(
+        "org.jetbrains.kotlin",
+        "kotlin-stdlib",
+        kotlinVersion
+      ),
+      _.getModule.getOrganization != "org.jetbrains.kotlin"
+    )
+    kotlinTransitiveSubstitutions ++ Seq(kotlinVersion -> "<kotlin-version>")
+  }
+
+  def transitiveDependenciesSubstitutions(
+      dependency: coursierapi.Dependency,
+      filter: coursierapi.Dependency => Boolean
+  ): Seq[(String, String)] = {
+    val fetchRes = coursierapi.Fetch.create()
+      .addDependencies(dependency)
+      .fetchResult()
+    fetchRes.getDependencies.asScala
+      .filter(filter)
+      .map { dep =>
+        val organization = dep.getModule.getOrganization
+        val name = dep.getModule.getName
+        val prefix = (organization.split('.') :+ name).mkString("/")
+        def basePath(version: String): String =
+          s"$prefix/$version/$name-$version"
+        basePath(dep.getVersion) -> basePath(s"<$name-version>")
+      }
+      .toSeq
+  }
+
+  // using var-s and null-s for GSON, that is meant to serialize this class
+  private case class InitData(
+      var semanticdbVersion: String = null,
+      var javaSemanticdbVersion: String = null
+  )
 }
