@@ -155,6 +155,7 @@ object BspServerTests extends UtestIntegrationTestSuite {
                   .filter(!_.getUri.endsWith("/errored/exception"))
                   .filter(!_.getUri.endsWith("/errored/compilation-error"))
                   .filter(!_.getUri.endsWith("/delayed"))
+                  .filter(!_.getUri.endsWith("/diag/many"))
                   .asJava
               )
             )
@@ -262,7 +263,8 @@ object BspServerTests extends UtestIntegrationTestSuite {
           ),
           os.sub / "errored/exception" -> Nil,
           os.sub / "errored/compilation-error" -> Nil,
-          os.sub / "delayed" -> Nil
+          os.sub / "delayed" -> Nil,
+          os.sub / "diag/many" -> Nil
         )
 
         {
@@ -459,6 +461,11 @@ object BspServerTests extends UtestIntegrationTestSuite {
         }
       }
 
+      val expectedManyDiagnostics = {
+        def diag(index: Int) =
+          SimpleDiagnostic((9 + 5 * index, 4), (9 + 5 * index, 7), "ERROR", "not found: value foo")
+        (0 to 11).map(diag)
+      }
       val expectedDiagnostics = Map(
         (os.sub / "mill-build", os.sub / "build.mill") ->
           Seq(
@@ -501,7 +508,23 @@ object BspServerTests extends UtestIntegrationTestSuite {
               "WARNING",
               "method thing in object DiagCheck is deprecated (since 0.0.1): deprecated thing"
             )))
-          )
+          ),
+        (os.sub / "diag/many", os.sub / "diag/many/src/WarningAndErrors.scala") -> {
+          // first diagnostics sent one-by-one during compilation
+          expectedManyDiagnostics.map(d => Right(Seq(d))) ++
+            Seq(
+              // at the end of compilation, diagnostics are reset, and all are sent again
+              Left(()),
+              Right(expectedManyDiagnostics)
+            ) ++
+            // second compilation attempt for semanticdbs
+            expectedManyDiagnostics.map(d => Right(Seq(d))) ++
+            Seq(
+              // at the end of compilation, diagnostics are reset, and all are sent again
+              Left(()),
+              Right(expectedManyDiagnostics)
+            )
+        }
       )
 
       withBspServer(
@@ -511,19 +534,25 @@ object BspServerTests extends UtestIntegrationTestSuite {
       ) { (buildServer, _) =>
         val targets = buildServer.workspaceBuildTargets().get().getTargets.asScala
         val diagTargets = targets.filter(_.getDisplayName == "diag").map(_.getId).asJava
+        val diagManyTargets = targets.filter(_.getDisplayName == "diag.many").map(_.getId).asJava
         assert(!diagTargets.isEmpty())
+        assert(!diagManyTargets.isEmpty())
 
         buildServer
-          .buildTargetCompile(
-            new b.CompileParams(
-              targets.filter(_.getDisplayName == "diag").map(_.getId).asJava
-            )
-          )
+          .buildTargetCompile(new b.CompileParams(diagTargets))
+          .get()
+        buildServer
+          .buildTargetCompile(new b.CompileParams(diagManyTargets))
           .get()
 
         if (expectedDiagnostics != diagnostics.toMap) {
-          pprint.err.log(expectedDiagnostics)
-          pprint.err.log(diagnostics.toMap)
+          for (key <- expectedDiagnostics.keysIterator)
+            if (!diagnostics.get(key).contains(expectedDiagnostics(key))) {
+              pprint.err.log(key)
+              pprint.err.log(expectedDiagnostics(key))
+              pprint.err.log(diagnostics.get(key))
+            }
+          pprint.err.log(diagnostics.toMap.filterKeys(!expectedDiagnostics.contains(_)).toMap)
         }
         assert(expectedDiagnostics == diagnostics.toMap)
       }
