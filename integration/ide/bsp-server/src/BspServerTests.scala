@@ -71,16 +71,37 @@ object BspServerTests extends UtestIntegrationTestSuite {
         )
 
         val targetIds = buildTargets.getTargets.asScala.map(_.getId).asJava
-        val metaBuildTargetId = new b.BuildTargetIdentifier(
+        val buildBuildTargetId = new b.BuildTargetIdentifier(
           (workspacePath / "mill-build").toNIO.toUri.toASCIIString.stripSuffix("/")
         )
-        assert(targetIds.contains(metaBuildTargetId))
-        val targetIdsSubset = targetIds.asScala.filter(_ != metaBuildTargetId).asJava
+        val metaBuildBuildTargetId = new b.BuildTargetIdentifier(
+          (workspacePath / "mill-build/mill-build").toNIO.toUri.toASCIIString.stripSuffix("/")
+        )
+        assert(targetIds.contains(buildBuildTargetId))
+        assert(targetIds.contains(metaBuildBuildTargetId))
+        val targetIdsSubset = targetIds.asScala
+          .filter(_ != buildBuildTargetId)
+          .filter(_ != metaBuildBuildTargetId)
+          .asJava
 
         val appTargetId = new b.BuildTargetIdentifier(
           (workspacePath / "app").toNIO.toUri.toASCIIString.stripSuffix("/")
         )
         assert(targetIds.contains(appTargetId))
+
+        def inverseSource(src: os.SubPath): Seq[b.BuildTargetIdentifier] =
+          buildServer
+            .buildTargetInverseSources(
+              new b.InverseSourcesParams(
+                new b.TextDocumentIdentifier(
+                  (workspacePath / src).toNIO.toUri.toASCIIString
+                )
+              )
+            )
+            .get()
+            .getTargets
+            .asScala
+            .toSeq
 
         compareWithGsonSnapshot(
           buildServer
@@ -106,6 +127,12 @@ object BspServerTests extends UtestIntegrationTestSuite {
             snapshotsPath / "build-targets-inverse-sources.json",
             normalizedLocalValues = normalizedLocalValues
           )
+
+          // check that inverseSources works fine for the build.mill files
+          val buildMillTargetIds = inverseSource(os.sub / "build.mill")
+          assert(buildMillTargetIds == Seq(buildBuildTargetId))
+          val buildBuildMillTargetIds = inverseSource(os.sub / "mill-build/build.mill")
+          assert(buildBuildMillTargetIds == Seq(metaBuildBuildTargetId))
         }
 
         compareWithGsonSnapshot(
@@ -214,7 +241,7 @@ object BspServerTests extends UtestIntegrationTestSuite {
 
         compareWithGsonSnapshot(
           buildServer
-            .buildTargetScalaMainClasses(new b.ScalaMainClassesParams(targetIdsSubset))
+            .buildTargetScalaMainClasses(new b.ScalaMainClassesParams(targetIds))
             .get(),
           snapshotsPath / "build-targets-scalac-main-classes.json",
           normalizedLocalValues = normalizedLocalValues
@@ -257,6 +284,9 @@ object BspServerTests extends UtestIntegrationTestSuite {
           ),
           os.sub / "mill-build" -> Seq(
             os.sub / "build.mill.semanticdb"
+          ),
+          os.sub / "mill-build/mill-build" -> Seq(
+            os.sub / "mill-build/build.mill.semanticdb"
           ),
           os.sub / "diag" -> Seq(
             os.sub / "diag/src/DiagCheck.scala.semanticdb"
