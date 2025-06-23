@@ -5,9 +5,10 @@ import mill.define.{Task, Segment}
 
 import scala.reflect.NameTransformer.encode
 import java.lang.reflect.Method
+import mill.define.Plan0.AppliedNamedTask
 
 private[mill] object CodeSigUtils {
-  def precomputeMethodNamesPerClass(transitiveNamed: Seq[Task.Named[?]])
+  def precomputeMethodNamesPerClass(transitiveNamed: Seq[AppliedNamedTask[?]])
       : (Map[Class[?], IndexedSeq[Class[?]]], Map[Class[?], Map[String, Method]]) = {
     def resolveTransitiveParents(c: Class[?]): Iterator[Class[?]] = {
       Iterator(c) ++
@@ -17,7 +18,7 @@ private[mill] object CodeSigUtils {
 
     val classToTransitiveClasses: Map[Class[?], IndexedSeq[Class[?]]] = transitiveNamed
       .iterator
-      .map { case namedTask: Task.Named[?] => namedTask.ctx.enclosingCls }
+      .map(_.task.ctx.enclosingCls)
       .map(cls => cls -> resolveTransitiveParents(cls).toVector)
       .toMap
 

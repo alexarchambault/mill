@@ -49,6 +49,9 @@ sealed abstract class Task[+T] extends Task.Ops[T] with Applyable[Task, T] with 
     case c: Task.Command[_] if c.exclusive => true
     case _ => false
   }
+
+  def cross(keyValues: (String, String)*): Task.WithCrossValue[T] =
+    new Task.WithCrossValue[T](this, keyValues)
 }
 
 object Task {
@@ -334,6 +337,8 @@ object Task {
     def readWriterOpt: Option[upickle.default.ReadWriter[?]] = None
 
     def writerOpt: Option[upickle.default.Writer[?]] = readWriterOpt.orElse(None)
+
+    private[mill] def as[U]: Named[U] = this.asInstanceOf[Named[U]]
   }
 
   class Computed[+T](
@@ -447,6 +452,44 @@ object Task {
         upickle.default.readwriter[PathRef],
         isPrivate
       ) {}
+
+  class WithCrossValue[+T](
+      wrapped: Task[T],
+      val crossValues: Seq[(String, Any)]
+  ) extends Task[T] {
+    val inputs: Seq[Task[?]] = Seq(wrapped)
+    def evaluate(ctx: TaskCtx): Result[T] =
+      Result.Success(ctx.arg[T](0))
+  }
+
+  class CrossValue[T](
+      allowedValues: Seq[T]
+  )(implicit ctx: ModuleCtx) extends Task[T] {
+    private val allowedValuesSet = allowedValues.toSet
+    val inputs = Nil
+
+    lazy val key: String =
+      ctx.segments.value
+        .map {
+          case Segment.Label(v) => v
+          case c @ Segment.Cross(_) => throw new IllegalArgumentException(
+              s"Task.CrossValue only support a ctx with Label segments, but found a Cross $c."
+            )
+        }
+        .mkString(".")
+
+    def evaluate(ctx: TaskCtx): Result[T] =
+      Result.fromEither(
+        ctx.crossValue[T](key) match {
+          case None => Left(s"No cross value available for $key")
+          case Some(value) =>
+            if (allowedValuesSet.contains(value)) Right(value)
+            else Left(
+              s"Invalid $key value: '$value' (expected: one of ${allowedValues.mkString(", ")})"
+            )
+        }
+      )
+  }
 
   private object Macros {
     def appImpl[M[_]: Type, T: Type](using

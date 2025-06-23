@@ -47,7 +47,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   def plan(tasks: Seq[Task[?]]): Plan
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.define.TopoSorted)(
+  def groupAroundImportantTasks[T](topoSortedTasks: mill.define.TopoSorted[Task[?]])(
       important: PartialFunction[
         Task[?],
         T
@@ -64,13 +64,23 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
    * Takes the given tasks, finds all the tasks they transitively depend
    * on, and sort them topologically. Fails if there are dependency cycles
    */
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.define.TopoSorted
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.define.TopoSorted[Task[?]]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): Evaluator.Result[T] =
-    execute[T](tasks.map(_.asInstanceOf[Task[T]]))
+  private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, Any]
+  ): Evaluator.Result[T] =
+    execute[T](
+      tasks.map {
+        case task: Task[T] => task
+        case _ => ???
+      },
+      crossValues
+    )
 
   def execute[T](
       tasks: Seq[Task[T]],
+      crossValues: Map[String, Any] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -87,6 +97,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, Any],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -95,7 +106,11 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): EvaluatorApi.Result[T] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
-        tasks.map(_.asInstanceOf[Task[T]]),
+        tasks.map {
+          case task: Task[T] => task
+          case _ => ???
+        },
+        crossValues,
         reporter,
         testReporter,
         logger,

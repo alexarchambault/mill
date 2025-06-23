@@ -56,7 +56,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   }
   def plan(tasks: Seq[Task[?]]): Plan = delegate.plan(tasks)
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.define.TopoSorted)(
+  def groupAroundImportantTasks[T](topoSortedTasks: mill.define.TopoSorted[Task[?]])(
       important: PartialFunction[
         Task[?],
         T
@@ -66,11 +66,12 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]] =
     delegate.transitiveTasks(sourceTasks)
 
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.define.TopoSorted =
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.define.TopoSorted[Task[?]] =
     delegate.topoSorted(transitiveTasks)
 
   def execute[T](
       tasks: Seq[Task[T]],
+      crossValues: Map[String, Any] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -79,6 +80,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   ): Evaluator.Result[T] = {
     delegate.execute(
       tasks,
+      crossValues,
       reporter,
       testReporter,
       logger,

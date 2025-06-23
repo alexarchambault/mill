@@ -152,13 +152,21 @@ class UnitTester(
       Resolve.Tasks.resolve(evaluator.rootModule, args, SelectMode.Separated)
     } match {
       case Result.Failure(err) => Left(ExecResult.Failure(err))
-      case Result.Success(resolved) => apply(resolved)
+      case Result.Success(resolved) =>
+        val crossValues = Map.empty[String, String] // FIXME
+        apply(resolved, crossValues)
     }
   }
 
-  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
-    apply(Seq(task)) match {
-      case Left(f) => Left(f.asInstanceOf[ExecResult.Failing[T]])
+  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] =
+    apply(task, Map.empty)
+
+  def apply[T](
+      task: Task[T],
+      crossValues: Map[String, Any]
+  ): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
+    apply(Seq(task), crossValues) match {
+      case Left(f) => Left(f.as[T])
       case Right(UnitTester.Result(Seq(v), i)) =>
         Right(UnitTester.Result(v.asInstanceOf[T], i))
       case _ => ???
@@ -167,16 +175,21 @@ class UnitTester(
 
   def apply(
       tasks: Seq[Task[?]],
+      crossValues: Map[String, Any] = Map.empty,
       dummy: DummyImplicit = null
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks).executionResults
+    val evaluated = evaluator.execute(tasks, crossValues).executionResults
 
     if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
     else {
-      val values = evaluated.results.map(_.asInstanceOf[ExecResult.Success[Val]].value.value)
+      val values = evaluated.results.map {
+        case s: ExecResult.Success[Val] => s.value.value
+        case _ => sys.error("Cannot happen")
+      }
       val evalCount = evaluated
         .uncached
+        .map(_.task) // FIXME
         .collect {
           case t: Task.Computed[_]
               if module.moduleInternal.simpleTasks.contains(t)
@@ -192,11 +205,12 @@ class UnitTester(
 
   def fail(
       task: Task.Simple[?],
+      crossValues: Map[String, Any],
       expectedFailCount: Int,
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(task)).executionResults
+    val res = evaluator.execute(Seq(task), crossValues).executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
@@ -209,10 +223,18 @@ class UnitTester(
   }
 
   def check(tasks: Seq[Task[?]], expected: Seq[Task[?]]): Unit = {
+    check(tasks, Map.empty, expected)
+  }
 
-    val evaluated = evaluator.execute(tasks).executionResults
+  def check(
+      tasks: Seq[Task[?]],
+      crossValues: Map[String, String],
+      expected: Seq[Task[?]]
+  ): Unit = {
+
+    val evaluated = evaluator.execute(tasks, crossValues).executionResults
       .uncached
-      .flatMap(_.asSimple)
+      .flatMap(_.task.asSimple) // FIXME
       .filter(module.moduleInternal.simpleTasks.contains)
       .filter(!_.isInstanceOf[Task.Input[?]])
     assert(

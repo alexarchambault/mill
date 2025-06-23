@@ -1,17 +1,90 @@
 package mill.exec
 
-import mill.define.{Task, Plan}
+import mill.define.{Task, Plan, Plan0}
 import mill.define.MultiBiMap
 import mill.define.TopoSorted
+import mill.define.Plan0.AppliedTask
+import mill.define.Plan0.UnappliedTask
+
+import scala.collection.mutable
+import scala.reflect.ClassTag
 
 private[mill] object PlanImpl {
+  def plan0(goals: Seq[Task[?]], rootCrossValues: Map[String, Any]): Plan0 =
+    plan0(goals.map(UnappliedTask(_, rootCrossValues)))
+
+  private final case class TaskDetails(
+      allInputs: Seq[UnappliedTask[?]],
+      remainingInputs: mutable.HashSet[UnappliedTask[?]] = new mutable.HashSet,
+      var appliedCrossValues: Map[String, String] = Map.empty
+  )
+  def plan0(goals: Seq[UnappliedTask[?]]): Plan0 = {
+    val edges = new mutable.HashMap[UnappliedTask[?], TaskDetails]
+    PlanImpl.transitiveNodes(goals.toIndexedSeq) { task =>
+      if (!edges.contains(task)) {
+        val extraCrossValues = task.task match {
+          case c: Task.WithCrossValue[_] =>
+            c.crossValues
+          case _ =>
+            Nil
+        }
+        val inputs = task.task.inputs.map { inputTask =>
+          UnappliedTask(inputTask, task.crossValues ++ extraCrossValues)
+        }
+        val details = TaskDetails(inputs)
+        details.remainingInputs.addAll(inputs)
+        edges(task) = details
+      }
+      edges(task).allInputs.toSeq
+    }
+
+    val appliedCrossValues = new mutable.HashMap[UnappliedTask[?], AppliedTask[?]]
+    val inputs = new mutable.HashMap[AppliedTask[?], Seq[AppliedTask[?]]]
+    while (edges.nonEmpty) {
+      val (task, details) = edges.find(_._2.remainingInputs.isEmpty).getOrElse {
+        sys.error("Cannot happen (no leaf task)")
+      }
+      edges.remove(task)
+      // FIXME Complexity of the whole thing because of that?
+      for ((_, details) <- edges)
+        details.remainingInputs.remove(task)
+      val appliedTask = task.task match {
+        case c: Task.CrossValue[?] =>
+          val value = task.crossValues.get(c.key).getOrElse {
+            sys.error(s"Cross value ${c.key} is undefined")
+          }
+          AppliedTask(task.task, task.crossValues + (c.key -> value))
+        case _ =>
+          AppliedTask(task.task, task.crossValues)
+      }
+      appliedCrossValues(task) = appliedTask
+      inputs(appliedTask) = details.allInputs.map { inputTask =>
+        appliedCrossValues(inputTask)
+      }
+    }
+
+    val transitive =
+      PlanImpl.transitiveNodes(goals.toIndexedSeq.map(appliedCrossValues(_)))(inputs(_))
+    val goalSet = goals.map(appliedCrossValues(_)).toSet
+    val topoSorted = PlanImpl.topoSorted(transitive, inputs(_))
+
+    val sortedGroups: MultiBiMap[AppliedTask[?], AppliedTask[?]] =
+      PlanImpl.groupAroundImportantTasks(topoSorted, inputs(_)) {
+        // important: all named tasks and those explicitly requested
+        case t if t.task.isInstanceOf[Task.Named[Any]] => t
+        case t if goalSet.contains(t) => t
+      }
+
+    new Plan0(transitive, sortedGroups, goals.toIndexedSeq.map(appliedCrossValues(_)), inputs.toMap)
+  }
+
   def plan(goals: Seq[Task[?]]): Plan = {
     val transitive = PlanImpl.transitiveTasks(goals.toIndexedSeq)
     val goalSet = goals.toSet
-    val topoSorted = PlanImpl.topoSorted(transitive)
+    val topoSorted = PlanImpl.topoSorted(transitive, _.inputs)
 
     val sortedGroups: MultiBiMap[Task[?], Task[?]] =
-      PlanImpl.groupAroundImportantTasks(topoSorted) {
+      PlanImpl.groupAroundImportantTasks(topoSorted, _.inputs) {
         // important: all named tasks and those explicitly requested
         case t: Task.Named[Any] => t
         case t if goalSet.contains(t) => t
@@ -27,25 +100,25 @@ private[mill] object PlanImpl {
    * @see [[PlanImpl.topoSorted]]
    */
 
-  def groupAroundImportantTasks[T](topoSortedTasks: TopoSorted)(important: PartialFunction[
-    Task[?],
-    T
-  ]): MultiBiMap[T, Task[?]] = {
+  def groupAroundImportantTasks[T, TaskT: ClassTag](
+      topoSortedTasks: TopoSorted[TaskT],
+      inputs: TaskT => Seq[TaskT]
+  )(important: PartialFunction[TaskT, T]): MultiBiMap[T, TaskT] = {
 
-    val output = new MultiBiMap.Mutable[T, Task[?]]()
+    val output = new MultiBiMap.Mutable[T, TaskT]()
     for ((task, t) <- topoSortedTasks.values.flatMap(t => important.lift(t).map((t, _))).iterator) {
 
-      val transitiveTasks = collection.mutable.LinkedHashSet[Task[?]]()
-      def rec(t: Task[?]): Unit = {
+      val transitiveTasks = collection.mutable.LinkedHashSet[TaskT]()
+      def rec(t: TaskT): Unit = {
         if (transitiveTasks.contains(t)) () // do nothing
         else if (important.isDefinedAt(t) && t != task) () // do nothing
         else {
           transitiveTasks.add(t)
-          t.inputs.foreach(rec)
+          inputs(t).foreach(rec)
         }
       }
       rec(task)
-      output.addAll(t, topoSorted(transitiveTasks.toIndexedSeq).values)
+      output.addAll(t, topoSorted(transitiveTasks.toIndexedSeq, inputs).values)
     }
     output
   }
@@ -59,6 +132,13 @@ private[mill] object PlanImpl {
   }
   def transitiveNamed(sourceTasks: Seq[Task[?]]): Seq[Task.Named[?]] = {
     transitiveTasks(sourceTasks).collect { case t: Task.Named[?] => t }
+  }
+
+  def transitiveTasks0(
+      plan: Plan0,
+      sourceTargets: Seq[AppliedTask[?]]
+  ): IndexedSeq[AppliedTask[?]] = {
+    transitiveNodes(sourceTargets)(plan.inputs(_))
   }
 
   /**
@@ -79,22 +159,58 @@ private[mill] object PlanImpl {
     transitiveNodes.toIndexedSeq
   }
 
+  def transitiveNodes0[T, U](sourceNodes: Seq[(T, U)])(inputsFor: T => Seq[(T, U)])
+      : IndexedSeq[U] = {
+    val transitiveNodes = collection.mutable.LinkedHashSet[U]()
+    def rec(t: T, u: U): Unit = {
+      if (transitiveNodes.contains(u)) {} // do nothing
+      else {
+        transitiveNodes.add(u)
+        inputsFor(t).foreach { case (t, u) => rec(t, u) }
+      }
+    }
+
+    sourceNodes.foreach { case (t, u) => rec(t, u) }
+    transitiveNodes.toIndexedSeq
+  }
+
   /**
    * Takes the given tasks, finds all the targets they transitively depend
    * on, and sort them topologically. Fails if there are dependency cycles
    */
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): TopoSorted = {
+  def topoSorted[T: ClassTag](
+      transitiveTasks: IndexedSeq[T],
+      inputs: T => Seq[T]
+  ): TopoSorted[T] = {
 
     val indexed = transitiveTasks
     val taskIndices = indexed.zipWithIndex.toMap
 
     val numberedEdges =
       for (t <- transitiveTasks)
-        yield t.inputs.collect(taskIndices).toArray
+        yield inputs(t).collect(taskIndices).toArray
 
     val sortedClusters = mill.internal.Tarjans(numberedEdges.toArray)
     val nonTrivialClusters = sortedClusters.filter(_.length > 1)
     assert(nonTrivialClusters.isEmpty, nonTrivialClusters)
     new TopoSorted(IndexedSeq.from(sortedClusters.flatten.map(indexed)))
+  }
+
+  def topoSorted0[T: ClassTag, U](
+      transitiveTargets: IndexedSeq[(T, U)],
+      inputs: T => Seq[(T, U)]
+  ): TopoSorted[T] = {
+
+    val indexed = transitiveTargets
+    val targetIndices = indexed.zipWithIndex.toMap
+
+    val numberedEdges =
+      for ((t, _) <- transitiveTargets)
+        yield inputs(t).collect(targetIndices).toArray
+
+    val sortedClusters = mill.internal.Tarjans(numberedEdges.toArray)
+    val nonTrivialClusters = sortedClusters.filter(_.length > 1)
+    assert(nonTrivialClusters.isEmpty, nonTrivialClusters)
+    new TopoSorted(IndexedSeq.from(sortedClusters.flatten.map(indexed).map(_._1)))
   }
 }

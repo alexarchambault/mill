@@ -30,7 +30,11 @@ final class EvaluatorImpl private[mill] (
   private[mill] def baseLogger = execution.baseLogger
   private[mill] def outPath = execution.outPath
   private[mill] def codeSignatures = execution.codeSignatures
-  private[mill] def rootModule = execution.rootModule.asInstanceOf[BaseModule]
+  private[mill] def rootModule =
+    execution.rootModule match {
+      case m: BaseModule => m
+      case _ => sys.error("should not happen")
+    }
   private[mill] def workerCache = execution.workerCache
   private[mill] def env = execution.env
   private[mill] def effectiveThreadCount = execution.effectiveThreadCount
@@ -115,18 +119,19 @@ final class EvaluatorImpl private[mill] (
   }
 
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]) = {
-    PlanImpl.topoSorted(transitiveTasks)
+    PlanImpl.topoSorted(transitiveTasks, _.inputs)
   }
 
-  def groupAroundImportantTasks[T](topoSortedTasks: TopoSorted)(important: PartialFunction[
+  def groupAroundImportantTasks[T](topoSortedTasks: TopoSorted[Task[?]])(important: PartialFunction[
     Task[?],
     T
   ]) = {
-    PlanImpl.groupAroundImportantTasks(topoSortedTasks)(important)
+    PlanImpl.groupAroundImportantTasks(topoSortedTasks, _.inputs)(important)
   }
 
   def execute[T](
       tasks: Seq[Task[T]],
+      crossValues: Map[String, Any] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -141,11 +146,16 @@ final class EvaluatorImpl private[mill] (
       else {
         val (named, unnamed) =
           tasks.partitionMap { case n: Task.Named[?] => Left(n); case t => Right(t) }
-        val newComputedMetadata = SelectiveExecutionImpl.Metadata.compute(this, named)
+        val newComputedMetadata =
+          SelectiveExecutionImpl.Metadata.compute(this, named, crossValues)
 
         val selectiveExecutionStoredData = for {
           _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
-          changedTasks <- this.selective.computeChangedTasks0(named, newComputedMetadata)
+          changedTasks <- this.selective.computeChangedTasks0(
+            named,
+            crossValues,
+            newComputedMetadata
+          )
         } yield changedTasks
 
         selectiveExecutionStoredData match {
@@ -154,7 +164,7 @@ final class EvaluatorImpl private[mill] (
             // selective execution.
             (tasks, Map.empty, Some(newComputedMetadata.metadata))
           case Some(changedTasks) =>
-            val selectedSet = changedTasks.downstreamTasks.map(_.ctx.segments.render).toSet
+            val selectedSet = changedTasks.downstreamTasks.map(_.task.ctx.segments.render).toSet
 
             (
               unnamed ++ named.filter(t =>
@@ -171,6 +181,7 @@ final class EvaluatorImpl private[mill] (
         val evaluated: ExecutionResults =
           execution.executeTasks(
             selectedTasks,
+            crossValues,
             reporter,
             testReporter,
             logger,
@@ -178,12 +189,17 @@ final class EvaluatorImpl private[mill] (
           )
         @scala.annotation.nowarn("msg=cannot be checked at runtime")
         val watched = (evaluated.transitiveResults.iterator ++ selectiveResults)
+          .toSeq
+          .map {
+            case (t, res) =>
+              (t, t.task, res)
+          }
           .collect {
-            case (t: Task.Sources, ExecResult.Success(Val(ps: Seq[PathRef]))) =>
+            case (_, _: Task.Sources, ExecResult.Success(Val(ps: Seq[PathRef]))) =>
               ps.map(r => Watchable.Path(r.path.toNIO, r.quick, r.sig))
-            case (t: Task.Source, ExecResult.Success(Val(p: PathRef))) =>
+            case (_, _: Task.Source, ExecResult.Success(Val(p: PathRef))) =>
               Seq(Watchable.Path(p.path.toNIO, p.quick, p.sig))
-            case (t: Task.Input[_], result) =>
+            case (task, t: Task.Input[_], result) =>
 
               val ctx = new mill.define.TaskCtx.Impl(
                 args = Vector(),
@@ -196,7 +212,8 @@ final class EvaluatorImpl private[mill] (
                 systemExit = _ => ???,
                 fork = null,
                 jobs = execution.effectiveThreadCount,
-                offline = offline
+                offline = offline,
+                crossValues = task.crossValues
               )
               val pretty = t.ctx0.fileName + ":" + t.ctx0.lineNum
               Seq(Watchable.Value(
@@ -206,7 +223,6 @@ final class EvaluatorImpl private[mill] (
               ))
           }
           .flatten
-          .toSeq
 
         maybeNewMetadata.foreach { newMetadata =>
           val allInputHashes = newMetadata.inputHashes
@@ -256,8 +272,15 @@ final class EvaluatorImpl private[mill] (
       }
     }
 
+    val crossValues = Map.empty[String, String] // FIXME
+
     for (task <- resolved)
-      yield execute(Seq.from(task), reporter = reporter, selectiveExecution = selectiveExecution)
+      yield execute(
+        Seq.from(task),
+        crossValues,
+        reporter = reporter,
+        selectiveExecution = selectiveExecution
+      )
   }
 
   def close(): Unit = execution.close()

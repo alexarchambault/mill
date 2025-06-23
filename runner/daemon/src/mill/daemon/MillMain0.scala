@@ -273,6 +273,7 @@ object MillMain0 {
                                 selectiveExecution = config.watch.value,
                                 offline = config.offline.value,
                                 reporter = reporter
+                                // crossValues = config.cross
                               ).evaluate()
                             }
                           }

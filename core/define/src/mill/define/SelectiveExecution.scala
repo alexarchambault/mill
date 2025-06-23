@@ -1,27 +1,32 @@
 package mill.define
 
 import mill.api.{ExecResult, Result, Val}
+import mill.define.Plan0.AppliedNamedTask
+import mill.define.Plan0.AppliedTask
 private[mill] trait SelectiveExecution {
   import SelectiveExecution.*
   def computeHashCodeSignatures(
-      transitiveNamed: Seq[Task.Named[?]],
+      transitiveNamed: Seq[AppliedNamedTask[?]],
       codeSignatures: Map[String, Int]
   ): Map[String, Int]
 
   def computeDownstream(
-      transitiveNamed: Seq[Task.Named[?]],
+      plan: Plan0,
+      transitiveNamed: Seq[AppliedNamedTask[?]],
       oldHashes: Metadata,
       newHashes: Metadata
-  ): (Set[Task[?]], Seq[Task[Any]])
+  ): (Set[AppliedTask[?]], Seq[AppliedTask[Any]])
 
   def saveMetadata(metadata: SelectiveExecution.Metadata): Unit
 
   def computeChangedTasks(
-      tasks: Seq[String]
+      tasks: Seq[String],
+      rootCrossValues: Map[String, Any]
   ): Result[ChangedTasks]
 
   def computeChangedTasks0(
       tasks: Seq[Task.Named[?]],
+      rootCrossValues: Map[String, Any],
       computedMetadata: SelectiveExecution.Metadata.Computed
   ): Option[ChangedTasks]
 
@@ -32,7 +37,8 @@ private[mill] trait SelectiveExecution {
   def resolveTree(tasks: Seq[String]): Result[ujson.Value]
 
   def computeMetadata(
-      tasks: Seq[Task.Named[?]]
+      tasks: Seq[Task.Named[?]],
+      rootCrossValues: Map[String, Any]
   ): SelectiveExecution.Metadata.Computed
 }
 object SelectiveExecution {
@@ -40,20 +46,20 @@ object SelectiveExecution {
   object Metadata {
     case class Computed(
         metadata: Metadata,
-        results: Map[Task[?], ExecResult[Val]]
+        results: Map[AppliedTask[?], ExecResult[Val]]
     )
   }
 
   implicit val rw: upickle.default.ReadWriter[Metadata] = upickle.default.macroRW
 
   case class ChangedTasks(
-      resolved: Seq[Task.Named[?]],
-      changedRootTasks: Set[Task.Named[?]],
-      downstreamTasks: Seq[Task.Named[?]]
+      resolved: Seq[AppliedNamedTask[?]],
+      changedRootTasks: Set[AppliedNamedTask[?]],
+      downstreamTasks: Seq[AppliedNamedTask[?]]
   )
   object ChangedTasks {
 
     /** Indicates that all of the passed in tasks were changed. */
-    def all(tasks: Seq[Task.Named[?]]): ChangedTasks = ChangedTasks(tasks, tasks.toSet, tasks)
+    def all(tasks: Seq[AppliedNamedTask[?]]): ChangedTasks = ChangedTasks(tasks, tasks.toSet, tasks)
   }
 }

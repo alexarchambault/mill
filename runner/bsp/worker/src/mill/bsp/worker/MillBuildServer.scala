@@ -581,7 +581,7 @@ private class MillBuildServer(
         logger,
         Utils.getBspLoggedReporterPool(runParams.getOriginId, state.bspIdByModule, client)
       )
-      val response = runResult.transitiveResultsApi(runTask) match {
+      val response = runResult.results.head match {
         case r if r.asSuccess.isDefined => new RunResult(StatusCode.OK)
         case _ => new RunResult(StatusCode.ERROR)
       }
@@ -712,12 +712,15 @@ private class MillBuildServer(
               cleanResult.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
             if (cleanResult.transitiveFailingApi.size > 0) (
               msg + s" Target ${compileTaskName} could not be cleaned. See message from mill: \n" +
-                (cleanResult.transitiveResultsApi(cleanTask) match {
-                  case ex: ExecResult.Exception => ex.toString()
-                  case ExecResult.Skipped => "Task was skipped"
-                  case ExecResult.Aborted => "Task was aborted"
-                  case _ => "could not retrieve the failure message"
-                }),
+                cleanResult.transitiveTaskResultsApi(cleanTask).map {
+                  case (task0, res) =>
+                    res match {
+                      case ex: ExecResult.Exception => ex.toString()
+                      case ExecResult.Skipped => "Task was skipped"
+                      case ExecResult.Aborted => "Task was aborted"
+                      case _ => "could not retrieve the failure message"
+                    }
+                }.mkString(", "),
               false
             )
             else {
@@ -802,9 +805,9 @@ private class MillBuildServer(
             logger = logger,
             reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
           )
-          val resultsById = targetIdTasks.flatMap {
-            case (id, _, task) =>
-              results.transitiveResultsApi(task)
+          val resultsById = targetIdTasks.zip(results.results).flatMap {
+            case ((id, _, _), res) =>
+              res
                 .asSuccess
                 .map(_.value.value.asInstanceOf[W])
                 .map((id, _))
@@ -995,9 +998,9 @@ private class MillBuildServer(
     logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
     val result = evaluator.executeApi(
       goals,
-      reporter,
-      testReporter,
-      logger,
+      reporter = reporter,
+      testReporter = testReporter,
+      logger = logger,
       serialCommandExec = false
     )
     errorOpt(result) match {
