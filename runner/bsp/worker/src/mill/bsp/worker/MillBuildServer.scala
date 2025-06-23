@@ -369,7 +369,7 @@ private class MillBuildServer(
         s"Getting sources of ${sourcesParams.getTargets.asScala.map(_.getUri).mkString(", ")}",
       originId = ""
     ) {
-      case (_, _, id, _: JavaModuleApi, result) => new SourcesItem(
+      case (_, _, id, _, result) => new SourcesItem(
           id,
           (
             result.sources.map(p => sourceItem(os.Path(p), false)) ++
@@ -786,14 +786,14 @@ private class MillBuildServer(
 
       // group by evaluator (different root module)
       val groups0 = groupList(tasksSeq)(_._2._1) {
-        case (tasks, (_, id, m)) => (id, m.bspDisplayName, tasks)
+        case (tasks, (_, id, m)) => (id, m, tasks)
       }
 
       val evaluated = groups0.flatMap {
         case (ev, targetIdTasks) =>
           val requestDescription0 = requestDescription.replace(
             "{}",
-            targetIdTasks.map(_._2).mkString(", ")
+            targetIdTasks.map(_._2.bspDisplayName).mkString(", ")
           )
           val results = evaluate(
             ev,
@@ -803,11 +803,11 @@ private class MillBuildServer(
             reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
           )
           val resultsById = targetIdTasks.flatMap {
-            case (id, _, task) =>
+            case (id, m, task) =>
               results.transitiveResultsApi(task)
                 .asSuccess
                 .map(_.value.value.asInstanceOf[W])
-                .map((id, _))
+                .map((id, m, _))
           }
 
           def logError(id: BuildTargetIdentifier, errorMsg: String): Unit = {
@@ -817,8 +817,8 @@ private class MillBuildServer(
           }
 
           resultsById.flatMap {
-            case (id, values) =>
-              try Seq(block(ev, state, id, state.bspModulesById(id)._1, values))
+            case (id, m, values) =>
+              try Seq(block(ev, state, id, m, values))
               catch {
                 case NonFatal(e) =>
                   logError(id, e.toString)
