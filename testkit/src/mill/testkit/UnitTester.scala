@@ -163,7 +163,7 @@ class UnitTester(
 
   def apply[T](
       task: Task[T],
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
     apply(Seq(task), crossValues) match {
       case Left(f) => Left(f.as[T])
@@ -175,7 +175,7 @@ class UnitTester(
 
   def apply(
       tasks: Seq[Task[?]],
-      crossValues: Map[String, Any] = Map.empty,
+      crossValues: Map[String, String] = Map.empty,
       dummy: DummyImplicit = null
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
@@ -205,7 +205,7 @@ class UnitTester(
 
   def fail(
       task: Task.Simple[?],
-      crossValues: Map[String, Any],
+      crossValues: Map[String, String],
       expectedFailCount: Int,
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {

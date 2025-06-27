@@ -152,7 +152,7 @@ class GenIdeaImpl(
     val buildDepsPaths = GenIdeaImpl.allJars(evaluators.head.rootModule.getClass.getClassLoader)
       .map(url => os.Path(java.nio.file.Paths.get(url.toURI)))
 
-    def resolveTasks: Map[EvaluatorApi, Seq[(TaskApi[ResolvedModule], Map[String, Any])]] =
+    def resolveTasks: Map[EvaluatorApi, Seq[(TaskApi[ResolvedModule], Map[String, String])]] =
       modulesByEvaluator.map { case (ev, ms) =>
         (
           ev,

@@ -68,7 +68,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): Evaluator.Result[T] =
     execute[T](
       tasks.map {
@@ -80,7 +80,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   def execute[T](
       tasks: Seq[Task[T]],
-      crossValues: Map[String, Any] = Map.empty,
+      crossValues: Map[String, String] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -97,7 +97,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, Any],
+      crossValues: Map[String, String],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,

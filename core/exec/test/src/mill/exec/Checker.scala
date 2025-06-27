@@ -25,7 +25,7 @@ class Checker[T <: mill.testkit.TestRootModule](
       // outputs are the same but nothing was evaluated. Disable this if you
       // are directly evaluating tasks which need to re-evaluate every time
       secondRunNoOp: Boolean = true,
-      crossValues: Map[String, Any] = Map.empty
+      crossValues: Map[String, String] = Map.empty
   ) = {
 
     val evaled = execution.executeTasks(Seq(task), crossValues)

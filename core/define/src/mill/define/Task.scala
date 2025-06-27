@@ -455,7 +455,7 @@ object Task {
 
   class WithCrossValue[+T](
       wrapped: Task[T],
-      val crossValues: Seq[(String, Any)]
+      val crossValues: Seq[(String, String)]
   ) extends Task[T] {
     val inputs: Seq[Task[?]] = Seq(wrapped)
     def evaluate(ctx: TaskCtx): Result[T] =

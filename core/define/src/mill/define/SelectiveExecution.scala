@@ -21,12 +21,12 @@ private[mill] trait SelectiveExecution {
 
   def computeChangedTasks(
       tasks: Seq[String],
-      rootCrossValues: Map[String, Any]
+      rootCrossValues: Map[String, String]
   ): Result[ChangedTasks]
 
   def computeChangedTasks0(
       tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, Any],
+      rootCrossValues: Map[String, String],
       computedMetadata: SelectiveExecution.Metadata.Computed
   ): Option[ChangedTasks]
 
@@ -38,7 +38,7 @@ private[mill] trait SelectiveExecution {
 
   def computeMetadata(
       tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, Any]
+      rootCrossValues: Map[String, String]
   ): SelectiveExecution.Metadata.Computed
 }
 object SelectiveExecution {

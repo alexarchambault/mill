@@ -131,7 +131,7 @@ final class EvaluatorImpl private[mill] (
 
   def execute[T](
       tasks: Seq[Task[T]],
-      crossValues: Map[String, Any] = Map.empty,
+      crossValues: Map[String, String] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,

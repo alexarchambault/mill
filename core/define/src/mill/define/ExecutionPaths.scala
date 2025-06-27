@@ -9,7 +9,7 @@ object ExecutionPaths {
   def resolve(
       outPath: os.Path,
       segments: Segments,
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): ExecutionPaths = {
     val crossValuesPart = crossValues
       .toSeq
@@ -32,7 +32,7 @@ object ExecutionPaths {
   def resolve(
       outPath: os.Path,
       task: Task.Named[?],
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): ExecutionPaths = resolve(outPath, task.ctx.segments, crossValues)
 
   // case-insensitive match on reserved names

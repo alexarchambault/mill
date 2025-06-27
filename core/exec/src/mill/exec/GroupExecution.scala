@@ -92,7 +92,7 @@ private trait GroupExecution {
       executionContext: mill.define.TaskCtx.Fork.Api,
       exclusive: Boolean,
       upstreamPathRefs: Seq[PathRef],
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): GroupExecution.Results = {
     logger.withPromptLine {
       val externalInputsHash = MurmurHash3.orderedHash(
@@ -272,7 +272,7 @@ private trait GroupExecution {
       deps: Seq[AppliedTask[?]],
       upstreamPathRefs: Seq[PathRef],
       terminal: AppliedTask[?],
-      crossValues: Map[String, Any]
+      crossValues: Map[String, String]
   ): (Map[AppliedTask[?], ExecResult[(Val, Int)]], mutable.Buffer[AppliedTask[?]]) = {
     val newEvaluated = mutable.Buffer.empty[AppliedTask[?]]
     val newResults = mutable.Map.empty[AppliedTask[?], ExecResult[(Val, Int)]]

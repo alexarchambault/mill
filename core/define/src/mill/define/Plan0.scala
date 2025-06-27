@@ -10,9 +10,9 @@ private[mill] class Plan0(
 )
 
 object Plan0 {
-  final case class UnappliedTask[+T](task: Task[T], crossValues: Map[String, Any])
+  final case class UnappliedTask[+T](task: Task[T], crossValues: Map[String, String])
 
-  final case class AppliedTask[+T](task: Task[T], crossValues: Map[String, Any])
+  final case class AppliedTask[+T](task: Task[T], crossValues: Map[String, String])
       extends AppliedTaskApi[T] {
 
     def apply(): T = ???
@@ -29,7 +29,7 @@ object Plan0 {
       Plan0.displayName(task, crossValues)
   }
 
-  final case class AppliedNamedTask[+T](task: Task.Named[T], crossValues: Map[String, Any])
+  final case class AppliedNamedTask[+T](task: Task.Named[T], crossValues: Map[String, String])
       extends AppliedTaskApi[T] {
 
     def apply(): T = ???
@@ -41,7 +41,7 @@ object Plan0 {
       Plan0.displayName(task, crossValues)
   }
 
-  private def displayName(task: Task[?], crossValues: Map[String, Any]): String =
+  private def displayName(task: Task[?], crossValues: Map[String, String]): String =
     task.toString + {
       if (crossValues.isEmpty) ""
       else

@@ -34,7 +34,7 @@ object TaskCtx {
 
   private[mill] class Impl(
       val args: IndexedSeq[?],
-      val crossValues: Map[String, Any],
+      val crossValues: Map[String, String],
       dest0: () => os.Path,
       val log: Logger,
       val env: Map[String, String],
@@ -121,7 +121,7 @@ object TaskCtx {
   }
 
   trait Cross {
-    def crossValues: Map[String, Any]
+    def crossValues: Map[String, String]
     def crossValue[T](key: String): Option[T] =
       crossValues.get(key).map(_.asInstanceOf[T])
   }

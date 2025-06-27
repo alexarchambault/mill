@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 private[mill] object PlanImpl {
-  def plan0(goals: Seq[Task[?]], rootCrossValues: Map[String, Any]): Plan0 =
+  def plan0(goals: Seq[Task[?]], rootCrossValues: Map[String, String]): Plan0 =
     plan0(goals.map(UnappliedTask(_, rootCrossValues)))
 
   private final case class TaskDetails(

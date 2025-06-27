@@ -87,7 +87,7 @@ private[mill] case class Execution(
    */
   def executeTasks(
       goals: Seq[Task[?]],
-      crossValues: Map[String, Any],
+      crossValues: Map[String, String],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -102,7 +102,7 @@ private[mill] case class Execution(
 
   private def execute0(
       goals: Seq[Task[?]],
-      crossValues: Map[String, Any],
+      crossValues: Map[String, String],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,

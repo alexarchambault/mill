@@ -86,7 +86,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
 
   def computeChangedTasks(
       tasks: Seq[String],
-      rootCrossValues: Map[String, Any]
+      rootCrossValues: Map[String, String]
   ): Result[ChangedTasks] = {
     evaluator.resolveTasks(
       tasks,
@@ -109,7 +109,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
    */
   def computeChangedTasks0(
       tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, Any],
+      rootCrossValues: Map[String, String],
       computedMetadata: SelectiveExecution.Metadata.Computed
   ): Option[ChangedTasks] = {
     val oldMetadataTxt = os.read(evaluator.outPath / OutFiles.millSelectiveExecution)
@@ -205,7 +205,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
 
   def computeMetadata(
       tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, Any]
+      rootCrossValues: Map[String, String]
   ): SelectiveExecution.Metadata.Computed =
     SelectiveExecutionImpl.Metadata.compute(evaluator, tasks, rootCrossValues)
 }
@@ -214,7 +214,7 @@ object SelectiveExecutionImpl {
     def compute(
         evaluator: Evaluator,
         tasks: Seq[Task.Named[?]],
-        rootCrossValues: Map[String, Any]
+        rootCrossValues: Map[String, String]
     ): SelectiveExecution.Metadata.Computed = {
       val plan = PlanImpl.plan0(tasks, rootCrossValues)
       compute0(evaluator, plan.transitive.flatMap(_.asNamed), rootCrossValues)
@@ -223,7 +223,7 @@ object SelectiveExecutionImpl {
     def compute0(
         evaluator: Evaluator,
         transitiveNamed: Seq[AppliedNamedTask[?]],
-        rootCrossValues: Map[String, Any]
+        rootCrossValues: Map[String, String]
     ): SelectiveExecution.Metadata.Computed = {
       val results: Map[AppliedNamedTask[?], mill.api.Result[Val]] = transitiveNamed
         .map(t => (t, t.task))
