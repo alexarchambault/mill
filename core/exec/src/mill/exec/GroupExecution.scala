@@ -105,7 +105,7 @@ private trait GroupExecution {
       val scriptsHash = MurmurHash3.orderedHash(
         group
           .iterator
-          .map(_.task) // FIXME
+          .map(_.task)
           .collect { case namedTask: Task.Named[_] =>
             CodeSigUtils.codeSigForTask(
               namedTask,
@@ -144,7 +144,7 @@ private trait GroupExecution {
               )
             case _ =>
               val out = if (!labelled.ctx.external) outPath else externalOutPath
-              val paths = ExecutionPaths.resolve(out, labelled.ctx.segments)
+              val paths = ExecutionPaths.resolve(out, labelled.ctx.segments, terminal.crossValues)
               val cached = loadCachedJson(logger, inputsHash, labelled, paths)
 
               // `cached.isEmpty` means worker metadata file removed by user so recompute the worker
@@ -183,7 +183,7 @@ private trait GroupExecution {
                       inputs = inputsMap,
                       inputsHash = inputsHash,
                       paths = Some(paths),
-                      taskLabelOpt = Some(terminal.task.toString), // FIXME
+                      taskLabelOpt = Some(terminal.displayName),
                       counterMsg = countMsg,
                       reporter = zincProblemReporter,
                       testReporter = testReporter,
@@ -311,9 +311,9 @@ private trait GroupExecution {
           // state on disk.
           val validWriteDests =
             deps
-              .map(_.task) // FIXME
-              .collect { case n: Task.Worker[?] =>
-                ExecutionPaths.resolve(outPath, n.ctx.segments).dest
+              .map(t => (t, t.task))
+              .collect { case (t, n: Task.Worker[?]) =>
+                ExecutionPaths.resolve(outPath, n.ctx.segments, task.crossValues).dest
               } ++
               paths.map(_.dest)
 
@@ -553,7 +553,7 @@ private object GroupExecution {
           if (!isCommand && !isInput && mill.api.FilesystemCheckerEnabled.value) {
             if (path.startsWith(workspace) && !validReadDests.exists(path.startsWith(_))) {
               sys.error(
-                s"Reading from ${path.relativeTo(workspace)} not allowed during execution of `${terminal.task}`" // FIXME
+                s"Reading from ${path.relativeTo(workspace)} not allowed during execution of `${terminal.displayName}`"
               )
             }
           }
@@ -564,7 +564,7 @@ private object GroupExecution {
         if (!isCommand && mill.api.FilesystemCheckerEnabled.value) {
           if (path.startsWith(workspace) && !validWriteDests.exists(path.startsWith(_))) {
             sys.error(
-              s"Writing to ${path.relativeTo(workspace)} not allowed during execution of `${terminal.task}`" // FIXME
+              s"Writing to ${path.relativeTo(workspace)} not allowed during execution of `${terminal.displayName}`"
             )
           }
         }

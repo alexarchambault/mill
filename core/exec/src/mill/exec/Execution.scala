@@ -123,7 +123,7 @@ private[mill] case class Execution(
       interGroupDeps,
       indexToTerminal,
       outPath,
-      _.task.toString /* FIXME */
+      _.displayName
     )
 
     // Prepare a lookup tables up front of all the method names that each class owns,
@@ -204,7 +204,7 @@ private[mill] case class Execution(
                 val logRun = inputResults.forall(_.isInstanceOf[ExecResult.Success[?]])
 
                 val tickerPrefix =
-                  if (logRun && logger.prompt.enableTicker) terminal.task.toString else "" // FIXME
+                  if (logRun && logger.prompt.enableTicker) terminal.displayName else ""
 
                 val contextLogger = new PrefixLogger(
                   logger0 = logger,
@@ -248,7 +248,7 @@ private[mill] case class Execution(
 
                 val threadId = threadNumberer.getThreadId(Thread.currentThread())
                 chromeProfileLogger.log(
-                  terminal.task.toString, // FIXME
+                  terminal.displayName,
                   "job",
                   startTime,
                   duration,
@@ -260,7 +260,7 @@ private[mill] case class Execution(
                 if (res.valueHashChanged) changedValueHash.put(terminal, ())
 
                 profileLogger.log(
-                  terminal.task.toString, // FIXME
+                  terminal.displayName,
                   duration,
                   res.cached,
                   res.valueHashChanged,
@@ -313,7 +313,7 @@ private[mill] case class Execution(
       outPath,
       uncached,
       changedValueHash,
-      _.task.toString, // FIXME
+      _.displayName,
       drop = task =>
         task.task match {
           case _: Task.Input[?] => true

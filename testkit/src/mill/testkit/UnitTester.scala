@@ -153,7 +153,7 @@ class UnitTester(
     } match {
       case Result.Failure(err) => Left(ExecResult.Failure(err))
       case Result.Success(resolved) =>
-        val crossValues = Map.empty[String, String] // FIXME
+        val crossValues = Map.empty[String, String] // FIXME Get these from args
         apply(resolved, crossValues)
     }
   }
@@ -189,14 +189,14 @@ class UnitTester(
       }
       val evalCount = evaluated
         .uncached
-        .map(_.task) // FIXME
-        .collect {
+        .map(_.task)
+        .count {
           case t: Task.Computed[_]
               if module.moduleInternal.simpleTasks.contains(t)
-                && !t.ctx.external => t
-          case t: Task.Command[_] => t
+                && !t.ctx.external => true
+          case _: Task.Command[_] => true
+          case _ => false
         }
-        .size
 
       Right(UnitTester.Result(values, evalCount))
     }
@@ -234,7 +234,7 @@ class UnitTester(
 
     val evaluated = evaluator.execute(tasks, crossValues).executionResults
       .uncached
-      .flatMap(_.task.asSimple) // FIXME
+      .flatMap(_.task.asSimple)
       .filter(module.moduleInternal.simpleTasks.contains)
       .filter(!_.isInstanceOf[Task.Input[?]])
     assert(

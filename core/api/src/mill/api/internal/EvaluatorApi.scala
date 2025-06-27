@@ -64,7 +64,7 @@ object ExecutionResultsApi {
           case ExecResult.Failure(t) => t
           case ex: ExecResult.Exception => ex.toString
         }
-        s"${k.task} $fss" // FIXME
+        s"${k.displayName} $fss"
       }).mkString("\n")
   }
 

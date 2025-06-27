@@ -272,12 +272,13 @@ final class EvaluatorImpl private[mill] (
       }
     }
 
-    val crossValues = Map.empty[String, String] // FIXME
+    // FIXME Get via scriptArgs?
+    val crossValues = Map.empty[String, String]
 
     for (task <- resolved)
       yield execute(
         Seq.from(task),
-        crossValues,
+        crossValues = crossValues,
         reporter = reporter,
         selectiveExecution = selectiveExecution
       )

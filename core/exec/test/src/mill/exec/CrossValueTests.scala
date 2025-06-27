@@ -43,7 +43,6 @@ object CrossValueTests extends TestSuite {
         val Right(Result("b", _)) =
           check(simple.firstParam, Map("firstParam" -> "b")): @unchecked
 
-        // fails for now, need to use cross params in paths on disk
         val Right(Result("Param Value: b", _)) =
           check(simple.myCross.param1, Map("firstParam" -> "b")): @unchecked
       }

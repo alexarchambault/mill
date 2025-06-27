@@ -31,7 +31,7 @@ class Checker[T <: mill.testkit.TestRootModule](
     val evaled = execution.executeTasks(Seq(task), crossValues)
 
     val (matchingReturnedEvaled, extra) =
-      // FIXME
+      // FIXME We're discarding cross values here
       evaled.uncached.map(_.task).partition(expEvaled.contains)
 
     val evaledValues = evaled.values.map(_.value)

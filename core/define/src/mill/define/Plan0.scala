@@ -24,6 +24,9 @@ object Plan0 {
 
     def asUnappliedTask: UnappliedTask[T] =
       UnappliedTask(task, crossValues)
+
+    def displayName: String =
+      Plan0.displayName(task, crossValues)
   }
 
   final case class AppliedNamedTask[+T](task: Task.Named[T], crossValues: Map[String, Any])
@@ -33,5 +36,22 @@ object Plan0 {
 
     def asTask: AppliedTask[T] =
       AppliedTask(task, crossValues)
+
+    def displayName: String =
+      Plan0.displayName(task, crossValues)
   }
+
+  private def displayName(task: Task[?], crossValues: Map[String, Any]): String =
+    task.toString + {
+      if (crossValues.isEmpty) ""
+      else
+        crossValues
+          .toSeq
+          .sortBy(_._1)
+          .map {
+            case (k, v) =>
+              s"$k=$v"
+          }
+          .mkString(" (", ", ", ")")
+    }
 }
