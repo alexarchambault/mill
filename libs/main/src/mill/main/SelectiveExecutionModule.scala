@@ -5,6 +5,8 @@ import mill.constants.OutFiles
 import mill.*
 import mill.define.Evaluator
 import mill.define.SelectMode
+import mill.define.Plan0.AppliedTask
+import mill.define.Plan0.AppliedNamedTask
 
 /**
  * Mill Module to support selective test execution in large projects.
@@ -40,8 +42,9 @@ trait SelectiveExecutionModule extends mill.define.Module {
         if (tasks.isEmpty) Seq("__") else tasks,
         SelectMode.Multi
       ).map { resolvedTasks =>
-        val rootCrossValues = Map.empty[String, String]
-        val computed = evaluator.selective.computeMetadata(resolvedTasks, rootCrossValues)
+        // FIXME We need to compute AppliedTask-s via Plan here
+        val tasks0 = resolvedTasks.map(AppliedNamedTask(_, Map.empty))
+        val computed = evaluator.selective.computeMetadata(tasks0)
 
         evaluator.selective.saveMetadata(computed.metadata)
       }

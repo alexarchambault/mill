@@ -4,6 +4,7 @@ import mill.api.internal.{CompileProblemReporter, TestReporter}
 import mill.api.*
 import mill.define.internal.Watchable
 import mill.define.BuildCtx
+import mill.define.Plan0.AppliedTask
 import mill.api.internal.{EvaluatorApi, TaskApi}
 import scala.util.DynamicVariable
 import scala.collection.mutable
@@ -155,7 +156,7 @@ object Evaluator {
   final case class Result[T](
       watchable: Seq[Watchable],
       values: mill.api.Result[Seq[T]],
-      selectedTasks: Seq[Task[?]],
+      selectedTasks: Seq[AppliedTask[?]],
       executionResults: ExecutionResults
   ) extends EvaluatorApi.Result[T]
 

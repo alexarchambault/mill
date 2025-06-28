@@ -160,7 +160,7 @@ class GenIdeaImpl(
           ms.map { m =>
             (
               m.module.genIdeaInternal().genIdeaResolvedModule(ideaConfigVersion, m.segments),
-              Map.empty[String, Any]
+              Map.empty[String, String]
             )
           }
         )

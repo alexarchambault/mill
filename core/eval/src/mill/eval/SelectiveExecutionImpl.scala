@@ -10,6 +10,7 @@ import mill.internal.SpanningForest
 import mill.internal.SpanningForest.breadthFirst
 import mill.define.Plan0.AppliedTask
 import mill.define.Plan0.AppliedNamedTask
+import mill.define.Plan0.UnappliedTask
 
 private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
     extends mill.define.SelectiveExecution {
@@ -94,9 +95,11 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
       evaluator.allowPositionalCommandArgs
     ).map { tasks =>
       computeChangedTasks0(
-        tasks,
-        rootCrossValues,
-        SelectiveExecutionImpl.Metadata.compute(evaluator, tasks, rootCrossValues)
+        tasks.map(UnappliedTask(_, rootCrossValues)),
+        SelectiveExecutionImpl.Metadata.compute(
+          evaluator,
+          tasks.map(UnappliedTask(_, rootCrossValues))
+        )
       )
         // If we did not have the metadata, presume everything was changed.
         .getOrElse(ChangedTasks.all(tasks.map(AppliedNamedTask(_, Map.empty))))
@@ -108,8 +111,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
    * @note throws if the metadata file does not exist.
    */
   def computeChangedTasks0(
-      tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, String],
+      tasks: Seq[UnappliedTask[?]],
       computedMetadata: SelectiveExecution.Metadata.Computed
   ): Option[ChangedTasks] = {
     val oldMetadataTxt = os.read(evaluator.outPath / OutFiles.millSelectiveExecution)
@@ -120,7 +122,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
     // this was intentional and you did not simply forgot to run `selective.prepare` beforehand.
     if (oldMetadataTxt == "") None
     else Some {
-      val plan = PlanImpl.plan0(tasks, rootCrossValues)
+      val plan = PlanImpl.plan0(tasks)
       val transitiveNamed = plan.transitive.flatMap(_.asNamed)
       val oldMetadata = upickle.default.read[SelectiveExecution.Metadata](oldMetadataTxt)
       val (changedRootTasks, downstreamTasks) =
@@ -204,26 +206,23 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   }
 
   def computeMetadata(
-      tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, String]
+      tasks: Seq[AppliedNamedTask[?]]
   ): SelectiveExecution.Metadata.Computed =
-    SelectiveExecutionImpl.Metadata.compute(evaluator, tasks, rootCrossValues)
+    SelectiveExecutionImpl.Metadata.compute(evaluator, tasks.map(_.asTask.asUnappliedTask))
 }
 object SelectiveExecutionImpl {
   object Metadata {
     def compute(
         evaluator: Evaluator,
-        tasks: Seq[Task.Named[?]],
-        rootCrossValues: Map[String, String]
+        tasks: Seq[UnappliedTask[?]]
     ): SelectiveExecution.Metadata.Computed = {
-      val plan = PlanImpl.plan0(tasks, rootCrossValues)
-      compute0(evaluator, plan.transitive.flatMap(_.asNamed), rootCrossValues)
+      val plan = PlanImpl.plan0(tasks)
+      compute0(evaluator, plan.transitive.flatMap(_.asNamed))
     }
 
     def compute0(
         evaluator: Evaluator,
-        transitiveNamed: Seq[AppliedNamedTask[?]],
-        rootCrossValues: Map[String, String]
+        transitiveNamed: Seq[AppliedNamedTask[?]]
     ): SelectiveExecution.Metadata.Computed = {
       val results: Map[AppliedNamedTask[?], mill.api.Result[Val]] = transitiveNamed
         .map(t => (t, t.task))
@@ -240,7 +239,7 @@ object SelectiveExecutionImpl {
             fork = null,
             jobs = evaluator.effectiveThreadCount,
             offline = evaluator.offline,
-            crossValues = rootCrossValues
+            crossValues = t.crossValues
           )
           t -> task.evaluate(ctx).map(Val(_))
         }

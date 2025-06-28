@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.mutable
 import scala.concurrent.*
 import mill.define.Plan0.AppliedTask
+import mill.define.Plan0.UnappliedTask
 
 /**
  * Core logic of evaluating tasks, without any user-facing helper methods
@@ -86,8 +87,7 @@ private[mill] case class Execution(
    * @param testReporter Listener for test events like start, finish with success/error
    */
   def executeTasks(
-      goals: Seq[Task[?]],
-      crossValues: Map[String, String],
+      goals: Seq[UnappliedTask[?]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -96,13 +96,12 @@ private[mill] case class Execution(
     os.makeDir.all(outPath)
 
     PathRef.validatedPaths.withValue(new PathRef.ValidatedPaths()) {
-      execute0(goals, crossValues, logger, reporter, testReporter, serialCommandExec)
+      execute0(goals, logger, reporter, testReporter, serialCommandExec)
     }
   }
 
   private def execute0(
-      goals: Seq[Task[?]],
-      crossValues: Map[String, String],
+      goals: Seq[UnappliedTask[?]],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
@@ -111,7 +110,7 @@ private[mill] case class Execution(
     os.makeDir.all(outPath)
 
     val threadNumberer = new ThreadNumberer()
-    val plan = PlanImpl.plan0(goals, crossValues)
+    val plan = PlanImpl.plan0(goals)
     val interGroupDeps = Execution.findInterGroupDeps(plan.sortedGroups, plan.inputs)
     val terminals0 = plan.sortedGroups.keys().toVector
     val failed = new AtomicBoolean(false)
@@ -228,8 +227,7 @@ private[mill] case class Execution(
                   allTransitiveClassMethods,
                   forkExecutionContext,
                   exclusive,
-                  upstreamPathRefs,
-                  crossValues = crossValues
+                  upstreamPathRefs
                 )
 
                 // Count new failures - if there are upstream failures, tasks should be skipped, not failed
@@ -340,6 +338,7 @@ private[mill] case class Execution(
     val results: Map[AppliedTask[?], ExecResult[(Val, Int)]] = results0.toMap
 
     Execution.Results(
+      plan.goals,
       plan.goals.toIndexedSeq.map(results(_).map(_._1)),
       finishedOptsMap.values.flatMap(_.toSeq.flatMap(_.newEvaluated)).toSeq,
       results.map { case (k, v) => (k, v.map(_._1)) }
@@ -377,6 +376,7 @@ private[mill] object Execution {
       .toMap
   }
   private[Execution] case class Results(
+      goals: Seq[AppliedTask[?]],
       results: Seq[ExecResult[Val]],
       uncached: Seq[AppliedTask[?]],
       transitiveResults: Map[AppliedTask[?], ExecResult[Val]]

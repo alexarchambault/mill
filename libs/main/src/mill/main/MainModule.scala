@@ -166,7 +166,7 @@ trait MainModule extends BaseModule with MainModuleApi {
         else
           evaluator.resolveSegments(tasks, SelectMode.Multi).map { ts =>
             val allPaths = ts.flatMap { segments =>
-              val evPaths = ExecutionPaths.resolve(rootDir, segments)
+              val evPaths = ExecutionPaths.resolve(rootDir, segments, Map.empty)
               val paths = Seq(evPaths.dest, evPaths.meta, evPaths.log)
               val potentialModulePath = rootDir / segments.parts
               if (os.exists(potentialModulePath)) {
@@ -350,9 +350,9 @@ object MainModule {
 
         case Evaluator.Result(watched, Result.Success(res), selectedTasks, executionResults) =>
           val namesAndJson = for (t <- selectedTasks) yield {
-            t match {
-              case t: mill.define.Task.Named[_] =>
-                val jsonFile = ExecutionPaths.resolve(evaluator.outPath, t).meta
+            (t, t.task) match {
+              case (task, t: mill.define.Task.Named[_]) =>
+                val jsonFile = ExecutionPaths.resolve(evaluator.outPath, t, task.crossValues).meta
                 val metadata = upickle.default.read[Cached](ujson.read(jsonFile.toIO))
                 Some((t.toString, metadata.value))
               case _ => None

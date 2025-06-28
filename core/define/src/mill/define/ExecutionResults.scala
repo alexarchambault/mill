@@ -6,6 +6,8 @@ import mill.define.Plan0.AppliedTask
 
 trait ExecutionResults extends ExecutionResultsApi {
 
+  def goals: Seq[AppliedTask[?]]
+
   /**
    * The values returned by the tasks specified by the user
    */

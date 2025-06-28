@@ -8,6 +8,8 @@ import mill.define.{PathRef, *}
 import mill.define.internal.{ResolveChecker, Watchable}
 import mill.exec.{Execution, PlanImpl}
 import mill.resolve.Resolve
+import mill.define.Plan0.UnappliedTask
+import mill.define.Plan0.AppliedTask
 
 /**
  * [[EvaluatorImpl]] is the primary API through which a user interacts with the Mill
@@ -141,19 +143,22 @@ final class EvaluatorImpl private[mill] (
 
     val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.isExclusiveCommand)
 
+    val tasks0 = tasks.map(UnappliedTask(_, crossValues))
+
     val selectedTasksOrErr =
-      if (!selectiveExecutionEnabled) (tasks, Map.empty, None)
+      if (!selectiveExecutionEnabled) (tasks0, Map.empty, None)
       else {
         val (named, unnamed) =
-          tasks.partitionMap { case n: Task.Named[?] => Left(n); case t => Right(t) }
+          tasks0.map(t => (t, t.task)).partitionMap {
+            case (t, _: Task.Named[?]) => Left(t); case (t, _) => Right(t)
+          }
         val newComputedMetadata =
-          SelectiveExecutionImpl.Metadata.compute(this, named, crossValues)
+          SelectiveExecutionImpl.Metadata.compute(this, named)
 
         val selectiveExecutionStoredData = for {
           _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
           changedTasks <- this.selective.computeChangedTasks0(
             named,
-            crossValues,
             newComputedMetadata
           )
         } yield changedTasks
@@ -162,13 +167,15 @@ final class EvaluatorImpl private[mill] (
           case None =>
             // Ran when previous selective execution metadata is not available, which happens the first time you run
             // selective execution.
-            (tasks, Map.empty, Some(newComputedMetadata.metadata))
+            (tasks0, Map.empty, Some(newComputedMetadata.metadata))
           case Some(changedTasks) =>
-            val selectedSet = changedTasks.downstreamTasks.map(_.task.ctx.segments.render).toSet
+            val selectedSet = changedTasks.downstreamTasks.map(_.displayName).toSet
 
             (
               unnamed ++ named.filter(t =>
-                t.isExclusiveCommand || selectedSet(t.ctx.segments.render)
+                t.task.isExclusiveCommand ||
+                  // FIXME We need to compute AppliedTask-s out of named using Plan here
+                  selectedSet(AppliedTask(t.task, t.crossValues).displayName)
               ),
               newComputedMetadata.results,
               Some(newComputedMetadata.metadata)
@@ -181,7 +188,6 @@ final class EvaluatorImpl private[mill] (
         val evaluated: ExecutionResults =
           execution.executeTasks(
             selectedTasks,
-            crossValues,
             reporter,
             testReporter,
             logger,
@@ -237,14 +243,14 @@ final class EvaluatorImpl private[mill] (
             Evaluator.Result(
               watched,
               mill.api.Result.Success(evaluated.values.map(_._1.asInstanceOf[T])),
-              selectedTasks,
+              evaluated.goals,
               evaluated
             )
           case n =>
             Evaluator.Result(
               watched,
               mill.api.Result.Failure(s"$n tasks failed\n$errorStr"),
-              selectedTasks,
+              evaluated.goals,
               evaluated
             )
         }

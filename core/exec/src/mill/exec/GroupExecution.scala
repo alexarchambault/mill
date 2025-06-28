@@ -91,8 +91,7 @@ private trait GroupExecution {
       allTransitiveClassMethods: Map[Class[?], Map[String, Method]],
       executionContext: mill.define.TaskCtx.Fork.Api,
       exclusive: Boolean,
-      upstreamPathRefs: Seq[PathRef],
-      crossValues: Map[String, String]
+      upstreamPathRefs: Seq[PathRef]
   ): GroupExecution.Results = {
     logger.withPromptLine {
       val externalInputsHash = MurmurHash3.orderedHash(
@@ -192,8 +191,7 @@ private trait GroupExecution {
                       exclusive = exclusive,
                       deps = deps,
                       upstreamPathRefs = upstreamPathRefs,
-                      terminal = terminal,
-                      crossValues = crossValues
+                      terminal = terminal
                     )
 
                   val (valueHash, serializedPaths) = newResults(terminal) match {
@@ -239,8 +237,7 @@ private trait GroupExecution {
             exclusive = exclusive,
             deps = deps,
             upstreamPathRefs = upstreamPathRefs,
-            terminal = terminal,
-            crossValues = crossValues
+            terminal = terminal
           )
           GroupExecution.Results(
             newResults,
@@ -271,8 +268,7 @@ private trait GroupExecution {
       exclusive: Boolean,
       deps: Seq[AppliedTask[?]],
       upstreamPathRefs: Seq[PathRef],
-      terminal: AppliedTask[?],
-      crossValues: Map[String, String]
+      terminal: AppliedTask[?]
   ): (Map[AppliedTask[?], ExecResult[(Val, Int)]], mutable.Buffer[AppliedTask[?]]) = {
     val newEvaluated = mutable.Buffer.empty[AppliedTask[?]]
     val newResults = mutable.Map.empty[AppliedTask[?], ExecResult[(Val, Int)]]
@@ -293,7 +289,7 @@ private trait GroupExecution {
         else {
           val args = new mill.define.TaskCtx.Impl(
             args = taskInputValues.map(_.value).toIndexedSeq,
-            crossValues = crossValues, // ++ task.crossValueOverrides,
+            crossValues = task.crossValues,
             dest0 = () => destCreator.makeDest(),
             log = multiLogger,
             env = env,
@@ -313,7 +309,7 @@ private trait GroupExecution {
             deps
               .map(t => (t, t.task))
               .collect { case (t, n: Task.Worker[?]) =>
-                ExecutionPaths.resolve(outPath, n.ctx.segments, task.crossValues).dest
+                ExecutionPaths.resolve(outPath, n.ctx.segments, t.crossValues).dest
               } ++
               paths.map(_.dest)
 

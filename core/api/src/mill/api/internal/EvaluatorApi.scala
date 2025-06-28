@@ -40,7 +40,7 @@ object EvaluatorApi {
     def watchable: Seq[Watchable]
     def values: mill.api.Result[Seq[T]]
 
-    def selectedTasks: Seq[TaskApi[?]]
+    def selectedTasks: Seq[AppliedTaskApi[?]]
     def executionResults: ExecutionResultsApi
   }
 }

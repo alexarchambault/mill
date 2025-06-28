@@ -3,6 +3,8 @@ package mill.define
 import mill.api.{ExecResult, Result, Val}
 import mill.define.Plan0.AppliedNamedTask
 import mill.define.Plan0.AppliedTask
+import mill.define.Plan0.UnappliedTask
+
 private[mill] trait SelectiveExecution {
   import SelectiveExecution.*
   def computeHashCodeSignatures(
@@ -25,8 +27,7 @@ private[mill] trait SelectiveExecution {
   ): Result[ChangedTasks]
 
   def computeChangedTasks0(
-      tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, String],
+      tasks: Seq[UnappliedTask[?]],
       computedMetadata: SelectiveExecution.Metadata.Computed
   ): Option[ChangedTasks]
 
@@ -37,8 +38,7 @@ private[mill] trait SelectiveExecution {
   def resolveTree(tasks: Seq[String]): Result[ujson.Value]
 
   def computeMetadata(
-      tasks: Seq[Task.Named[?]],
-      rootCrossValues: Map[String, String]
+      tasks: Seq[AppliedNamedTask[?]]
   ): SelectiveExecution.Metadata.Computed
 }
 object SelectiveExecution {
