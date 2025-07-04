@@ -15,6 +15,11 @@ object MillNoDaemonMain {
     if (Properties.isWin && Util.hasConsole())
       io.github.alexarchambault.windowsansi.WindowsAnsi.setup()
 
+    if (Properties.isWin) {
+      val supplier = dev.dirs.impl.Windows.getDefaultSupplier()
+      supplier.get()
+    }
+
     val processId = Server.computeProcessId()
     val out = os.Path(OutFiles.out, BuildCtx.workspaceRoot)
     Server.watchProcessIdFile(
