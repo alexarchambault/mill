@@ -3,11 +3,13 @@ package mill.launcher
 import coursier.{Artifacts, Dependency, Fetch, ModuleName, Organization, Resolve, VersionConstraint}
 import coursier.cache.{ArchiveCache, FileCache}
 import coursier.jvm.{JavaHome, JvmCache, JvmChannel, JvmIndex}
+import coursier.maven.MavenRepository
 import coursier.util.Task
 import coursier.core.Module
 
+import java.io.File
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import mill.coursierutil.TestOverridesRepo
 
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import scala.util.Using
@@ -17,13 +19,20 @@ object CoursierClient {
     val coursierCache0 = FileCache[Task]()
       .withLogger(coursier.cache.loggers.RefreshLogger.create())
 
+    val testOverridesRepos = Option(System.getenv("MILL_LOCAL_TEST_REPO"))
+      .toSeq
+      .flatMap(_.split(File.pathSeparator).toSeq)
+      .map { path =>
+        MavenRepository(os.Path(path).toNIO.toUri.toASCIIString)
+      }
+
     val artifactsResultOrError = Fetch()
       .withCache(coursierCache0)
       .withDependencies(Seq(Dependency(
         Module(Organization("com.lihaoyi"), ModuleName("mill-runner-daemon_3"), Map()),
         VersionConstraint(mill.client.BuildInfo.millVersion)
       )))
-      .withRepositories(Seq(TestOverridesRepo) ++ Resolve.defaultRepositories)
+      .withRepositories(testOverridesRepos ++ Resolve.defaultRepositories)
       .eitherResult()
       .right.get
 

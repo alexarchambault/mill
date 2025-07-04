@@ -5,14 +5,13 @@ import coursier.core.{BomDependency, Module, VariantSelector}
 import coursier.error.FetchError.DownloadingArtifacts
 import coursier.error.ResolutionError.CantDownloadModule
 import coursier.jvm.{JavaHome, JvmCache, JvmChannel, JvmIndex}
-import coursier.maven.MavenRepositoryLike
+import coursier.maven.{MavenRepository, MavenRepositoryLike}
 import coursier.params.ResolutionParams
 import coursier.parse.RepositoryParser
 import coursier.util.Task
 import coursier.{Artifacts, Classifier, Dependency, Repository, Resolution, Resolve, Type}
 import mill.api.*
 import mill.define.BuildCtx
-import mill.coursierutil.TestOverridesRepo
 import mill.define.{PathRef, TaskCtx}
 
 import java.io.BufferedOutputStream
@@ -723,10 +722,18 @@ object Jvm {
       else
         repositories
 
+    val testOverridesRepos = Option(System.getenv("MILL_LOCAL_TEST_REPO"))
+      .toSeq
+      .flatMap(_.split(File.pathSeparator).toSeq)
+      .map { path =>
+        MavenRepository(os.Path(path).toNIO.toUri.toASCIIString)
+          .withCheckModule(checkGradleModules)
+      }
+
     val resolve = Resolve()
       .withCache(coursierCache0)
       .withDependencies(rootDeps)
-      .withRepositories(Seq(TestOverridesRepo) ++ repositories0)
+      .withRepositories(testOverridesRepos ++ repositories0)
       .withResolutionParams(resolutionParams0)
       .withMapDependenciesOpt(mapDependencies)
       .withBoms(boms.iterator.toSeq)
