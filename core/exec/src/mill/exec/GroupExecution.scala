@@ -563,10 +563,42 @@ private object GroupExecution {
       if (exclusive) (exclusiveSystemStreams, () => workspace)
       else (multiLogger.streams, () => destCreator.makeDest())
 
+    def printLoader(cl: ClassLoader): Unit =
+      if (cl != null) {
+        val cp =
+          if (cl.getClass.getName.contains("AppClassLoader"))
+            sys.props.getOrElse("java.class.path", "")
+              .split(java.io.File.pathSeparator)
+              .toSeq
+              .filter(_.contains("get-coursier"))
+              .map(java.nio.file.Paths.get(_))
+              .map(_.getFileName.toString)
+          else
+            cl match {
+              case u: java.net.URLClassLoader =>
+                u.getURLs
+                  .toSeq
+                  .filter(_.toString.contains("get-coursier"))
+                  .map(_.toURI)
+                  .map(java.nio.file.Paths.get(_))
+                  .map(_.getFileName.toString)
+              case _ =>
+                Seq("?")
+            }
+
+        System.err.println(cl.toString)
+        System.err.println(s"  (${cp.sorted.mkString(", ")})")
+        printLoader(cl.getParent)
+      }
+
     os.dynamicPwdFunction.withValue(destFunc) {
       os.checker.withValue(executionChecker) {
         mill.define.SystemStreams.withStreams(streams) {
           mill.api.ClassLoader.withContextClassLoader(classLoader) {
+            System.err.println("  Loaders:")
+            printLoader(classLoader)
+            System.err.println()
+
             val exposedEvaluator =
               if (exclusive) evaluator.asInstanceOf[Evaluator]
               else new EvaluatorProxy(() =>

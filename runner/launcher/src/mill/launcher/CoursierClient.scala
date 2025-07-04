@@ -16,6 +16,7 @@ import scala.util.Using
 import java.util.zip.ZipFile
 object CoursierClient {
   def millDaemonLauncher(isServer: Boolean): java.nio.file.Path = {
+    System.err.println("In CoursierClient.millDaemonLauncher")
     val coursierCache0 = FileCache[Task]()
       .withLogger(coursier.cache.loggers.RefreshLogger.create())
 
@@ -35,6 +36,23 @@ object CoursierClient {
       .withRepositories(testOverridesRepos ++ Resolve.defaultRepositories)
       .eitherResult()
       .right.get
+
+    System.err.println("Input dependencies:")
+    System.err.println(s"  com.lihaoyi:mill-runner-daemon_3:${mill.client.BuildInfo.millVersion}")
+    System.err.println("")
+
+    val allDeps = artifactsResultOrError
+      .resolution
+      .minDependencies
+      .toVector
+      .map { dep =>
+        s"${dep.module.repr}:${dep.versionConstraint.asString}"
+      }
+      .sorted
+    System.err.println("Dependencies:")
+    for (dep <- allDeps)
+      System.err.println(s"  $dep")
+    System.err.println("")
 
     val cp = artifactsResultOrError.artifacts.map(_._2).map(os.Path(_))
     val compilerInterfaceDeps = artifactsResultOrError.resolution.minDependencies
