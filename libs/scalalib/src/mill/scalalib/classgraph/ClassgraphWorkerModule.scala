@@ -23,10 +23,7 @@ trait ClassgraphWorkerModule extends CoursierModule with OfflineSupportModule {
   }
 
   private def classgraphWorkerClassloader: Task.Worker[ClassLoader] = Task.Worker {
-    Jvm.createClassLoader(
-      classPath = classgraphWorkerClasspath().map(_.path),
-      parent = getClass().getClassLoader()
-    )
+    Jvm.createClassLoader(classgraphWorkerClasspath().map(_.path))
   }
 
   def classgraphWorker: Task.Worker[ClassgraphWorker] = Task.Worker {

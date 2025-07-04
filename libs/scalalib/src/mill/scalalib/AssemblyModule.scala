@@ -165,10 +165,7 @@ object AssemblyModule extends ExternalModule with CoursierModule with OfflineSup
   }
 
   private[mill] def jarjarabramsWorkerClassloader: Task.Worker[ClassLoader] = Task.Worker {
-    Jvm.createClassLoader(
-      classPath = jarjarabramsWorkerClasspath().map(_.path),
-      parent = getClass().getClassLoader()
-    )
+    Jvm.createClassLoader(jarjarabramsWorkerClasspath().map(_.path))
   }
 
   def jarjarabramsWorker

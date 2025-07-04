@@ -22,12 +22,7 @@ object `package` extends MillStableScalaModule with BuildInfo {
   // This keeps the compile classpath clean and anyone who wants to use those dependencies
   // can include them explicitly in their YAML header or meta-build
   def mvnDeps = Seq(
-    Deps.coursier.exclude("*" -> "*"),
-    Deps.coursierCore.exclude("*" -> "*"),
-    Deps.coursierCache.exclude("*" -> "*"),
-    Deps.coursierUtil.exclude("*" -> "*"),
-    Deps.coursierVersions.exclude("*" -> "*"),
-    Deps.coursierJvm.exclude("*" -> "*"),
+    Deps.coursierJvm,
     Deps.jline,
     Deps.mainargs,
     Deps.requests

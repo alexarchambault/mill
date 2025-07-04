@@ -118,7 +118,8 @@ class JvmWorkerImpl(
 
   private val classloaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
-    sharedPrefixes = Seq("xsbti")
+    sharedPrefixes = Seq("xsbti"),
+    sharedClass = Some(classOf[xsbti.api.DependencyContext]).filter(_.getClassLoader != getClass.getClassLoader)
   ) {
     override def extraRelease(cl: ClassLoader) = {
 
@@ -306,9 +307,8 @@ class JvmWorkerImpl(
     os.makeDir.all(compileDest)
 
     val sourceFolder = os.unzip(compilerBridgeSourcesJar, workingDir / "unpacked")
-    val classloader = mill.util.Jvm.createClassLoader(
-      compilerClasspath.map(_.path).toSeq,
-      null
+    val classloader = mill.util.Jvm.createIsolatedClassLoader(
+      compilerClasspath.map(_.path).toSeq
     )
 
     try {
@@ -349,9 +349,11 @@ class JvmWorkerImpl(
           if (JvmWorkerUtil.isDottyOrScala3(scalaVersion)) "dotty.tools.dotc.Main"
           else "scala.tools.nsc.Main"
         )
-        compilerMain
-          .getMethod("process", classOf[Array[String]])
-          .invoke(null, argsArray ++ Array("-nowarn"))
+        mill.api.ClassLoader.withContextClassLoader(classloader) {
+          compilerMain
+            .getMethod("process", classOf[Array[String]])
+            .invoke(null, argsArray ++ Array("-nowarn"))
+        }
       } else {
         throw new IllegalArgumentException("Currently not implemented case.")
       }
