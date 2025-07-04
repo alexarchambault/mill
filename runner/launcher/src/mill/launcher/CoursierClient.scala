@@ -50,8 +50,13 @@ object CoursierClient {
     val coreApiDeps = artifactsResultOrError.resolution.orderedDependencies
       .iterator
       .filter { dep =>
-        dep.module.organization.value == "com.lihaoyi" &&
-        dep.module.name.value == "mill-core-api_3"
+        val isCoreApi =
+          dep.module.organization.value == "com.lihaoyi" &&
+            dep.module.name.value == "mill-core-api_3"
+        def isCoursierPaths =
+          dep.module.organization.value == "io.get-coursier" &&
+            dep.module.name.value == "coursier-paths"
+        isCoreApi || isCoursierPaths
       }
       .toSeq
 
