@@ -23,7 +23,6 @@ import mill.constants.EnvVars;
 public class MillProcessLauncher {
 
   static int launchMillNoServer(String[] args) throws Exception {
-    System.err.println("In MillProcessLauncher.launchMillNoServer");
     final String sig = String.format("%08x", UUID.randomUUID().hashCode());
     final Path processDir = Paths.get(".").resolve(out).resolve(millNoDaemon).resolve(sig);
 
@@ -57,7 +56,6 @@ public class MillProcessLauncher {
   }
 
   static Process launchMillServer(Path daemonDir) throws Exception {
-    System.err.println("In MillProcessLauncher.launchMillServer");
     List<String> l = new ArrayList<>();
     l.addAll(millLaunchJvmCommand(true));
     l.add(daemonDir.toFile().getCanonicalPath());
@@ -209,7 +207,6 @@ public class MillProcessLauncher {
   }
 
   static List<String> millLaunchJvmCommand(boolean isServer) throws Exception {
-    System.err.println("In MillProcessLauncher.millLaunchJvmCommand");
     final List<String> vmOptions = new ArrayList<>();
 
     // Java executable
@@ -295,10 +292,7 @@ public class MillProcessLauncher {
     try {
       Path cacheFile = Paths.get(".").resolve(out).resolve("mill-" + name).toAbsolutePath();
       if (Files.exists(cacheFile))
-        if (validate.apply(cacheFile)) {
-          System.err.println("Using cached launcher " + cacheFile);
-          return cacheFile;
-        }
+        if (validate.apply(cacheFile)) return cacheFile;
         else Files.delete(cacheFile);
 
       Path value = block.get();
@@ -307,7 +301,6 @@ public class MillProcessLauncher {
 
       if (cleanUp) Files.delete(value);
 
-      System.err.println("Using new launcher " + cacheFile);
       return cacheFile;
     } catch (IOException e) {
       throw new RuntimeException(e);

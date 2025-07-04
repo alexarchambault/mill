@@ -14,7 +14,6 @@ import mill.constants.OutFiles;
  */
 public class MillLauncherMain {
   public static void main(String[] args) throws Exception {
-    System.err.println("In MillLauncherMain.main");
     boolean runNoServer = false;
     if (args.length > 0) {
       String firstArg = args[0];
@@ -23,7 +22,6 @@ public class MillLauncherMain {
                   .contains(firstArg)
               || firstArg.startsWith("-i");
     }
-    System.err.println("In MillLauncherMain.main, runNoServer=" + runNoServer);
     if (!runNoServer) {
       // WSL2 has the directory /run/WSL/ and WSL1 not.
       String osVersion = System.getProperty("os.version");
