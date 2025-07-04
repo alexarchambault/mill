@@ -12,9 +12,6 @@ object `package` extends MillStableScalaModule {
 
   def mvnDeps = Seq(
     Deps.osLib,
-    Deps.coursier.exclude("*" -> "*"),
-    Deps.coursierCore.exclude("*" -> "*"),
-    Deps.coursierUtil.exclude("*" -> "*"),
-    Deps.coursierVersions.exclude("*" -> "*")
+    Deps.coursier
   )
 }

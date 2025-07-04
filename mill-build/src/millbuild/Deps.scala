@@ -89,8 +89,6 @@ object Deps {
   val coursier = mvn"io.get-coursier::coursier:$coursierVersion".withDottyCompat(scalaVersion)
   val coursierCore =
     mvn"io.get-coursier::coursier-core:$coursierVersion".withDottyCompat(scalaVersion)
-  val coursierCache =
-    mvn"io.get-coursier::coursier-cache:$coursierVersion".withDottyCompat(scalaVersion)
   val coursierUtil =
     mvn"io.get-coursier::coursier-util:$coursierVersion".withDottyCompat(scalaVersion)
   val coursierVersions = mvn"io.get-coursier::versions:0.5.1".withDottyCompat(scalaVersion)
