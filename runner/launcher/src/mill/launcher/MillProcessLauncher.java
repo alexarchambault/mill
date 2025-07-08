@@ -6,9 +6,11 @@ import io.github.alexarchambault.nativeterm.NativeTerminal;
 import io.github.alexarchambault.nativeterm.TerminalSize;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -20,7 +22,7 @@ import mill.constants.*;
 public class MillProcessLauncher {
 
   static int launchMillNoDaemon(
-      String[] args, OutFolderMode outMode, String[] runnerClasspath, String mainClass)
+      String[] args, OutFolderMode outMode, String mainClass)
       throws Exception {
     final String sig = String.format("%08x", UUID.randomUUID().hashCode());
     final Path processDir =
@@ -29,10 +31,7 @@ public class MillProcessLauncher {
     MillProcessLauncher.prepareMillRunFolder(processDir);
 
     final List<String> l = new ArrayList<>();
-    l.addAll(millLaunchJvmCommand(outMode, runnerClasspath));
-    Map<String, String> propsMap = ClientUtil.getUserSetProperties();
-    for (String key : propsMap.keySet()) l.add("-D" + key + "=" + propsMap.get(key));
-    l.add(mainClass);
+    l.addAll(millLaunchJvmCommand(outMode, false));
     l.add(processDir.toAbsolutePath().toString());
     l.add(outMode.asString());
     l.addAll(millOpts(outMode));
@@ -60,10 +59,9 @@ public class MillProcessLauncher {
     }
   }
 
-  static Process launchMillDaemon(Path daemonDir, OutFolderMode outMode, String[] runnerClasspath)
+  static Process launchMillDaemon(Path daemonDir, OutFolderMode outMode)
       throws Exception {
-    List<String> l = new ArrayList<>(millLaunchJvmCommand(outMode, runnerClasspath));
-    l.add("mill.daemon.MillDaemonMain");
+    List<String> l = new ArrayList<>(millLaunchJvmCommand(outMode, true));
     l.add(daemonDir.toFile().getCanonicalPath());
     l.add(outMode.asString());
 
@@ -217,7 +215,7 @@ public class MillProcessLauncher {
     }
   }
 
-  static List<String> millLaunchJvmCommand(OutFolderMode outMode, String[] runnerClasspath)
+  static List<String> millLaunchJvmCommand(OutFolderMode outMode, boolean isServer)
       throws Exception {
     final List<String> vmOptions = new ArrayList<>();
 
@@ -232,16 +230,37 @@ public class MillProcessLauncher {
       }
     }
 
+    if (!isServer) {
+      Map<String, String> propsMap = ClientUtil.getUserSetProperties();
+      for (String key : propsMap.keySet()) vmOptions.add("-D" + key + "=" + propsMap.get(key));
+    }
+
     String serverTimeout = millServerTimeout();
     if (serverTimeout != null) vmOptions.add("-Dmill.server_timeout=" + serverTimeout);
 
     // extra opts
     vmOptions.addAll(millJvmOpts(outMode));
 
-    vmOptions.add("-XX:+HeapDumpOnOutOfMemoryError");
-    vmOptions.add("-cp");
+    if (!isServer) {
+      Map<String, String> propsMap = ClientUtil.getUserSetProperties();
+      for (String key : propsMap.keySet()) vmOptions.add("-D" + key + "=" + propsMap.get(key));
+    }
 
-    vmOptions.add(String.join(File.pathSeparator, runnerClasspath));
+    vmOptions.add("-XX:+HeapDumpOnOutOfMemoryError");
+    vmOptions.add("-jar");
+    Path runnerClasspath = cachedLauncher(
+        (isServer ? "resolve-server" : "resolve-runner"),
+        BuildInfo.millVersion,
+        () -> CoursierClient.millDaemonLauncher(isServer),
+        launcher -> {
+          if (BuildInfo.millVersion.contains("SNAPSHOT")) return false;
+          for (Path s : CoursierClient.launcherEntries(launcher)) {
+            if (!Files.exists(s)) return false;
+          }
+          return true;
+        },
+        true);
+    vmOptions.add(runnerClasspath.toString());
 
     return vmOptions;
   }
@@ -283,6 +302,46 @@ public class MillProcessLauncher {
             (Escaping.literalize(key) + "\n" + String.join("\n", literalized)).getBytes());
       }
       return value;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Path computeCacheFile(String name, Function<Path, Boolean> validate, int count)
+      throws IOException {
+    try {
+      // An actual suffix should only ever be added on Windows, where we get
+      // a FileSystemException if the cached file is being used by another process.
+      // The validation mechanism should make the use of other names safe nonetheless.
+      String suffix = count == 0 ? "" : "-" + count;
+      Path cacheFile =
+          Paths.get(".").resolve(out).resolve("mill-" + name + suffix).toAbsolutePath();
+      if (Files.exists(cacheFile))
+        if (validate.apply(cacheFile)) return cacheFile;
+        else Files.delete(cacheFile);
+      return cacheFile;
+    } catch (FileSystemException e) {
+      return computeCacheFile(name, validate, count + 1);
+    }
+  }
+
+  static Path cachedLauncher(
+      String name,
+      String key,
+      Supplier<Path> block,
+      Function<Path, Boolean> validate,
+      boolean cleanUp) {
+    try {
+      Path cacheFile = computeCacheFile(name, validate, 0);
+      Path value = block.get();
+      Files.createDirectories(cacheFile.getParent());
+      // Use COPY_ATTRIBUTES to retain the modified time of the launcher, which helps for
+      // cached results (in)validation
+      Files.copy(value, cacheFile, StandardCopyOption.COPY_ATTRIBUTES);
+
+      if (cleanUp) Files.delete(value);
+
+      return cacheFile;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

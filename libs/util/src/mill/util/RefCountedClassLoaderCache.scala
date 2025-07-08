@@ -12,19 +12,39 @@ import java.net.URLClassLoader
 class RefCountedClassLoaderCache(
     sharedLoader: ClassLoader = null,
     sharedPrefixes: Seq[String] = Nil,
-    parent: ClassLoader = null
+    parent: ClassLoader = null,
+    sharedClass: Option[Class[?]] = None
 ) extends AutoCloseable {
+  // bin-compat shim
+  def this(
+      sharedLoader: ClassLoader,
+      sharedPrefixes: Seq[String],
+      parent: ClassLoader
+  ) =
+    this(
+      sharedLoader,
+      sharedPrefixes,
+      parent,
+      None
+    )
 
   private val cache = RefCountedCache[Seq[PathRef], Long, sourcecode.Enclosing, URLClassLoader](
     convertKey = _.hashCode,
-    setup = (combinedCompilerJars, _, enclosing) => {
-      mill.util.Jvm.createClassLoader(
-        combinedCompilerJars.map(_.path),
-        parent = parent,
-        sharedLoader = sharedLoader,
-        sharedPrefixes = sharedPrefixes
-      )(using enclosing)
-    },
+    setup = (combinedCompilerJars, _, enclosing) =>
+      sharedClass match {
+        case Some(sharedClass0) =>
+          mill.util.Jvm.createClassLoader(
+            combinedCompilerJars.map(_.path),
+            parent = sharedClass0.getClassLoader
+          )(using enclosing)
+        case None =>
+          mill.util.Jvm.createClassLoader(
+            combinedCompilerJars.map(_.path),
+            parent = parent,
+            sharedLoader = sharedLoader,
+            sharedPrefixes = sharedPrefixes
+          )(using enclosing)
+      },
     closeValue = cl => {
       extraRelease(cl)
       cl.close()

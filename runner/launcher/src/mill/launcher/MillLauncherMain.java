@@ -74,23 +74,11 @@ public class MillLauncherMain {
 
     coursier.Resolve.proxySetup();
 
-    String[] runnerClasspath = MillProcessLauncher.cachedComputedValue0(
-        outMode,
-        "resolve-runner",
-        BuildInfo.millVersion,
-        () -> CoursierClient.resolveMillDaemon(),
-        arr -> {
-          for (String s : arr) {
-            if (!Files.exists(Paths.get(s))) return false;
-          }
-          return true;
-        });
-
     if (runNoDaemon) {
       String mainClass = bspMode ? "mill.daemon.MillBspMain" : "mill.daemon.MillNoDaemonMain";
       // start in no-server mode
       int exitCode =
-          MillProcessLauncher.launchMillNoDaemon(args, outMode, runnerClasspath, mainClass);
+          MillProcessLauncher.launchMillNoDaemon(args, outMode, mainClass);
       System.exit(exitCode);
     } else {
       var logs = new java.util.ArrayList<String>();
@@ -110,7 +98,7 @@ public class MillLauncherMain {
                 -1) {
               public LaunchedServer initServer(Path daemonDir, Locks locks) throws Exception {
                 return new LaunchedServer.OsProcess(
-                    MillProcessLauncher.launchMillDaemon(daemonDir, outMode, runnerClasspath)
+                    MillProcessLauncher.launchMillDaemon(daemonDir, outMode)
                         .toHandle());
               }
             };

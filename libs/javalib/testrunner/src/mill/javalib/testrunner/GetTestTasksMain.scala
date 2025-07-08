@@ -22,10 +22,13 @@ import mill.api.daemon.internal.internal
       selectors: Seq[String],
       args: Seq[String]
   ): Seq[String] = {
+    val hasTwoClassLoaders =
+      classOf[sbt.testing.Framework].getClassLoader != getClass.getClassLoader
     val globFilter = TestRunnerUtils.globFilter(selectors)
     mill.util.Jvm.withClassLoader(
       classPath = runCp,
-      sharedPrefixes = Seq("sbt.testing.")
+      parent = if (hasTwoClassLoaders) classOf[sbt.testing.Framework].getClassLoader else null,
+      sharedPrefixes = if (hasTwoClassLoaders) Nil else Seq("sbt.testing.")
     ) { classLoader =>
       TestRunnerUtils
         .getTestTasks0(
