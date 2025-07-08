@@ -13,12 +13,11 @@ import scala.collection.mutable.LinkedHashMap
 class RefCountedClassLoaderCache(
     sharedLoader: ClassLoader = null,
     sharedPrefixes: Seq[String] = Nil,
-    parent: ClassLoader = null
+    parent: ClassLoader = null,
+    extraRelease: ClassLoader => Unit = _ => ()
 ) {
 
   private val cache = LinkedHashMap.empty[Long, (URLClassLoader, Int)]
-
-  def extraRelease(cl: ClassLoader): Unit = ()
 
   def release(combinedCompilerJars: Seq[PathRef]) = synchronized {
     val compilersSig = combinedCompilerJars.hashCode()

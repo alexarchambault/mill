@@ -117,12 +117,10 @@ class JvmWorkerImpl(
     }
   }
 
-  private val classloaderCache = new RefCountedClassLoaderCache(
+  private val classloaderCache: RefCountedClassLoaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
-    sharedPrefixes = Seq("xsbti")
-  ) {
-    override def extraRelease(cl: ClassLoader) = {
-
+    sharedPrefixes = Seq("xsbti"),
+    extraRelease = (cl: ClassLoader) => {
       for {
         cls <- {
           try Some(cl.loadClass("scala.tools.nsc.classpath.FileBasedCache$"))
@@ -149,13 +147,10 @@ class JvmWorkerImpl(
         timer <-
           Option(getOrElseMethod.invoke(timerOpt0, null).asInstanceOf[java.util.Timer])
       } {
-
         timer.cancel()
       }
-
     }
-
-  }
+  )
 
   object javaOnlyCompilerCache extends CachedFactory[(Option[os.Path], Seq[String]), Compilers] {
 
