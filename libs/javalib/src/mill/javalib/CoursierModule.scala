@@ -4,10 +4,8 @@ import coursier.cache.FileCache
 import coursier.core.Resolution
 import coursier.core.VariantSelector.VariantMatcher
 import coursier.params.ResolutionParams
-import coursier.{Dependency, Repository, Resolve}
-import mill.api.Task
-import mill.api.PathRef
-import mill.api.Result
+import coursier.{Dependency, Repository}
+import mill.api.{ModuleRef, PathRef, Result, Task}
 import mill.util.Jvm
 import mill.T
 
@@ -34,6 +32,9 @@ trait CoursierModule extends mill.api.Module {
     BoundDep(Lib.depToDependencyJava(dep), dep.force)
   }
 
+  def coursierConfigModule: ModuleRef[CoursierConfigModule] =
+    ModuleRef(CoursierConfigModule)
+
   /**
    * A [[CoursierModule.Resolver]] to resolve dependencies.
    *
@@ -51,7 +52,8 @@ trait CoursierModule extends mill.api.Module {
       coursierCacheCustomizer = coursierCacheCustomizer(),
       resolutionParams = resolutionParams(),
       offline = Task.offline,
-      checkGradleModules = checkGradleModules()
+      checkGradleModules = checkGradleModules(),
+      config = coursierConfigModule().coursierConfig()
     )
   }
 
@@ -72,7 +74,8 @@ trait CoursierModule extends mill.api.Module {
       coursierCacheCustomizer = coursierCacheCustomizer(),
       resolutionParams = resolutionParams(),
       offline = Task.offline,
-      checkGradleModules = checkGradleModules()
+      checkGradleModules = checkGradleModules(),
+      config = coursierConfigModule().coursierConfig()
     )
   }
 
@@ -102,7 +105,7 @@ trait CoursierModule extends mill.api.Module {
 
   // Bincompat stub
   private[mill] def repositoriesTask0 = Task.Anon {
-    Jvm.reposFromStrings("default" +: repositories(), Resolve.defaultRepositories)
+    Jvm.reposFromStrings("default" +: repositories(), coursierConfigModule().defaultRepositories())
   }
 
   /**
@@ -133,7 +136,7 @@ trait CoursierModule extends mill.api.Module {
    *   The default repositories, that might have been changed via COURSIER_REPOSITORIES in the environment,
    *   the coursier.repositories Java property, or the Scala CLI configuration file
    */
-  def repositories: T[Seq[String]] = Task { Seq("default") }
+  def repositories: T[Seq[String]] = Task { Seq.empty[String] }
 
   /**
    * The repositories used to resolve dependencies
@@ -234,8 +237,36 @@ object CoursierModule {
       // TODO: this does nothing? :/
       // Introduced in https://github.com/com-lihaoyi/mill/commit/451df6846861a9c7d265bffec0c5fcf07133b320
       @unused offline: Boolean,
-      checkGradleModules: Boolean
+      checkGradleModules: Boolean,
+      config: mill.util.CoursierConfig
   ) {
+
+    // bin-compat shim
+    def this(
+        repositories: Seq[Repository],
+        bind: Dep => BoundDep,
+        mapDependencies: Option[Dependency => Dependency],
+        customizer: Option[coursier.core.Resolution => coursier.core.Resolution],
+        coursierCacheCustomizer: Option[
+          coursier.cache.FileCache[coursier.util.Task] => coursier.cache.FileCache[
+            coursier.util.Task
+          ]
+        ],
+        resolutionParams: ResolutionParams,
+        offline: Boolean,
+        checkGradleModules: Boolean
+    ) =
+      this(
+        repositories,
+        bind,
+        mapDependencies,
+        customizer,
+        coursierCacheCustomizer,
+        resolutionParams,
+        offline,
+        checkGradleModules,
+        mill.util.CoursierConfig.default()
+      )
 
     /**
      * Class path of the passed dependencies
@@ -260,7 +291,8 @@ object CoursierModule {
         coursierCacheCustomizer = coursierCacheCustomizer,
         ctx = Some(ctx),
         resolutionParams = resolutionParamsMapOpt.fold(resolutionParams)(_(resolutionParams)),
-        checkGradleModules = checkGradleModules
+        checkGradleModules = checkGradleModules,
+        config = config
       ).get
 
     /**
@@ -284,7 +316,8 @@ object CoursierModule {
         ctx = Some(ctx),
         resolutionParams = resolutionParams,
         boms = Nil,
-        checkGradleModules = checkGradleModules
+        checkGradleModules = checkGradleModules,
+        config = config
       ).get
     }
 
@@ -304,7 +337,8 @@ object CoursierModule {
         deps0.map(_.dep),
         sources = sources,
         ctx = Some(ctx),
-        checkGradleModules = checkGradleModules
+        checkGradleModules = checkGradleModules,
+        config = config
       ).get
     }
   }

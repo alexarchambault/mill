@@ -1,7 +1,7 @@
 package mill.scalalib
 
-import coursier.cache.FileCache
 import mill.api.Discover
+import mill.javalib.CoursierConfigModule
 import mill.testkit.UnitTester
 import mill.testkit.TestRootModule
 import utest.*
@@ -23,7 +23,8 @@ object CoursierMirrorTests extends TestSuite {
     sys.props("coursier.mirrors") = (resourcePath / "mirror.properties").toString
     test("readMirror") - UnitTester(CoursierTest, resourcePath).scoped { eval =>
       val Right(result) = eval.apply(CoursierTest.core.compileClasspath): @unchecked
-      val cacheRoot = os.Path(FileCache().location)
+      val Right(cacheResult) = eval.apply(CoursierConfigModule.defaultCacheLocation): @unchecked
+      val cacheRoot = os.Path(cacheResult.value)
       val cp = result.value
         .map(_.path)
         .filter(_.startsWith(cacheRoot))
