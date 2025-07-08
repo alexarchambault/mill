@@ -12,8 +12,17 @@ import java.net.URLClassLoader
 class RefCountedClassLoaderCache(
     sharedLoader: ClassLoader = null,
     sharedPrefixes: Seq[String] = Nil,
-    parent: ClassLoader = null
+    parent: ClassLoader = null,
+    extraRelease0: ClassLoader => Unit = _ => ()
 ) extends AutoCloseable {
+
+  // bin-compat stub
+  def this(
+    sharedLoader: ClassLoader,
+    sharedPrefixes: Seq[String],
+    parent: ClassLoader
+  ) =
+    this(sharedLoader, sharedPrefixes, parent, _ => ())
 
   private val cache = RefCountedCache[Seq[PathRef], Long, sourcecode.Enclosing, URLClassLoader](
     convertKey = _.hashCode,
@@ -31,7 +40,8 @@ class RefCountedClassLoaderCache(
     }
   )
 
-  def extraRelease(cl: ClassLoader): Unit = ()
+  def extraRelease(cl: ClassLoader): Unit =
+    extraRelease0(cl)
 
   def release(combinedCompilerJars: Seq[PathRef]): Option[(URLClassLoader, Int)] =
     cache.release(combinedCompilerJars).map { case RefCountedCache.Entry(value, refCount) =>
