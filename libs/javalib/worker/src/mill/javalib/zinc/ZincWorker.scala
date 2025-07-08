@@ -41,9 +41,8 @@ class ZincWorker(
 
   private val classloaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
-    sharedPrefixes = Seq("xsbti")
-  ) {
-    override def extraRelease(cl: ClassLoader): Unit = {
+    sharedPrefixes = Seq("xsbti"),
+    extraRelease0 = { (cl: ClassLoader) =>
       for {
         cls <- {
           try Some(cl.loadClass("scala.tools.nsc.classpath.FileBasedCache$"))
@@ -73,9 +72,8 @@ class ZincWorker(
 
         timer.cancel()
       }
-
     }
-  }
+  )
 
   private val scalaCompilerCache =
     new CachedFactoryWithInitData[
