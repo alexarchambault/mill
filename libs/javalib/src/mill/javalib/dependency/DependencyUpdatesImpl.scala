@@ -2,6 +2,7 @@ package mill.javalib.dependency
 
 import mill.api.*
 import mill.api.internal.RootModule0
+import mill.javalib.CoursierConfigModule
 import mill.javalib.dependency.updates.{DependencyUpdates, ModuleDependenciesUpdates, UpdatesFinder}
 import mill.javalib.dependency.versions.{ModuleDependenciesVersions, VersionsFinder}
 
@@ -12,12 +13,13 @@ object DependencyUpdatesImpl {
       ctx: TaskCtx,
       rootModule: RootModule0,
       discover: Discover,
-      allowPreRelease: Boolean
+      allowPreRelease: Boolean,
+      coursierConfigModule: CoursierConfigModule
   ): Seq[ModuleDependenciesUpdates] = {
 
     // 1. Find all available versions for each dependency
     val allDependencyVersions: Seq[ModuleDependenciesVersions] =
-      VersionsFinder.findVersions(evaluator, ctx, rootModule)
+      VersionsFinder.findVersions(evaluator, ctx, rootModule, coursierConfigModule)
 
     // 2. Extract updated versions from all available versions
     val allUpdates = allDependencyVersions.map { dependencyVersions =>
@@ -27,6 +29,23 @@ object DependencyUpdatesImpl {
     // 3. Return the results
     allUpdates
   }
+
+  @deprecated("Use the override accepting a CoursierConfigModule instead", "Mill after 1.0.0-RC3")
+  def apply(
+      evaluator: Evaluator,
+      ctx: TaskCtx,
+      rootModule: RootModule0,
+      discover: Discover,
+      allowPreRelease: Boolean
+  ): Seq[ModuleDependenciesUpdates] =
+    apply(
+      evaluator,
+      ctx,
+      rootModule,
+      discover,
+      allowPreRelease,
+      CoursierConfigModule
+    )
 
   def showAllUpdates(
       updates: Seq[ModuleDependenciesUpdates],

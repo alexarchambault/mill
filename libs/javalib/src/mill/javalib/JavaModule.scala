@@ -1185,7 +1185,8 @@ trait JavaModule
         customizer = resolutionCustomizer(),
         coursierCacheCustomizer = coursierCacheCustomizer(),
         resolutionParams = resolutionParams(),
-        checkGradleModules = checkGradleModules()
+        checkGradleModules = checkGradleModules(),
+        config = coursierConfigModule().coursierConfig()
       ).get
 
       val roots = whatDependsOn match {
