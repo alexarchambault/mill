@@ -120,6 +120,10 @@ class JvmWorkerImpl(
   private val classloaderCache: RefCountedClassLoaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
     sharedPrefixes = Seq("xsbti"),
+    sharedClass =
+      Some(
+        classOf[xsbti.api.DependencyContext]
+      ).filter(_.getClassLoader != getClass.getClassLoader),
     extraRelease = (cl: ClassLoader) => {
       for {
         cls <- {
