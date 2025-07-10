@@ -8,4 +8,4 @@ package mill.api
  *
  * @see [[PlanImpl.topoSorted]]
  */
-final class TopoSorted private[mill] (val values: IndexedSeq[mill.api.Task[?]])
+final class TopoSorted[T] private[mill] (val values: IndexedSeq[T])

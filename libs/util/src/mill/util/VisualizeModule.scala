@@ -4,7 +4,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import coursier.core.Repository
 import mill.api.{PathRef, Discover, Evaluator, ExternalModule, MultiBiMap, SelectMode}
 import mill.*
-import mill.api.{Result}
+import mill.api.{ResolvedNamedTask, ResolvedTask, Result, UnresolvedTask}
 import org.jgrapht.graph.{DefaultEdge, SimpleDirectedGraph}
 import guru.nidi.graphviz.attribute.Rank.RankDir
 import guru.nidi.graphviz.attribute.{Rank, Shape, Style}
@@ -18,9 +18,7 @@ object VisualizeModule extends ExternalModule {
 
   private type VizWorker = (
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )],
@@ -35,17 +33,17 @@ object VisualizeModule extends ExternalModule {
       planTasks: Option[List[Task.Named[?]]] = None
   ): Result[Seq[PathRef]] = {
     def callVisualizeModule(
-        tasks: List[Task.Named[Any]],
-        transitiveTasks: List[Task.Named[Any]]
+        transitiveTasks: List[UnresolvedTask[Any]]
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
-      val transitive = evaluator.transitiveTasks(tasks)
-      val topoSorted = evaluator.topoSorted(transitive)
-      val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
-        case x: Task.Named[Any] if transitiveTasks.contains(x) => x
-      }
       val plan = evaluator.plan(transitiveTasks)
-      in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
+      val transitive = evaluator.transitiveTasks0(plan.goals)(plan.inputs(_))
+      val topoSorted = evaluator.topoSorted0(transitive, plan.inputs)
+      val sortedGroups = evaluator.groupAroundImportantTasks0(topoSorted, plan) {
+        case t if t.asNamed.map(_.task).exists(n => transitiveTasks.exists(_.task == n)) =>
+          t.asNamed.get
+      }
+      in.put((sortedGroups, plan, ctx.dest))
       val res = out.take()
       res.map { v =>
         println(upickle.write(v.map(_.path.toString()), indent = 2))
@@ -55,9 +53,14 @@ object VisualizeModule extends ExternalModule {
 
     evaluator.resolveTasks(tasks, SelectMode.Multi).flatMap {
       rs =>
+        // FIXME Get those via the Seq[String]
+        val crossValues = Map.empty[String, String]
+        val rs0 = rs.map(_.unresolved(crossValues))
         planTasks match {
-          case Some(allRs) => callVisualizeModule(rs, allRs)
-          case None => callVisualizeModule(rs, rs)
+          case Some(allRs) =>
+            val allRs0 = allRs.map(_.unresolved(crossValues))
+            callVisualizeModule(allRs0)
+          case None => callVisualizeModule(rs0)
         }
     }
   }
@@ -90,9 +93,7 @@ object VisualizeModule extends ExternalModule {
    */
   private[mill] def worker: Worker[(
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )],
@@ -100,9 +101,7 @@ object VisualizeModule extends ExternalModule {
   )] = mill.api.Task.Worker {
     val in =
       new LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )]()
@@ -110,9 +109,9 @@ object VisualizeModule extends ExternalModule {
     val visualizeThread = new java.lang.Thread(() =>
       while (true) {
         val res = Result.Success {
-          val (tasks, transitiveTasks, sortedGroups, plan, dest) = in.take()
+          val (sortedGroups, plan, dest) = in.take()
 
-          val goalSet = transitiveTasks.toSet
+          val goalSet = plan.goals.toSet
           import guru.nidi.graphviz.model.Factory._
           val edgesIterator =
             for ((k, vs) <- sortedGroups.items())
@@ -120,8 +119,8 @@ object VisualizeModule extends ExternalModule {
                 k,
                 for {
                   v <- vs
-                  dest <- v.inputs.collect { case v: mill.api.Task.Named[Any] => v }
-                  if goalSet.contains(dest)
+                  dest <- plan.inputs(v).flatMap(_.asNamed)
+                  if goalSet.contains(dest.asTask)
                 } yield dest
               )
 
@@ -139,9 +138,9 @@ object VisualizeModule extends ExternalModule {
 
           org.jgrapht.alg.TransitiveReduction.INSTANCE.reduce(jgraph)
           val nodes = indexToTask.map(t =>
-            node(plan.sortedGroups.lookupValue(t).toString)
+            node(plan.sortedGroups.lookupValue(t.asTask).toString)
               .`with` {
-                if (tasks.contains(t)) Style.SOLID
+                if (goalSet.contains(t.asTask)) Style.SOLID
                 else Style.DASHED
               }
               .`with`(Shape.BOX)

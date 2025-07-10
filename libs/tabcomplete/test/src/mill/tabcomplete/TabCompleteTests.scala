@@ -211,6 +211,7 @@ object TabCompleteTests extends TestSuite {
             "--no-build-lock           Evaluate tasks / commands without acquiring an exclusive lock on the Mill output directory",
             "--tab-complete            Runs Mill in tab-completion mode",
             "--import                  <str> Additional ivy dependencies to load into mill, e.g. plugins.",
+            "--cross                   <k=v> Cross values",
             "--no-daemon               Run without a long-lived background daemon. Must be the first argument.",
             "--allow-positional        Allows command args to be passed positionally without `--arg` by default",
             "--watch                   Watch and re-run the given tasks when when their inputs change.",

@@ -11,10 +11,20 @@ object ExecutionPaths {
 
   def resolve(
       outPath: os.Path,
-      segments: Segments
+      segments: Segments,
+      crossValues: Map[String, String]
   ): ExecutionPaths = {
+    val crossValuesPart = crossValues
+      .toSeq
+      .sortBy(_._1)
+      .flatMap {
+        case (k, v) =>
+          Seq(k, v.toString /* FIXME */ )
+      }
     val segmentStrings = segments.parts
-    val taskPath = outPath / segmentStrings.map(sanitizePathSegment)
+    val taskPath = outPath /
+      segmentStrings.map(sanitizePathSegment) /
+      crossValuesPart.map(sanitizePathSegment)
     ExecutionPaths(
       taskPath / os.up / s"${taskPath.last}.dest",
       taskPath / os.up / s"${taskPath.last}.json",
@@ -24,8 +34,9 @@ object ExecutionPaths {
 
   def resolve(
       outPath: os.Path,
-      task: Task.Named[?]
-  ): ExecutionPaths = resolve(outPath, task.ctx.segments)
+      task: Task.Named[?],
+      crossValues: Map[String, String]
+  ): ExecutionPaths = resolve(outPath, task.ctx.segments, crossValues)
 
   // case-insensitive match on reserved names
   private val ReservedWinNames =

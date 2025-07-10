@@ -23,7 +23,7 @@ object JmhModuleTest extends TestSuite {
   def tests = Tests {
     test("jmh") {
       test("listJmhBenchmarks") - UnitTester(jmh, testModuleSourcesPath).scoped { eval =>
-        val paths = ExecutionPaths.resolve(eval.outPath, jmh.listJmhBenchmarks())
+        val paths = ExecutionPaths.resolve(eval.outPath, jmh.listJmhBenchmarks(), Map.empty)
         val outFile = paths.dest / "benchmarks.out"
         val Right(_) = eval(jmh.listJmhBenchmarks("-o", outFile.toString)): @unchecked
         val expected =

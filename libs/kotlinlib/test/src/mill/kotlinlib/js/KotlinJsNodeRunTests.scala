@@ -167,7 +167,7 @@ object KotlinJsNodeRunTests extends TestSuite {
   }
 
   private def assertLogContains(eval: UnitTester, command: Command[Unit], text: String): Unit = {
-    val log = ExecutionPaths.resolve(eval.outPath, command).log
+    val log = ExecutionPaths.resolve(eval.outPath, command, Map.empty).log
     assert(os.read(log).contains(text))
   }
 

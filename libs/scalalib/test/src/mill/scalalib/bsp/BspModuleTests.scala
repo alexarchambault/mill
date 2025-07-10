@@ -104,7 +104,11 @@ object BspModuleTests extends TestSuite {
           eval,
           needsToMerge = false,
           expectedPath =
-            ExecutionPaths.resolve(eval.outPath, MultiBase.HelloBsp.compile).dest / "classes"
+            ExecutionPaths.resolve(
+              eval.outPath,
+              MultiBase.HelloBsp.compile,
+              Map.empty
+            ).dest / "classes"
         )
       }
 
@@ -115,7 +119,8 @@ object BspModuleTests extends TestSuite {
             needsToMerge = true,
             expectedPath = ExecutionPaths.resolve(
               eval.outPath,
-              MultiBase.HelloBsp.bspBuildTargetCompileMerged
+              MultiBase.HelloBsp.bspBuildTargetCompileMerged,
+              Map.empty
             ).dest
           )
       }
