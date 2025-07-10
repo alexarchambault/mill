@@ -4,6 +4,7 @@ import mill.api.*
 import mill.api.daemon.*
 import mill.api.daemon.internal.*
 import mill.api.internal.*
+import scala.reflect.ClassTag
 
 final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   private def delegate = delegate0()
@@ -70,23 +71,22 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       resolveToModuleTasks
     )
   }
-  def plan(tasks: Seq[Task[?]]): Plan = delegate.plan(tasks)
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan = delegate.plan(tasks)
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
+  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted[Task[?]])(
       important: PartialFunction[
         Task[?],
         T
       ]
   ): MultiBiMap[T, Task[?]] = delegate.groupAroundImportantTasks(topoSortedTasks)(important)
 
-  def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]] =
-    delegate.transitiveTasks(sourceTasks)
-
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted =
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted[Task[?]] =
     delegate.topoSorted(transitiveTasks)
+  def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T] =
+    delegate.topoSorted0(transitiveTasks, inputs)
 
   def execute[T](
-      tasks: Seq[Task[T]],
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,

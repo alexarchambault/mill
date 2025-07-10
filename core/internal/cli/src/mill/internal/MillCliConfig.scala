@@ -35,6 +35,10 @@ case class MillCliConfig(
     )
     extraSystemProperties: Map[String, String] = Map(),
     @arg(
+      doc = """Cross values"""
+    )
+    cross: Map[String, String] = Map(),
+    @arg(
       name = "jobs",
       short = 'j',
       doc =
@@ -118,7 +122,7 @@ case class MillCliConfig(
     offline: Flag = Flag(),
     @arg(
       doc = """
-        Globally disables the checks that prevent you from reading and writing to disallowed 
+        Globally disables the checks that prevent you from reading and writing to disallowed
         files or folders during evaluation. Useful as an escape hatch in case you desperately
         need to do something unusual and you are willing to take the risk
       """

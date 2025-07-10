@@ -6,13 +6,18 @@ import mill.api.TestGraphs
 import utest.*
 
 import scala.collection.mutable
+import mill.api.UnresolvedTask
+import mill.api.ResolvedTask
 
 object PlanTests extends TestSuite {
-  def checkTopological(tasks: Seq[Task[?]]) = {
-    val seen = mutable.Set.empty[Task[?]]
+  def checkTopological(
+      tasks: Seq[ResolvedTask[?]],
+      inputs: Map[ResolvedTask[?], Seq[ResolvedTask[?]]]
+  ) = {
+    val seen = mutable.Set.empty[ResolvedTask[?]]
     for (t <- tasks.reverseIterator) {
       seen.add(t)
-      for (upstream <- t.inputs) {
+      for (upstream <- inputs(t)) {
         assert(!seen(upstream))
       }
     }
@@ -23,40 +28,48 @@ object PlanTests extends TestSuite {
     import TestGraphs._
 
     test("topoSortedTransitiveTasks") {
-      def check(tasks: Seq[Task[?]], expected: Seq[Task[?]]) = {
-        val result = PlanImpl.topoSorted(PlanImpl.transitiveTasks(tasks)).values
-        checkTopological(result)
+      def check(tasks: Seq[UnresolvedTask[?]], expected: Seq[ResolvedTask[?]]) = {
+        val result = PlanImpl.plan0(tasks)
+        checkTopological(result.goals, result.inputs)
         assert(result == expected)
       }
 
       test("singleton") - check(
-        tasks = Seq(singleton.single),
-        expected = Seq(singleton.single)
+        tasks = Seq(singleton.single).map(UnresolvedTask(_, Map.empty)),
+        expected = Seq(singleton.single).map(ResolvedTask(_, Map.empty))
       )
       test("backtickIdentifiers") - check(
-        tasks = Seq(bactickIdentifiers.`a-down-task`),
-        expected = Seq(bactickIdentifiers.`up-task`, bactickIdentifiers.`a-down-task`)
+        tasks = Seq(bactickIdentifiers.`a-down-task`).map(UnresolvedTask(_, Map.empty)),
+        expected = Seq(
+          bactickIdentifiers.`up-task`,
+          bactickIdentifiers.`a-down-task`
+        ).map(ResolvedTask(_, Map.empty))
       )
       test("pair") - check(
-        tasks = Seq(pair.down),
-        expected = Seq(pair.up, pair.down)
+        tasks = Seq(pair.down).map(UnresolvedTask(_, Map.empty)),
+        expected = Seq(pair.up, pair.down).map(ResolvedTask(_, Map.empty))
       )
       test("anonTriple") - check(
-        tasks = Seq(anonTriple.down),
-        expected = Seq(anonTriple.up, anonTriple.down.inputs(0), anonTriple.down)
+        tasks = Seq(anonTriple.down).map(UnresolvedTask(_, Map.empty)),
+        expected = Seq(
+          anonTriple.up,
+          anonTriple.down.inputs(0),
+          anonTriple.down
+        ).map(ResolvedTask(_, Map.empty))
       )
       test("diamond") - check(
-        tasks = Seq(diamond.down),
-        expected = Seq(diamond.up, diamond.left, diamond.right, diamond.down)
+        tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
+        expected =
+          Seq(diamond.up, diamond.left, diamond.right, diamond.down).map(ResolvedTask(_, Map.empty))
       )
       test("anonDiamond") - check(
-        tasks = Seq(diamond.down),
+        tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
         expected = Seq(
           diamond.up,
           diamond.down.inputs(0),
           diamond.down.inputs(1),
           diamond.down
-        )
+        ).map(ResolvedTask(_, Map.empty))
       )
     }
     test("groupAroundNamedTasks") {
@@ -66,22 +79,24 @@ object PlanTests extends TestSuite {
           expected: Seq[(R, Int)]
       ) = {
 
-        val topoSorted = PlanImpl.topoSorted(PlanImpl.transitiveTasks(Seq(task(base))))
+        val plan = PlanImpl.plan0(Seq(UnresolvedTask(task(base), Map.empty)))
 
         val important = important0.map(_(base))
-        val grouped = PlanImpl.groupAroundImportantTasks(topoSorted) {
-          case t: Task.Computed[_] if important.contains(t) => t: Simple[?]
+        val grouped = PlanImpl.groupAroundImportantTasks(plan.topoSorted, plan.inputs(_)) {
+          case ResolvedTask(t: Task.Computed[_], _) if important.contains(t) => t: Simple[?]
         }
         val flattened = Seq.from(grouped.values().flatten)
 
-        checkTopological(flattened)
+        checkTopological(flattened, plan.inputs)
         for ((terminal, expectedSize) <- expected) {
           val grouping = grouped.lookupKey(terminal)
           assert(
             grouping.size == expectedSize,
-            grouping.flatMap(_.asSimple: Option[Simple[?]]).filter(important.contains) == Seq(
-              terminal
-            )
+            grouping
+              .filter(_._2.isEmpty)
+              .flatMap(_.task.asSimple: Option[Simple[?]])
+              .filter(important.contains) ==
+              Seq(terminal)
           )
         }
       }
@@ -132,12 +147,11 @@ object PlanTests extends TestSuite {
     test("multiTerminalGroupCounts") {
       def countGroups(goals: Task[?]*) = {
 
-        val topoSorted = PlanImpl.topoSorted(
-          PlanImpl.transitiveTasks(Seq.from(goals))
-        )
-        val grouped = PlanImpl.groupAroundImportantTasks(topoSorted) {
-          case t: Task.Named[Any] => t
-          case t if goals.contains(t) => t
+        val plan = PlanImpl.plan0(goals.map(UnresolvedTask(_, Map.empty)))
+
+        val grouped = PlanImpl.groupAroundImportantTasks(plan.topoSorted, plan.inputs(_)) {
+          case ResolvedTask(t: Task.Named[Any], _) => t
+          case t if goals.contains(t.task) => t.task
         }
         grouped.keyCount
       }
