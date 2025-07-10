@@ -1,6 +1,7 @@
 package build.libs.util
 
 // imports
+import com.github.lolgab.mill.mima.{DirectMissingMethodProblem, ProblemFilter}
 import mill._
 import mill.scalalib._
 import mill.contrib.buildinfo.BuildInfo
@@ -75,4 +76,10 @@ object `package` extends MillStableScalaModule with BuildInfo {
     BuildInfo.Value("millVersion", build.millVersion(), "Mill version."),
     BuildInfo.Value("millBinPlatform", build.millBinPlatform(), "Mill binary platform version.")
   )
+
+  override def mimaBinaryIssueFilters: T[Seq[ProblemFilter]] =
+    super.mimaBinaryIssueFilters() ++ Seq(
+      // internal APIs
+      ProblemFilter.exclude[DirectMissingMethodProblem]("mill.util.Jvm.reposFromStrings")
+    )
 }
