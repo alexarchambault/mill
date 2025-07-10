@@ -4,12 +4,14 @@ import mill.api.daemon.internal.{CompileProblemReporter, TestReporter}
 import mill.api.*
 import mill.api.daemon.Watchable
 import mill.api.BuildCtx
+import mill.api.ResolvedTask
 import mill.api.daemon.internal.{EvaluatorApi, TaskApi}
 import mill.api.internal.RootModule0
 
 import scala.util.DynamicVariable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
+import scala.reflect.ClassTag
 
 /**
  * An API that allows you to resolve, plan, and execute Mill tasks.
@@ -55,9 +57,9 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       resolveToModuleTasks: Boolean = false
   ): mill.api.Result[List[Either[Module, Task.Named[?]]]]
 
-  def plan(tasks: Seq[Task[?]]): Plan
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan0
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
+  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted[Task[?]])(
       important: PartialFunction[
         Task[?],
         T
@@ -70,17 +72,31 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
    */
   def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]]
 
+  def transitiveTasks0(plan: Plan0, sourceTasks: Seq[ResolvedTask[?]]): IndexedSeq[ResolvedTask[?]]
+
   /**
    * Takes the given tasks, finds all the tasks they transitively depend
    * on, and sort them topologically. Fails if there are dependency cycles
    */
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted[Task[?]]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): Evaluator.Result[T] =
-    execute[T](tasks.map(_.asInstanceOf[Task[T]]))
+  def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T]
+
+  private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, String]
+  ): Evaluator.Result[T] =
+    execute[T](
+      tasks.map {
+        case task: Task[T] => task
+        case _ => ???
+      },
+      crossValues
+    )
 
   def execute[T](
       tasks: Seq[Task[T]],
+      crossValues: Map[String, String] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -97,6 +113,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, String],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -105,7 +122,11 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): EvaluatorApi.Result[T] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
-        tasks.map(_.asInstanceOf[Task[T]]),
+        tasks.map {
+          case task: Task[T] => task
+          case _ => ???
+        },
+        crossValues,
         reporter,
         testReporter,
         logger,
@@ -150,7 +171,7 @@ object Evaluator {
   final case class Result[T](
       watchable: Seq[Watchable],
       values: mill.api.Result[Seq[T]],
-      selectedTasks: Seq[Task[?]],
+      selectedTasks: Seq[ResolvedTask[?]],
       executionResults: ExecutionResults
   ) extends EvaluatorApi.Result[T]
 

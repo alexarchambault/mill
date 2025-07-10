@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import scala.collection.mutable
 import scala.concurrent.*
+import mill.api.ResolvedTask
+import mill.api.UnresolvedTask
 
 /**
  * Core logic of evaluating tasks, without any user-facing helper methods
@@ -84,7 +86,7 @@ private[mill] case class Execution(
    * @param testReporter Listener for test events like start, finish with success/error
    */
   def executeTasks(
-      goals: Seq[Task[?]],
+      goals: Seq[UnresolvedTask[?]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -98,7 +100,7 @@ private[mill] case class Execution(
   }
 
   private def execute0(
-      goals: Seq[Task[?]],
+      goals: Seq[UnresolvedTask[?]],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
@@ -107,32 +109,37 @@ private[mill] case class Execution(
     os.makeDir.all(outPath)
 
     val threadNumberer = new ThreadNumberer()
-    val plan = PlanImpl.plan(goals)
-    val interGroupDeps = Execution.findInterGroupDeps(plan.sortedGroups)
+    val plan = PlanImpl.plan0(goals)
+    val interGroupDeps = Execution.findInterGroupDeps(plan.sortedGroups, plan.inputs)
     val terminals0 = plan.sortedGroups.keys().toVector
     val failed = new AtomicBoolean(false)
     val count = new AtomicInteger(1)
     val rootFailedCount = new AtomicInteger(0) // Track only root failures
     val indexToTerminal = plan.sortedGroups.keys().toArray
 
-    ExecutionLogs.logDependencyTree(interGroupDeps, indexToTerminal, outPath)
+    ExecutionLogs.logDependencyTree(
+      interGroupDeps,
+      indexToTerminal,
+      outPath,
+      _.displayName
+    )
 
     // Prepare a lookup tables up front of all the method names that each class owns,
     // and the class hierarchy, so during evaluation it is cheap to look up what class
     // each task belongs to determine of the enclosing class code signature changed.
     val (classToTransitiveClasses, allTransitiveClassMethods) =
-      CodeSigUtils.precomputeMethodNamesPerClass(PlanImpl.transitiveNamed(goals))
+      CodeSigUtils.precomputeMethodNamesPerClass(plan.transitive.flatMap(_.asNamed))
 
-    val uncached = new ConcurrentHashMap[Task[?], Unit]()
-    val changedValueHash = new ConcurrentHashMap[Task[?], Unit]()
+    val uncached = new ConcurrentHashMap[ResolvedTask[?], Unit]()
+    val changedValueHash = new ConcurrentHashMap[ResolvedTask[?], Unit]()
 
-    val futures = mutable.Map.empty[Task[?], Future[Option[GroupExecution.Results]]]
+    val futures = mutable.Map.empty[ResolvedTask[?], Future[Option[GroupExecution.Results]]]
 
     def formatHeaderPrefix(countMsg: String, keySuffix: String) =
       s"$countMsg$keySuffix${Execution.formatFailedCount(rootFailedCount.get())}"
 
     def evaluateTerminals(
-        terminals: Seq[Task[?]],
+        terminals: Seq[ResolvedTask[?]],
         exclusive: Boolean
     ) = {
       val forkExecutionContext =
@@ -148,14 +155,14 @@ private[mill] case class Execution(
         val deps = interGroupDeps(terminal)
 
         val group = plan.sortedGroups.lookupKey(terminal)
-        val exclusiveDeps = deps.filter(d => d.isExclusiveCommand)
+        val exclusiveDeps = deps.filter(d => d.task.isExclusiveCommand)
 
-        if (!terminal.isExclusiveCommand && exclusiveDeps.nonEmpty) {
+        if (!terminal.task.isExclusiveCommand && exclusiveDeps.nonEmpty) {
           val failure = ExecResult.Failure(
-            s"Non-exclusive task ${terminal} cannot depend on exclusive task " +
-              exclusiveDeps.mkString(", ")
+            s"Non-exclusive task ${terminal.task} cannot depend on exclusive task " +
+              exclusiveDeps.map(_.task).mkString(", ")
           )
-          val taskResults: Map[Task[?], ExecResult.Failing[Nothing]] = group
+          val taskResults: Map[ResolvedTask[?], ExecResult.Failing[Nothing]] = group
             .map(t => (t, failure))
             .toMap
 
@@ -190,12 +197,12 @@ private[mill] case class Execution(
                 // should we log progress?
                 val inputResults = for {
                   task <- group.toIndexedSeq.filterNot(upstreamResults.contains)
-                  item <- task.inputs.filterNot(group.contains)
+                  item <- plan.inputs(task).filterNot(group.contains)
                 } yield upstreamResults(item).map(_._1)
                 val logRun = inputResults.forall(_.isInstanceOf[ExecResult.Success[?]])
 
                 val tickerPrefix =
-                  if (logRun && logger.prompt.enableTicker) terminal.toString else ""
+                  if (logRun && logger.prompt.enableTicker) terminal.displayName else ""
 
                 val contextLogger = new PrefixLogger(
                   logger0 = logger,
@@ -208,6 +215,7 @@ private[mill] case class Execution(
                 val res = executeGroupCached(
                   terminal = terminal,
                   group = plan.sortedGroups.lookupKey(terminal).toSeq,
+                  inputsMap = plan.inputs,
                   results = upstreamResults,
                   countMsg = countMsg,
                   zincProblemReporter = reporter,
@@ -237,7 +245,7 @@ private[mill] case class Execution(
 
                 val threadId = threadNumberer.getThreadId(Thread.currentThread())
                 chromeProfileLogger.log(
-                  terminal.toString,
+                  terminal.displayName,
                   "job",
                   startTime,
                   duration,
@@ -249,7 +257,7 @@ private[mill] case class Execution(
                 if (res.valueHashChanged) changedValueHash.put(terminal, ())
 
                 profileLogger.log(
-                  terminal.toString,
+                  terminal.displayName,
                   duration,
                   res.cached,
                   res.valueHashChanged,
@@ -273,16 +281,18 @@ private[mill] case class Execution(
       terminals.map(t => (t, Await.result(futures(t), duration.Duration.Inf)))
     }
 
-    val tasks0 = terminals0.filter {
+    val tasks0 = terminals0.filter(_.task match {
       case _: Task.Command[_] => false
       case _ => true
-    }
+    })
 
-    val tasksTransitive = PlanImpl.transitiveTasks(Seq.from(tasks0)).toSet
-    val (tasks, leafExclusiveCommands) = terminals0.partition {
-      case t: Task.Named[_] => tasksTransitive.contains(t) || !t.isExclusiveCommand
-      case _ => !serialCommandExec
-    }
+    val tasksTransitive = PlanImpl.transitiveTasks0(plan, Seq.from(tasks0)).toSet
+    val (tasks, leafExclusiveCommands) = terminals0.partition(at =>
+      at.task match {
+        case t: Task.Named[_] => tasksTransitive.contains(at) || !t.isExclusiveCommand
+        case _ => !serialCommandExec
+      }
+    )
 
     // Run all non-command tasks according to the threads
     // given but run the commands in linear order
@@ -299,10 +309,16 @@ private[mill] case class Execution(
       indexToTerminal,
       outPath,
       uncached,
-      changedValueHash
+      changedValueHash,
+      _.displayName,
+      drop = task =>
+        task.task match {
+          case _: Task.Input[?] => true
+          case _ => false
+        }
     )
 
-    val results0: Vector[(Task[?], ExecResult[(Val, Int)])] = terminals0
+    val results0: Vector[(ResolvedTask[?], ExecResult[(Val, Int)])] = terminals0
       .map { t =>
         finishedOptsMap(t) match {
           case None => (t, ExecResult.Skipped)
@@ -318,10 +334,11 @@ private[mill] case class Execution(
         }
       }
 
-    val results: Map[Task[?], ExecResult[(Val, Int)]] = results0.toMap
+    val results: Map[ResolvedTask[?], ExecResult[(Val, Int)]] = results0.toMap
 
     Execution.Results(
-      goals.toIndexedSeq.map(results(_).map(_._1)),
+      plan.goals,
+      plan.goals.toIndexedSeq.map(results(_).map(_._1)),
       finishedOptsMap.values.flatMap(_.toSeq.flatMap(_.newEvaluated)).toSeq,
       results.map { case (k, v) => (k, v.map(_._1)) }
     )
@@ -343,13 +360,13 @@ private[mill] object Execution {
     if (count > 0) s", $count failed" else ""
   }
 
-  def findInterGroupDeps(sortedGroups: MultiBiMap[Task[?], Task[?]])
-      : Map[Task[?], Seq[Task[?]]] = {
+  def findInterGroupDeps[T](sortedGroups: MultiBiMap[T, T], inputs: Map[T, Seq[T]])
+      : Map[T, Seq[T]] = {
     sortedGroups
       .items()
       .map { case (terminal, group) =>
         terminal -> Seq.from(group)
-          .flatMap(_.inputs)
+          .flatMap(inputs(_))
           .filterNot(group.contains)
           .distinct
           .map(sortedGroups.lookupValue)
@@ -358,8 +375,9 @@ private[mill] object Execution {
       .toMap
   }
   private[Execution] case class Results(
+      goals: Seq[ResolvedTask[?]],
       results: Seq[ExecResult[Val]],
-      uncached: Seq[Task[?]],
-      transitiveResults: Map[Task[?], ExecResult[Val]]
+      uncached: Seq[ResolvedTask[?]],
+      transitiveResults: Map[ResolvedTask[?], ExecResult[Val]]
   ) extends mill.api.ExecutionResults
 }

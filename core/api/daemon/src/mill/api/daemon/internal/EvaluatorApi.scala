@@ -13,6 +13,7 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, String] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -22,7 +23,14 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val)]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): EvaluatorApi.Result[T]
+  final private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]]
+  ): EvaluatorApi.Result[T] =
+    executeApi(tasks, Map.empty)
+  private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]],
+      crossValues: Map[String, String]
+  ): EvaluatorApi.Result[T]
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
   private[mill] def outPathJava: java.nio.file.Path
@@ -32,17 +40,19 @@ object EvaluatorApi {
     def watchable: Seq[Watchable]
     def values: mill.api.daemon.Result[Seq[T]]
 
-    def selectedTasks: Seq[TaskApi[?]]
+    def selectedTasks: Seq[AppliedTaskApi[?]]
     def executionResults: ExecutionResultsApi
   }
 }
 
 trait ExecutionResultsApi {
   def results: Seq[ExecResult[Val]]
-  private[mill] def transitiveResultsApi: Map[TaskApi[?], ExecResult[Val]]
+  private[mill] def transitiveResultsApi: Map[AppliedTaskApi[?], ExecResult[Val]]
+  private[mill] def transitiveTaskResultsApi(task: TaskApi[?])
+      : Seq[(AppliedTaskApi[?], ExecResult[Val])]
 
-  private[mill] def transitiveFailingApi: Map[TaskApi[?], ExecResult.Failing[Val]]
-  def uncached: Seq[TaskApi[?]]
+  private[mill] def transitiveFailingApi: Map[AppliedTaskApi[?], ExecResult.Failing[Val]]
+  def uncached: Seq[AppliedTaskApi[?]]
 
   def values: Seq[Val]
 }
@@ -54,7 +64,7 @@ object ExecutionResultsApi {
           case ExecResult.Failure(t) => t
           case ex: ExecResult.Exception => ex.toString
         }
-        s"$k $fss"
+        s"${k.displayName} $fss"
       }).mkString("\n")
   }
 
