@@ -12,8 +12,6 @@ import mill.util.Jvm
 import mill.T
 
 import scala.annotation.unused
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 /**
  * This module provides the capability to resolve (transitive) dependencies from (remote) repositories.
@@ -104,12 +102,7 @@ trait CoursierModule extends mill.api.Module {
 
   // Bincompat stub
   private[mill] def repositoriesTask0 = Task.Anon {
-    val resolve = Resolve()
-    val repos = Await.result(
-      resolve.finalRepositories.future()(using resolve.cache.ec),
-      Duration.Inf
-    )
-    Jvm.reposFromStrings(repositories()).map(_ ++ repos)
+    Jvm.reposFromStrings("default" +: repositories(), Resolve.defaultRepositories)
   }
 
   /**
@@ -135,8 +128,12 @@ trait CoursierModule extends mill.api.Module {
    *
    * - https://maven.google.com
    *   Google-managed repository that distributes some Android artifacts in particular
+   *
+   * - default
+   *   The default repositories, that might have been changed via COURSIER_REPOSITORIES in the environment,
+   *   the coursier.repositories Java property, or the Scala CLI configuration file
    */
-  def repositories: T[Seq[String]] = Task { Seq.empty[String] }
+  def repositories: T[Seq[String]] = Task { Seq("default") }
 
   /**
    * The repositories used to resolve dependencies
