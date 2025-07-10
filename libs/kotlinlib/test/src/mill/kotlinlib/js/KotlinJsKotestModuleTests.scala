@@ -46,7 +46,7 @@ object KotlinJsKotestModuleTests extends TestSuite {
           eval.apply(command): @unchecked
 
         val xmlReport =
-          ExecutionPaths.resolve(eval.outPath, command).dest / "test-report.xml"
+          ExecutionPaths.resolve(eval.outPath, command, Map.empty).dest / "test-report.xml"
 
         assert(
           os.exists(xmlReport),

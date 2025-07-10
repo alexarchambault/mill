@@ -4,6 +4,7 @@ import mill.api.*
 import mill.api.daemon.*
 import mill.api.daemon.internal.*
 import mill.api.internal.*
+import scala.reflect.ClassTag
 
 final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   private def delegate = delegate0()
@@ -56,9 +57,9 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       resolveToModuleTasks
     )
   }
-  def plan(tasks: Seq[Task[?]]): Plan = delegate.plan(tasks)
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan0 = delegate.plan(tasks)
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
+  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted[Task[?]])(
       important: PartialFunction[
         Task[?],
         T
@@ -67,12 +68,20 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
 
   def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]] =
     delegate.transitiveTasks(sourceTasks)
+  def transitiveTasks0(
+      plan: Plan0,
+      sourceTasks: Seq[ResolvedTask[?]]
+  ): IndexedSeq[ResolvedTask[?]] =
+    delegate.transitiveTasks0(plan, sourceTasks)
 
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted =
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted[Task[?]] =
     delegate.topoSorted(transitiveTasks)
+  def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T] =
+    delegate.topoSorted0(transitiveTasks, inputs)
 
   def execute[T](
       tasks: Seq[Task[T]],
+      crossValues: Map[String, String] = Map.empty,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -81,6 +90,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   ): Evaluator.Result[T] = {
     delegate.execute(
       tasks,
+      crossValues,
       reporter,
       testReporter,
       logger,
