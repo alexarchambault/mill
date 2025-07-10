@@ -1,7 +1,6 @@
 package mill.init
 
-import mill.api.Val
-import mill.api.Discover
+import mill.api.{Discover, UnresolvedTask, Val}
 import mill.testkit.UnitTester
 import mill.testkit.TestRootModule
 import utest._
@@ -28,7 +27,10 @@ object InitModuleTests extends TestSuite {
         errStream = new PrintStream(OutputStream.nullOutputStream(), true)
       ).scoped { evaluator =>
 
-        val results = evaluator.evaluator.execute(Seq(initmodule.init(None))).executionResults
+        val results = evaluator.evaluator.execute(Seq(UnresolvedTask(
+          initmodule.init(None),
+          Map.empty
+        ))).executionResults
 
         assert(results.transitiveFailing.size == 0)
 
@@ -54,7 +56,10 @@ object InitModuleTests extends TestSuite {
 
         val nonExistingModuleId = "nonExistingExampleId"
         val results = evaluator.evaluator.execute(Seq(
-          initmodule.init(Some(nonExistingModuleId))
+          UnresolvedTask(
+            initmodule.init(Some(nonExistingModuleId)),
+            Map.empty
+          )
         )).executionResults
         assert(results.transitiveFailing.size == 1)
         val err = errStream.toString
@@ -91,7 +96,12 @@ object InitModuleTests extends TestSuite {
       ).scoped { evaluator =>
 
         val results = evaluator.evaluator.execute(
-          Seq(initmodule.init(Some("scalalib/basic/1-simple")))
+          Seq(
+            UnresolvedTask(
+              initmodule.init(Some("scalalib/basic/1-simple")),
+              Map.empty
+            )
+          )
         ).executionResults
 
         val expected =

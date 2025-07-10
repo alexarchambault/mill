@@ -12,7 +12,7 @@ trait EvaluatorApi extends AutoCloseable {
   ): Result[EvaluatorApi.Result[Any]]
 
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
+      tasks: Seq[UnresolvedTaskApi[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -22,7 +22,13 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val)]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): EvaluatorApi.Result[T]
+  // final private[mill] def executeApi[T](
+  //     tasks: Seq[UnresolvedTaskApi[T]]
+  // ): EvaluatorApi.Result[T] =
+  //   executeApi(tasks, Map.empty)
+  private[mill] def executeApi[T](
+      tasks: Seq[UnresolvedTaskApi[T]]
+  ): EvaluatorApi.Result[T]
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
   private[mill] def outPathJava: java.nio.file.Path
@@ -32,17 +38,20 @@ object EvaluatorApi {
     def watchable: Seq[Watchable]
     def values: mill.api.daemon.Result[Seq[T]]
 
-    def selectedTasks: Seq[TaskApi[?]]
+    def selectedTasks: Seq[ResolvedTaskApi[?]]
     def executionResults: ExecutionResultsApi
   }
 }
 
 trait ExecutionResultsApi {
+  def goals: Seq[ResolvedTaskApi[?]]
   def results: Seq[ExecResult[Val]]
-  private[mill] def transitiveResultsApi: Map[TaskApi[?], ExecResult[Val]]
+  private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]]
+  private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
+      : Seq[(ResolvedTaskApi[?], ExecResult[Val])]
 
-  private[mill] def transitiveFailingApi: Map[TaskApi[?], ExecResult.Failing[Val]]
-  def uncached: Seq[TaskApi[?]]
+  private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]]
+  def uncached: Seq[ResolvedTaskApi[?]]
 
   def values: Seq[Val]
 }
@@ -54,7 +63,7 @@ object ExecutionResultsApi {
           case ExecResult.Failure(t) => t
           case ex: ExecResult.Exception => ex.toString
         }
-        s"$k $fss"
+        s"${k.displayName} $fss"
       }).mkString("\n")
   }
 

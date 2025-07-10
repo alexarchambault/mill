@@ -69,7 +69,7 @@ object MultiModuleTests extends TestSuite {
 
         val Right(result) = evaluator(command): @unchecked
 
-        val paths = ExecutionPaths.resolve(evaluator.outPath, command)
+        val paths = ExecutionPaths.resolve(evaluator.outPath, command, Map.empty)
         val log = os.read(paths.log)
         assert(
           result.evalCount > 0,

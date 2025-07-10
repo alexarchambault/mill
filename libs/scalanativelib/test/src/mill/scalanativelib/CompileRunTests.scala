@@ -135,7 +135,7 @@ object CompileRunTests extends TestSuite {
           HelloNativeWorld.build(scalaVersion, scalaNativeVersion, mode).nativeLink
         val Right(result) = eval(task): @unchecked
 
-        val paths = ExecutionPaths.resolve(eval.outPath, task)
+        val paths = ExecutionPaths.resolve(eval.outPath, task, Map.empty)
         val stdout = os.proc(paths.dest / "out").call().out.lines()
         assert(
           stdout.contains("Hello Scala Native"),

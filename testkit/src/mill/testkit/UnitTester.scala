@@ -7,6 +7,7 @@ import mill.constants.OutFiles.millChromeProfile
 import mill.constants.OutFiles.millProfile
 import mill.api.Evaluator
 import mill.api.SelectMode
+import mill.api.UnresolvedTask
 import mill.internal.JsonArrayLogger
 import mill.resolve.Resolve
 
@@ -150,13 +151,21 @@ class UnitTester(
       Resolve.Tasks.resolve(evaluator.rootModule, args, SelectMode.Separated)
     } match {
       case Result.Failure(err) => Left(ExecResult.Failure(err))
-      case Result.Success(resolved) => apply(resolved)
+      case Result.Success(resolved) =>
+        val crossValues = Map.empty[String, String] // FIXME Get these from args
+        apply(resolved, crossValues)
     }
   }
 
-  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
-    apply(Seq(task)) match {
-      case Left(f) => Left(f.asInstanceOf[ExecResult.Failing[T]])
+  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] =
+    apply(task, Map.empty)
+
+  def apply[T](
+      task: Task[T],
+      crossValues: Map[String, String]
+  ): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
+    apply(Seq(task), crossValues) match {
+      case Left(f) => Left(f.as[T])
       case Right(UnitTester.Result(Seq(v), i)) =>
         Right(UnitTester.Result(v.asInstanceOf[T], i))
       case _ => ???
@@ -165,23 +174,28 @@ class UnitTester(
 
   @targetName("applyTasks")
   def apply(
-      tasks: Seq[Task[?]]
+      tasks: Seq[Task[?]],
+      crossValues: Map[String, String] = Map.empty
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks).executionResults
+    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
 
     if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
     else {
-      val values = evaluated.results.map(_.asInstanceOf[ExecResult.Success[Val]].value.value)
+      val values = evaluated.results.map {
+        case s: ExecResult.Success[Val] => s.value.value
+        case _ => sys.error("Cannot happen")
+      }
       val evalCount = evaluated
         .uncached
-        .collect {
+        .map(_.task)
+        .count {
           case t: Task.Computed[_]
               if module.moduleInternal.simpleTasks.contains(t)
-                && !t.ctx.external => t
-          case t: Task.Command[_] => t
+                && !t.ctx.external => true
+          case _: Task.Command[_] => true
+          case _ => false
         }
-        .size
 
       Right(UnitTester.Result(values, evalCount))
     }
@@ -190,11 +204,12 @@ class UnitTester(
 
   def fail(
       task: Task.Simple[?],
+      crossValues: Map[String, String],
       expectedFailCount: Int,
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(task)).executionResults
+    val res = evaluator.execute(Seq(UnresolvedTask(task, crossValues))).executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
@@ -207,10 +222,18 @@ class UnitTester(
   }
 
   def check(tasks: Seq[Task[?]], expected: Seq[Task[?]]): Unit = {
+    check(tasks, Map.empty, expected)
+  }
 
-    val evaluated = evaluator.execute(tasks).executionResults
+  def check(
+      tasks: Seq[Task[?]],
+      crossValues: Map[String, String],
+      expected: Seq[Task[?]]
+  ): Unit = {
+
+    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
       .uncached
-      .flatMap(_.asSimple)
+      .flatMap(_.task.asSimple)
       .filter(module.moduleInternal.simpleTasks.contains)
       .filter(!_.isInstanceOf[Task.Input[?]])
     assert(

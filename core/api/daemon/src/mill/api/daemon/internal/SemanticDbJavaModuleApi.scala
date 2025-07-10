@@ -14,12 +14,12 @@ object SemanticDbJavaModuleApi {
 
   private[mill] val contextSemanticDbVersion: InheritableThreadLocal[Option[String]] =
     new InheritableThreadLocal[Option[String]] {
-      protected override def initialValue(): Option[String] = None.asInstanceOf[Option[String]]
+      protected override def initialValue(): Option[String] = Option.empty[String]
     }
 
   private[mill] val contextJavaSemanticDbVersion: InheritableThreadLocal[Option[String]] =
     new InheritableThreadLocal[Option[String]] {
-      protected override def initialValue(): Option[String] = None.asInstanceOf[Option[String]]
+      protected override def initialValue(): Option[String] = Option.empty[String]
     }
 
   private[mill] def resetContext(): Unit = {

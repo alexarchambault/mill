@@ -31,7 +31,8 @@ object UnresolvedPath {
     override def resolve(outPath: os.Path): os.Path = {
       ExecutionPaths.resolve(
         outPath,
-        Segments(segments.map(Segment.Label(_)))
+        Segments(segments.map(Segment.Label(_))),
+        Map.empty // ???
       ).dest / os.SubPath(subPath)
     }
   }

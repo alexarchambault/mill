@@ -55,7 +55,7 @@ object JarPublishRunTests extends TestSuite {
 
         val Right(result) = eval(task): @unchecked
 
-        val paths = ExecutionPaths.resolve(eval.outPath, task)
+        val paths = ExecutionPaths.resolve(eval.outPath, task, Map.empty)
         val log = os.read(paths.log)
         assert(
           result.evalCount > 0,

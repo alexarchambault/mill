@@ -258,6 +258,11 @@ trait Cross[M <: Cross.Module[?]](factories: Cross.Factory[M]*) extends mill.api
    * compatible with the current module.
    */
   def apply[V >: M <: Cross.Module[?]]()(implicit resolver: Cross.Resolver[V]): M = {
-    resolver.resolve(this.asInstanceOf[Cross[V]]).asInstanceOf[M]
+    resolver.resolve(as[V]) match {
+      case m: M => m
+    }
   }
+
+  private def as[V <: Cross.Module[?]]: Cross[V] =
+    this.asInstanceOf[Cross[V]]
 }

@@ -9,6 +9,9 @@ import mill.api.daemon.Watchable
 import mill.exec.{Execution, PlanImpl}
 import mill.internal.PrefixLogger
 import mill.resolve.Resolve
+import mill.api.UnresolvedTask
+import mill.api.ResolvedTask
+import scala.reflect.ClassTag
 
 /**
  * [[EvaluatorImpl]] is the primary API through which a user interacts with the Mill
@@ -31,7 +34,11 @@ final class EvaluatorImpl private[mill] (
   private[mill] def baseLogger = execution.baseLogger
   private[mill] def outPath = execution.outPath
   private[mill] def codeSignatures = execution.codeSignatures
-  private[mill] def rootModule = execution.rootModule.asInstanceOf[RootModule0]
+  private[mill] def rootModule =
+    execution.rootModule match {
+      case m: RootModule0 => m
+      case _ => sys.error("should not happen")
+    }
   private[mill] def workerCache = execution.workerCache
   private[mill] def env = execution.env
   private[mill] def effectiveThreadCount = execution.effectiveThreadCount
@@ -125,25 +132,23 @@ final class EvaluatorImpl private[mill] (
    * Takes a sequence of [[Task]]s and returns a [[PlanImpl]] containing the
    * transitive upstream tasks necessary to evaluate those provided.
    */
-  def plan(tasks: Seq[Task[?]]): Plan = PlanImpl.plan(tasks)
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan = PlanImpl.plan0(tasks)
 
-  def transitiveTasks(sourceTasks: Seq[Task[?]]) = {
-    PlanImpl.transitiveTasks(sourceTasks)
+  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): TopoSorted[Task[?]] = {
+    PlanImpl.topoSorted(transitiveTasks, _.inputs)
   }
+  def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T] =
+    PlanImpl.topoSorted(transitiveTasks, inputs)
 
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]) = {
-    PlanImpl.topoSorted(transitiveTasks)
-  }
-
-  def groupAroundImportantTasks[T](topoSortedTasks: TopoSorted)(important: PartialFunction[
+  def groupAroundImportantTasks[T](topoSortedTasks: TopoSorted[Task[?]])(important: PartialFunction[
     Task[?],
     T
   ]) = {
-    PlanImpl.groupAroundImportantTasks(topoSortedTasks)(important)
+    PlanImpl.groupAroundImportantTasks(topoSortedTasks, _.inputs)(important)
   }
 
   def execute[T](
-      tasks: Seq[Task[T]],
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -151,18 +156,24 @@ final class EvaluatorImpl private[mill] (
       selectiveExecution: Boolean = false
   ): Evaluator.Result[T] = {
 
-    val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.isExclusiveCommand)
+    val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.task.isExclusiveCommand)
 
     val selectedTasksOrErr =
       if (!selectiveExecutionEnabled) (tasks, Map.empty, None)
       else {
         val (named, unnamed) =
-          tasks.partitionMap { case n: Task.Named[?] => Left(n); case t => Right(t) }
-        val newComputedMetadata = SelectiveExecutionImpl.Metadata.compute(this, named)
+          tasks.map(t => (t, t.task)).partitionMap {
+            case (t, _: Task.Named[?]) => Left(t); case (t, _) => Right(t)
+          }
+        val newComputedMetadata =
+          SelectiveExecutionImpl.Metadata.compute(this, named)
 
         val selectiveExecutionStoredData = for {
           _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
-          changedTasks <- this.selective.computeChangedTasks0(named, newComputedMetadata)
+          changedTasks <- this.selective.computeChangedTasks0(
+            named,
+            newComputedMetadata
+          )
         } yield changedTasks
 
         selectiveExecutionStoredData match {
@@ -171,11 +182,13 @@ final class EvaluatorImpl private[mill] (
             // selective execution.
             (tasks, Map.empty, Some(newComputedMetadata.metadata))
           case Some(changedTasks) =>
-            val selectedSet = changedTasks.downstreamTasks.map(_.ctx.segments.render).toSet
+            val selectedSet = changedTasks.downstreamTasks.map(_.displayName).toSet
 
             (
               unnamed ++ named.filter(t =>
-                t.isExclusiveCommand || selectedSet(t.ctx.segments.render)
+                t.task.isExclusiveCommand ||
+                  // FIXME We need to compute ResolvedTask-s out of named using Plan here
+                  selectedSet(ResolvedTask(t.task, t.crossValues).displayName)
               ),
               newComputedMetadata.results,
               Some(newComputedMetadata.metadata)
@@ -195,12 +208,17 @@ final class EvaluatorImpl private[mill] (
           )
         @scala.annotation.nowarn("msg=cannot be checked at runtime")
         val watched = (evaluated.transitiveResults.iterator ++ selectiveResults)
+          .toSeq
+          .map {
+            case (t, res) =>
+              (t, t.task, res)
+          }
           .collect {
-            case (_: Task.Sources, ExecResult.Success(Val(ps: Seq[PathRef]))) =>
+            case (_, _: Task.Sources, ExecResult.Success(Val(ps: Seq[PathRef]))) =>
               ps.map(r => Watchable.Path(r.path.toNIO, r.quick, r.sig))
-            case (_: Task.Source, ExecResult.Success(Val(p: PathRef))) =>
+            case (_, _: Task.Source, ExecResult.Success(Val(p: PathRef))) =>
               Seq(Watchable.Path(p.path.toNIO, p.quick, p.sig))
-            case (t: Task.Input[_], result) =>
+            case (task, t: Task.Input[_], result) =>
 
               val ctx = new mill.api.TaskCtx.Impl(
                 args = Vector(),
@@ -214,7 +232,8 @@ final class EvaluatorImpl private[mill] (
                   throw Exception(s"systemExit called: reason=$reason, exitCode=$exitCode"),
                 fork = null,
                 jobs = execution.effectiveThreadCount,
-                offline = offline
+                offline = offline,
+                crossValues = task.crossValues
               )
               val pretty = t.ctx0.fileName + ":" + t.ctx0.lineNum
               Seq(Watchable.Value(
@@ -224,7 +243,6 @@ final class EvaluatorImpl private[mill] (
               ))
           }
           .flatten
-          .toSeq
 
         maybeNewMetadata.foreach { newMetadata =>
           val allInputHashes = newMetadata.inputHashes
@@ -239,14 +257,14 @@ final class EvaluatorImpl private[mill] (
             Evaluator.Result(
               watched,
               mill.api.Result.Success(evaluated.values.map(_._1.asInstanceOf[T])),
-              selectedTasks,
+              evaluated.goals,
               evaluated
             )
           case n =>
             Evaluator.Result(
               watched,
               mill.api.Result.Failure(s"$n tasks failed\n$errorStr"),
-              selectedTasks,
+              evaluated.goals,
               evaluated
             )
         }
@@ -281,8 +299,16 @@ final class EvaluatorImpl private[mill] (
         }
       }
     }
+
+    // FIXME Get via scriptArgs?
+    val crossValues = Map.empty[String, String]
+
     for (tasks <- resolved)
-      yield execute(Seq.from(tasks), reporter = reporter, selectiveExecution = selectiveExecution)
+      yield execute(
+        Seq.from(tasks.map(UnresolvedTask(_, crossValues))),
+        reporter = reporter,
+        selectiveExecution = selectiveExecution
+      )
   }
 
   def close(): Unit = execution.close()

@@ -9,6 +9,7 @@ import org.jgrapht.graph.{DefaultEdge, SimpleDirectedGraph}
 import guru.nidi.graphviz.attribute.Rank.RankDir
 import guru.nidi.graphviz.attribute.{Rank, Shape, Style}
 import mill.api.BuildCtx
+import mill.api.UnresolvedTask
 
 object VisualizeModule extends ExternalModule {
   def repositories: Seq[Repository] =
@@ -18,8 +19,8 @@ object VisualizeModule extends ExternalModule {
 
   private type VizWorker = (
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
+          scala.Seq[UnresolvedTask[Any]],
+          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -35,29 +36,36 @@ object VisualizeModule extends ExternalModule {
       planTasks: Option[List[Task.Named[?]]] = None
   ): Result[Seq[PathRef]] = {
     def callVisualizeModule(
-        tasks: List[Task.Named[Any]],
-        transitiveTasks: List[Task.Named[Any]]
+        tasks: List[UnresolvedTask[Any]],
+        transitiveTasks: List[UnresolvedTask[Any]]
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
-      val transitive = evaluator.transitiveTasks(tasks)
-      val topoSorted = evaluator.topoSorted(transitive)
-      val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
-        case x: Task.Named[Any] if transitiveTasks.contains(x) => x
-      }
-      val plan = evaluator.plan(transitiveTasks)
-      in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
-      val res = out.take()
-      res.map { v =>
-        println(upickle.write(v.map(_.path.toString()), indent = 2))
-        v
-      }
+      val plan = evaluator.plan(tasks)
+      // val transitive = evaluator.transitiveTasks(tasks)
+      // val topoSorted = evaluator.topoSorted(transitive)
+      // val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
+      //   case x: Task.Named[Any] if transitiveTasks.contains(x) => x
+      // }
+      // val plan = evaluator.plan(transitiveTasks)
+      // in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
+      // val res = out.take()
+      // res.map { v =>
+      //   println(upickle.write(v.map(_.path.toString()), indent = 2))
+      //   v
+      // }
+      ???
     }
 
     evaluator.resolveTasks(tasks, SelectMode.Multi).flatMap {
       rs =>
+        // FIXME Get those via the Seq[String]
+        val crossValues = Map.empty[String, String]
+        val rs0 = rs.map(UnresolvedTask(_, crossValues))
         planTasks match {
-          case Some(allRs) => callVisualizeModule(rs, allRs)
-          case None => callVisualizeModule(rs, rs)
+          case Some(allRs) =>
+            val allRs0 = allRs.map(UnresolvedTask(_, crossValues))
+            callVisualizeModule(rs0, allRs0)
+          case None => callVisualizeModule(rs0, rs0)
         }
     }
   }
@@ -90,8 +98,8 @@ object VisualizeModule extends ExternalModule {
    */
   private[mill] def worker: Worker[(
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
+          scala.Seq[UnresolvedTask[Any]],
+          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -100,8 +108,8 @@ object VisualizeModule extends ExternalModule {
   )] = mill.api.Task.Worker {
     val in =
       new LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
+          scala.Seq[UnresolvedTask[Any]],
+          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -121,7 +129,7 @@ object VisualizeModule extends ExternalModule {
                 for {
                   v <- vs
                   dest <- v.inputs.collect { case v: mill.api.Task.Named[Any] => v }
-                  if goalSet.contains(dest)
+                  if goalSet.contains(???)
                 } yield dest
               )
 
@@ -139,7 +147,7 @@ object VisualizeModule extends ExternalModule {
 
           org.jgrapht.alg.TransitiveReduction.INSTANCE.reduce(jgraph)
           val nodes = indexToTask.map(t =>
-            node(plan.sortedGroups.lookupValue(t).toString)
+            node(plan.sortedGroups.lookupValue(???).toString)
               .`with` {
                 if (tasks.contains(t)) Style.SOLID
                 else Style.DASHED
