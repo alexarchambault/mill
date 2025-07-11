@@ -101,10 +101,6 @@ object `package` extends MillJavaModule with DistModule {
 
   def moduleDeps = Seq(build.runner.launcher)
 
-  def transitiveLocalTestOverrides = Map(
-    Task.traverse(allPublishModules)(_.localTestOverride)()*
-  )
-
   def localBinName = "mill-assembly.jar"
 
   private def millClientJvmArgs = Seq(
@@ -159,6 +155,10 @@ object `package` extends MillJavaModule with DistModule {
     // https://github.com/sbt/sbt/blame/6718803ee6023ab041b045a6988fafcfae9d15b5/main/src/main/scala/sbt/Main.scala#L130
     "-Djna.nosys=true"
   )
+
+  def manifest = Task {
+    super.manifest().add(java.util.jar.Attributes.Name.MULTI_RELEASE.toString -> "true")
+  }
 
   def mainClass = Some("mill.launcher.MillLauncherMain")
 
@@ -306,7 +306,10 @@ object `package` extends MillJavaModule with DistModule {
     def nativeImageOptions = Seq(
       "--no-fallback",
       "--enable-url-protocols=https",
-      "-Os"
+      "-Os",
+      // these two are necessary to use coursier bootstrap generation
+      "-H:IncludeResources=bootstrap.*\\.jar",
+      "-H:IncludeResources=coursier/launcher/.*\\.bat"
       // Enable JVisualVM support
       // https://www.graalvm.org/latest/tools/visualvm/#using-visualvm-with-graalvm-native-executables
       // "--enable-monitoring=jvmstat,heapdump"

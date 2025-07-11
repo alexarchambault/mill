@@ -117,12 +117,14 @@ class JvmWorkerImpl(
     }
   }
 
-  private val classloaderCache = new RefCountedClassLoaderCache(
+  private val classloaderCache: RefCountedClassLoaderCache = new RefCountedClassLoaderCache(
     sharedLoader = getClass.getClassLoader,
-    sharedPrefixes = Seq("xsbti")
-  ) {
-    override def extraRelease(cl: ClassLoader) = {
-
+    sharedPrefixes = Seq("xsbti"),
+    sharedClass =
+      Some(
+        classOf[xsbti.api.DependencyContext]
+      ).filter(_.getClassLoader != getClass.getClassLoader),
+    extraRelease = (cl: ClassLoader) => {
       for {
         cls <- {
           try Some(cl.loadClass("scala.tools.nsc.classpath.FileBasedCache$"))
@@ -149,13 +151,10 @@ class JvmWorkerImpl(
         timer <-
           Option(getOrElseMethod.invoke(timerOpt0, null).asInstanceOf[java.util.Timer])
       } {
-
         timer.cancel()
       }
-
     }
-
-  }
+  )
 
   object javaOnlyCompilerCache extends CachedFactory[(Option[os.Path], Seq[String]), Compilers] {
 
@@ -350,9 +349,11 @@ class JvmWorkerImpl(
           if (JvmWorkerUtil.isDottyOrScala3(scalaVersion)) "dotty.tools.dotc.Main"
           else "scala.tools.nsc.Main"
         )
-        compilerMain
-          .getMethod("process", classOf[Array[String]])
-          .invoke(null, argsArray ++ Array("-nowarn"))
+        mill.api.ClassLoader.withContextClassLoader(classloader) {
+          compilerMain
+            .getMethod("process", classOf[Array[String]])
+            .invoke(null, argsArray ++ Array("-nowarn"))
+        }
       } else {
         throw new IllegalArgumentException("Currently not implemented case.")
       }
