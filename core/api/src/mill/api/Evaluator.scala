@@ -67,14 +67,6 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): MultiBiMap[T, Task[?]]
 
   /**
-   * Collects all transitive dependencies (tasks) of the given tasks,
-   * including the given tasks.
-   */
-  def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]]
-
-  def transitiveTasks0(plan: Plan0, sourceTasks: Seq[ResolvedTask[?]]): IndexedSeq[ResolvedTask[?]]
-
-  /**
    * Takes the given tasks, finds all the tasks they transitively depend
    * on, and sort them topologically. Fails if there are dependency cycles
    */

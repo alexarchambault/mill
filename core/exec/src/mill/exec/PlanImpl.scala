@@ -10,9 +10,6 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 private[mill] object PlanImpl {
-  def plan0(goals: Seq[Task[?]], rootCrossValues: Map[String, String]): Plan0 =
-    plan0(goals.map(UnresolvedTask(_, rootCrossValues)))
-
   private final case class TaskDetails(
       allInputs: Seq[UnresolvedTask[?]],
       remainingInputs: mutable.HashSet[UnresolvedTask[?]] = new mutable.HashSet,
@@ -75,22 +72,7 @@ private[mill] object PlanImpl {
         case t if goalSet.contains(t) => t
       }
 
-    new Plan0(transitive, sortedGroups, goals.toIndexedSeq.map(appliedCrossValues(_)), inputs.toMap)
-  }
-
-  def plan(goals: Seq[Task[?]]): Plan = {
-    val transitive = PlanImpl.transitiveTasks(goals.toIndexedSeq)
-    val goalSet = goals.toSet
-    val topoSorted = PlanImpl.topoSorted(transitive, _.inputs)
-
-    val sortedGroups: MultiBiMap[Task[?], Task[?]] =
-      PlanImpl.groupAroundImportantTasks(topoSorted, _.inputs) {
-        // important: all named tasks and those explicitly requested
-        case t: Task.Named[Any] => t
-        case t if goalSet.contains(t) => t
-      }
-
-    new Plan(sortedGroups)
+    new Plan0(transitive, sortedGroups, goals.toIndexedSeq.map(appliedCrossValues(_)), inputs.toMap, topoSorted)
   }
 
   /**
@@ -124,24 +106,6 @@ private[mill] object PlanImpl {
   }
 
   /**
-   * Collects all transitive dependencies (tasks) of the given tasks,
-   * including the given tasks.
-   */
-  def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]] = {
-    transitiveNodes(sourceTasks)(_.inputs)
-  }
-  def transitiveNamed(sourceTasks: Seq[Task[?]]): Seq[Task.Named[?]] = {
-    transitiveTasks(sourceTasks).collect { case t: Task.Named[?] => t }
-  }
-
-  def transitiveTasks0(
-      plan: Plan0,
-      sourceTargets: Seq[ResolvedTask[?]]
-  ): IndexedSeq[ResolvedTask[?]] = {
-    transitiveNodes(sourceTargets)(plan.inputs(_))
-  }
-
-  /**
    * Collects all transitive dependencies (nodes) of the given nodes,
    * including the given nodes.
    */
@@ -156,21 +120,6 @@ private[mill] object PlanImpl {
     }
 
     sourceNodes.foreach(rec)
-    transitiveNodes.toIndexedSeq
-  }
-
-  def transitiveNodes0[T, U](sourceNodes: Seq[(T, U)])(inputsFor: T => Seq[(T, U)])
-      : IndexedSeq[U] = {
-    val transitiveNodes = collection.mutable.LinkedHashSet[U]()
-    def rec(t: T, u: U): Unit = {
-      if (transitiveNodes.contains(u)) {} // do nothing
-      else {
-        transitiveNodes.add(u)
-        inputsFor(t).foreach { case (t, u) => rec(t, u) }
-      }
-    }
-
-    sourceNodes.foreach { case (t, u) => rec(t, u) }
     transitiveNodes.toIndexedSeq
   }
 

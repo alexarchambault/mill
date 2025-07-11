@@ -1,7 +1,7 @@
 package mill.api
 
 import mill.api.*
-import mill.api.daemon.internal.{AppliedTaskApi, TaskApi, ExecutionResultsApi}
+import mill.api.daemon.internal.{ResolvedTaskApi, TaskApi, ExecutionResultsApi}
 import mill.api.ResolvedTask
 
 /**
@@ -21,13 +21,13 @@ trait ExecutionResults extends ExecutionResultsApi {
    * tasks, and their results
    */
   def transitiveResults: Map[ResolvedTask[?], ExecResult[Val]]
-  private[mill] def transitiveResultsApi: Map[AppliedTaskApi[?], ExecResult[Val]] =
+  private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]] =
     transitiveResults.map {
       case (task, res) =>
         (task, res)
     }
   private[mill] def transitiveTaskResultsApi(task: TaskApi[?])
-      : Seq[(AppliedTaskApi[?], ExecResult[Val])] = {
+      : Seq[(ResolvedTaskApi[?], ExecResult[Val])] = {
     // FIXME Optimize that?
     transitiveResults
       .filter(_._1.task == task)
@@ -44,7 +44,7 @@ trait ExecutionResults extends ExecutionResultsApi {
    */
   def transitiveFailing: Map[ResolvedTask[?], ExecResult.Failing[Val]] =
     transitiveResults.collect { case (k, v: ExecResult.Failing[Val]) => (k, v) }
-  private[mill] def transitiveFailingApi: Map[AppliedTaskApi[?], ExecResult.Failing[Val]] =
+  private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]] =
     transitiveFailing.map {
       case (task, res) =>
         (task, res)

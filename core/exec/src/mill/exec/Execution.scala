@@ -288,7 +288,7 @@ private[mill] case class Execution(
       case _ => true
     })
 
-    val tasksTransitive = PlanImpl.transitiveTasks0(plan, Seq.from(tasks0)).toSet
+    val tasksTransitive = PlanImpl.transitiveNodes(Seq.from(tasks0))(plan.inputs(_)).toSet
     val (tasks, leafExclusiveCommands) = terminals0.partition(at =>
       at.task match {
         case t: Task.Named[_] => tasksTransitive.contains(at) || !t.isExclusiveCommand

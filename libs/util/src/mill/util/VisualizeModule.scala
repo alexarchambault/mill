@@ -47,8 +47,8 @@ object VisualizeModule extends ExternalModule {
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
       val plan = evaluator.plan(tasks)
-      val transitive = evaluator.transitiveTasks0(plan, plan.goals)
-      val topoSorted = evaluator.topoSorted0(transitive, plan.inputs(_))
+      // val transitive = PlanImpl.transitiveNodes(plan.goals)(plan.inputs(_))
+      // val topoSorted = evaluator.topoSorted0(transitive, plan.inputs(_))
       // val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
       //   case x: Task.Named[Any] if transitiveTasks.contains(x) => x
       // }
