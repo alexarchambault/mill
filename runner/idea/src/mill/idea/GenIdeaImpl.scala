@@ -170,7 +170,9 @@ class GenIdeaImpl(
       resolveTasks.toSeq.flatMap { case (evaluator, tasks) =>
         tasks.groupBy(_._2).toSeq.flatMap {
           case (crossValues, tasks0) =>
-            evaluator.executeApi(tasks0.map(_._1), crossValues).executionResults match {
+            evaluator
+              .executeApi(tasks0.map(_._1).map(UnresolvedTask(_, crossValues)))
+              .executionResults match {
               case r if r.transitiveFailingApi.nonEmpty =>
                 throw GenIdeaException(
                   s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"

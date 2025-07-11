@@ -12,7 +12,7 @@ private[mill] trait SelectiveExecution {
   ): Map[String, Int]
 
   def computeDownstream(
-      plan: Plan0,
+      plan: Plan,
       transitiveNamed: Seq[ResolvedNamedTask[?]],
       oldHashes: Metadata,
       newHashes: Metadata

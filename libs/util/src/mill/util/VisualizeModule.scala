@@ -28,7 +28,7 @@ object VisualizeModule extends ExternalModule {
           scala.Seq[UnresolvedTask[Any]],
           scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
-          mill.api.Plan0,
+          mill.api.Plan,
           os.Path
       )],
       LinkedBlockingQueue[Result[scala.Seq[PathRef]]]
@@ -95,7 +95,7 @@ object VisualizeModule extends ExternalModule {
           scala.Seq[UnresolvedTask[Any]],
           scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
-          mill.api.Plan0,
+          mill.api.Plan,
           os.Path
       )],
       LinkedBlockingQueue[Result[Seq[PathRef]]]
@@ -105,7 +105,7 @@ object VisualizeModule extends ExternalModule {
           scala.Seq[UnresolvedTask[Any]],
           scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
-          mill.api.Plan0,
+          mill.api.Plan,
           os.Path
       )]()
     val out = new LinkedBlockingQueue[Result[Seq[PathRef]]]()

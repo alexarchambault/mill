@@ -1,6 +1,6 @@
 package mill.exec
 
-import mill.api.{Task, Plan, Plan0}
+import mill.api.{Task, Plan}
 import mill.api.MultiBiMap
 import mill.api.TopoSorted
 import mill.api.ResolvedTask
@@ -15,7 +15,7 @@ private[mill] object PlanImpl {
       remainingInputs: mutable.HashSet[UnresolvedTask[?]] = new mutable.HashSet,
       var appliedCrossValues: Map[String, String] = Map.empty
   )
-  def plan0(goals: Seq[UnresolvedTask[?]]): Plan0 = {
+  def plan0(goals: Seq[UnresolvedTask[?]]): Plan = {
     val edges = new mutable.HashMap[UnresolvedTask[?], TaskDetails]
     PlanImpl.transitiveNodes(goals.toIndexedSeq) { task =>
       if (!edges.contains(task)) {
@@ -72,7 +72,13 @@ private[mill] object PlanImpl {
         case t if goalSet.contains(t) => t
       }
 
-    new Plan0(transitive, sortedGroups, goals.toIndexedSeq.map(appliedCrossValues(_)), inputs.toMap, topoSorted)
+    new Plan(
+      transitive,
+      sortedGroups,
+      goals.toIndexedSeq.map(appliedCrossValues(_)),
+      inputs.toMap,
+      topoSorted
+    )
   }
 
   /**
