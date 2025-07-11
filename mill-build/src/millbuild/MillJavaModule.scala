@@ -33,13 +33,49 @@ trait MillJavaModule extends JavaModule {
 
   def localTestExtraModules = Seq.empty[MillJavaModule]
   def localTestRepositories: T[Seq[PathRef]] = {
-    val allModules = (Seq(this) ++ recursiveModuleDeps ++ recursiveRunModuleDeps).distinct
-    val extraModules = allModules.collect { case m: MillJavaModule => m.localTestExtraModules }.flatten
-    val allModules0 = (extraModules ++
-      extraModules.flatMap(_.recursiveModuleDeps) ++
-      extraModules.flatMap(_.recursiveRunModuleDeps)).distinct
+
+    def recursive[T](start: T, deps: T => Seq[T]): Seq[T] = {
+
+      @annotation.tailrec
+      def rec(
+          seenModules: Set[T],
+          acc: List[T],
+          toAnalyze: List[T]
+      ): List[T] =
+        toAnalyze match {
+          case Nil => acc
+          case cand :: remaining =>
+            if (seenModules.contains(cand))
+              rec(
+                seenModules,
+                acc,
+                toAnalyze = remaining
+              )
+            else
+              rec(
+                seenModules + cand,
+                cand :: acc,
+                deps(cand).toList ::: remaining
+              )
+        }
+
+      rec(Set(), Nil, deps(start).toList).reverse
+    }
+
+    val allModules = recursive[MillJavaModule](
+      this,
+      m => {
+        val localTestExtraModules0 = m match {
+          case m0: MillPublishJavaModule => m0.localTestExtraModules
+          case _ => Nil
+        }
+        (m.moduleDeps ++ m.runModuleDeps ++ localTestExtraModules0).collect {
+          case m0: MillJavaModule => m0
+        }
+      }
+    )
     Task {
-      Task.traverse(allModules0) {
+      Task.traverse(allModules) {
         case m: MillPublishJavaModule => m.stagePublish.map(Seq(_))
         case _ => Task.Anon(Nil)
       }().flatten

@@ -149,6 +149,13 @@ object `package` extends mill.Module {
   }
 
   object buildinfo extends ContribModule {
+
+    def localTestExtraModules =
+      super.localTestExtraModules ++
+        Seq(
+          build.libs.javalib
+        )
+
     def compileModuleDeps =
       Seq(
         build.libs.javalib,
