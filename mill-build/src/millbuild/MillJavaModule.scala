@@ -31,19 +31,18 @@ trait MillJavaModule extends JavaModule {
   def localTestOverridePaths =
     Task { upstreamAssemblyClasspath() ++ Seq(compile().classes) ++ resources() }
 
-  def localTestExtraRepositories: T[Seq[PathRef]] = Task(Seq.empty[PathRef])
+  def localTestExtraModules = Seq.empty[MillJavaModule]
   def localTestRepositories: T[Seq[PathRef]] = {
     val allModules = (Seq(this) ++ recursiveModuleDeps ++ recursiveRunModuleDeps).distinct
+    val extraModules = allModules.collect { case m: MillJavaModule => m.localTestExtraModules }.flatten
+    val allModules0 = (extraModules ++
+      extraModules.flatMap(_.recursiveModuleDeps) ++
+      extraModules.flatMap(_.recursiveRunModuleDeps)).distinct
     Task {
-      val mainRepos = Task.traverse(allModules) {
+      Task.traverse(allModules0) {
         case m: MillPublishJavaModule => m.stagePublish.map(Seq(_))
         case _ => Task.Anon(Nil)
       }().flatten
-      val extraRepos = Task.traverse(allModules) {
-        case m: MillPublishJavaModule => m.localTestExtraRepositories.map(Seq(_))
-        case _ => Task.Anon(Nil)
-      }().flatten.flatten
-      mainRepos ++ extraRepos
     }
   }
 
