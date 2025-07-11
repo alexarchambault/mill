@@ -1,9 +1,9 @@
 package mill.api
 
-import mill.api.daemon.internal.AppliedTaskApi
+import mill.api.daemon.internal.ResolvedTaskApi
 
 final case class ResolvedNamedTask[+T](task: Task.Named[T], crossValues: Map[String, String])
-    extends AppliedTaskApi[T] {
+    extends ResolvedTaskApi[T] {
 
   def apply(): T = ???
 

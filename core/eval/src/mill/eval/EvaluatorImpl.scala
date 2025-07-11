@@ -117,13 +117,6 @@ final class EvaluatorImpl private[mill] (
    */
   def plan(tasks: Seq[UnresolvedTask[?]]): Plan0 = PlanImpl.plan0(tasks)
 
-  def transitiveTasks(sourceTasks: Seq[Task[?]]) = {
-    PlanImpl.transitiveTasks(sourceTasks)
-  }
-  def transitiveTasks0(plan: Plan0, sourceTasks: Seq[ResolvedTask[?]]) = {
-    PlanImpl.transitiveTasks0(plan, sourceTasks)
-  }
-
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): TopoSorted[Task[?]] = {
     PlanImpl.topoSorted(transitiveTasks, _.inputs)
   }

@@ -1,6 +1,6 @@
 package mill.api.daemon.internal
 
-trait AppliedTaskApi[+T] {
+trait ResolvedTaskApi[+T] {
   def apply(): T
 
   def task: TaskApi[T]

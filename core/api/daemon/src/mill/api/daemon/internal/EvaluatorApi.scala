@@ -40,19 +40,19 @@ object EvaluatorApi {
     def watchable: Seq[Watchable]
     def values: mill.api.daemon.Result[Seq[T]]
 
-    def selectedTasks: Seq[AppliedTaskApi[?]]
+    def selectedTasks: Seq[ResolvedTaskApi[?]]
     def executionResults: ExecutionResultsApi
   }
 }
 
 trait ExecutionResultsApi {
   def results: Seq[ExecResult[Val]]
-  private[mill] def transitiveResultsApi: Map[AppliedTaskApi[?], ExecResult[Val]]
+  private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]]
   private[mill] def transitiveTaskResultsApi(task: TaskApi[?])
-      : Seq[(AppliedTaskApi[?], ExecResult[Val])]
+      : Seq[(ResolvedTaskApi[?], ExecResult[Val])]
 
-  private[mill] def transitiveFailingApi: Map[AppliedTaskApi[?], ExecResult.Failing[Val]]
-  def uncached: Seq[AppliedTaskApi[?]]
+  private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]]
+  def uncached: Seq[ResolvedTaskApi[?]]
 
   def values: Seq[Val]
 }
