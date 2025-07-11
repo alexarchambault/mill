@@ -5,7 +5,7 @@ import mill.api.*
 import mill.api.daemon.Watchable
 import mill.api.BuildCtx
 import mill.api.ResolvedTask
-import mill.api.daemon.internal.{EvaluatorApi, TaskApi}
+import mill.api.daemon.internal.{EvaluatorApi, TaskApi, UnresolvedTaskApi}
 import mill.api.internal.RootModule0
 
 import scala.util.DynamicVariable
@@ -57,7 +57,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       resolveToModuleTasks: Boolean = false
   ): mill.api.Result[List[Either[Module, Task.Named[?]]]]
 
-  def plan(tasks: Seq[UnresolvedTask[?]]): Plan0
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan
 
   def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted[Task[?]])(
       important: PartialFunction[
@@ -75,20 +75,17 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T]
 
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, String]
+      tasks: Seq[UnresolvedTaskApi[T]]
   ): Evaluator.Result[T] =
     execute[T](
       tasks.map {
-        case task: Task[T] => task
+        case task: UnresolvedTask[T] => task
         case _ => ???
-      },
-      crossValues
+      }
     )
 
   def execute[T](
-      tasks: Seq[Task[T]],
-      crossValues: Map[String, String] = Map.empty,
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -104,8 +101,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): mill.api.Result[Evaluator.Result[Any]]
 
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, String],
+      tasks: Seq[UnresolvedTaskApi[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -115,10 +111,9 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
         tasks.map {
-          case task: Task[T] => task
+          case task: UnresolvedTask[T] => task
           case _ => ???
         },
-        crossValues,
         reporter,
         testReporter,
         logger,

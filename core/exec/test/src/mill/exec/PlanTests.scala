@@ -10,7 +10,10 @@ import mill.api.UnresolvedTask
 import mill.api.ResolvedTask
 
 object PlanTests extends TestSuite {
-  def checkTopological(tasks: Seq[ResolvedTask[?]], inputs: Map[ResolvedTask[?], Seq[ResolvedTask[?]]]) = {
+  def checkTopological(
+      tasks: Seq[ResolvedTask[?]],
+      inputs: Map[ResolvedTask[?], Seq[ResolvedTask[?]]]
+  ) = {
     val seen = mutable.Set.empty[ResolvedTask[?]]
     for (t <- tasks.reverseIterator) {
       seen.add(t)
@@ -37,7 +40,10 @@ object PlanTests extends TestSuite {
       )
       test("backtickIdentifiers") - check(
         tasks = Seq(bactickIdentifiers.`a-down-task`).map(UnresolvedTask(_, Map.empty)),
-        expected = Seq(bactickIdentifiers.`up-task`, bactickIdentifiers.`a-down-task`).map(ResolvedTask(_, Map.empty))
+        expected = Seq(
+          bactickIdentifiers.`up-task`,
+          bactickIdentifiers.`a-down-task`
+        ).map(ResolvedTask(_, Map.empty))
       )
       test("pair") - check(
         tasks = Seq(pair.down).map(UnresolvedTask(_, Map.empty)),
@@ -45,11 +51,16 @@ object PlanTests extends TestSuite {
       )
       test("anonTriple") - check(
         tasks = Seq(anonTriple.down).map(UnresolvedTask(_, Map.empty)),
-        expected = Seq(anonTriple.up, anonTriple.down.inputs(0), anonTriple.down).map(ResolvedTask(_, Map.empty))
+        expected = Seq(
+          anonTriple.up,
+          anonTriple.down.inputs(0),
+          anonTriple.down
+        ).map(ResolvedTask(_, Map.empty))
       )
       test("diamond") - check(
         tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
-        expected = Seq(diamond.up, diamond.left, diamond.right, diamond.down).map(ResolvedTask(_, Map.empty))
+        expected =
+          Seq(diamond.up, diamond.left, diamond.right, diamond.down).map(ResolvedTask(_, Map.empty))
       )
       test("anonDiamond") - check(
         tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
@@ -85,7 +96,7 @@ object PlanTests extends TestSuite {
               .filter(_._2.isEmpty)
               .flatMap(_.task.asSimple: Option[Simple[?]])
               .filter(important.contains) ==
-            Seq(terminal)
+              Seq(terminal)
           )
         }
       }

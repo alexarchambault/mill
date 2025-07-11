@@ -301,7 +301,7 @@ private class MillBuildServer(
   override def workspaceBuildTargets(): CompletableFuture[WorkspaceBuildTargetsResult] =
     handlerTasksEvaluators(
       targetIds = _.bspModulesIdList.map(_._1),
-      tasks = { case m: BspModuleApi => m.bspBuildTargetData },
+      tasks = { case m: BspModuleApi => UnresolvedTask(m.bspBuildTargetData, Map.empty) },
       requestDescription = "Listing build targets",
       originId = ""
     ) { (ev, state, id, m: BspModuleApi, bspBuildTargetData) =>
@@ -370,7 +370,9 @@ private class MillBuildServer(
 
     handlerTasksEvaluators(
       targetIds = _ => sourcesParams.getTargets.asScala,
-      tasks = { case module: JavaModuleApi => module.bspJavaModule().bspBuildTargetSources },
+      tasks = { case module: JavaModuleApi =>
+        UnresolvedTask(module.bspJavaModule().bspBuildTargetSources, Map.empty)
+      },
       requestDescription =
         s"Getting sources of ${sourcesParams.getTargets.asScala.map(_.getUri).mkString(", ")}",
       originId = ""
@@ -398,7 +400,10 @@ private class MillBuildServer(
       val tasksEvaluators = state.bspModulesIdList.collect {
         case (id, (m: JavaModuleApi, ev)) =>
           (
-            result = m.bspJavaModule().bspBuildTargetInverseSources(id, p.getTextDocument.getUri),
+            result = UnresolvedTask(
+              m.bspJavaModule().bspBuildTargetInverseSources(id, p.getTextDocument.getUri),
+              Map.empty
+            ),
             evaluator = ev
           )
       }
@@ -428,7 +433,9 @@ private class MillBuildServer(
       : CompletableFuture[DependencySourcesResult] =
     handlerTasks(
       targetIds = _ => p.getTargets.asScala,
-      tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetDependencySources },
+      tasks = { case m: JavaModuleApi =>
+        UnresolvedTask(m.bspJavaModule().bspBuildTargetDependencySources, Map.empty)
+      },
       requestDescription =
         s"Getting dependency sources of ${p.getTargets.asScala.map(_.getUri).mkString(", ")}",
       originId = ""
@@ -453,7 +460,9 @@ private class MillBuildServer(
       : CompletableFuture[DependencyModulesResult] =
     handlerTasks(
       targetIds = _ => params.getTargets.asScala,
-      tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetDependencyModules },
+      tasks = { case m: JavaModuleApi =>
+        UnresolvedTask(m.bspJavaModule().bspBuildTargetDependencyModules, Map.empty)
+      },
       requestDescription = "Getting external dependencies of {}",
       originId = ""
     ) {
@@ -475,7 +484,9 @@ private class MillBuildServer(
   override def buildTargetResources(p: ResourcesParams): CompletableFuture[ResourcesResult] =
     handlerTasks(
       targetIds = _ => p.getTargets.asScala,
-      tasks = { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetResources },
+      tasks = { case m: JavaModuleApi =>
+        UnresolvedTask(m.bspJavaModule().bspBuildTargetResources, Map.empty)
+      },
       requestDescription = "Getting resources of {}",
       originId = ""
     ) {
@@ -496,11 +507,14 @@ private class MillBuildServer(
       val params = TaskParameters.fromCompileParams(p)
       val compileTasksEvs = params.getTargets.distinct.map(state.bspModulesById).collect {
         case (m: SemanticDbJavaModuleApi, ev) if sessionInfo.clientWantsSemanticDb =>
-          ((m, m.bspBuildTargetCompileSemanticDb), ev)
+          ((m, UnresolvedTask(m.bspBuildTargetCompileSemanticDb, Map.empty)), ev)
         case (m: JavaModuleApi, ev) => (
             (
               m,
-              m.bspBuildTargetCompile(sessionInfo.clientType.mergeResourcesIntoClasses)
+              UnresolvedTask(
+                m.bspBuildTargetCompile(sessionInfo.clientType.mergeResourcesIntoClasses),
+                Map.empty
+              )
             ),
             ev
           )
@@ -579,7 +593,7 @@ private class MillBuildServer(
       }.get
 
       val args = params.getArguments.getOrElse(Seq.empty[String])
-      val runTask = runModule.bspRunModule().bspRun(args)
+      val runTask = UnresolvedTask(runModule.bspRunModule().bspRun(args), Map.empty)
       val runResult = evaluate(
         ev,
         s"Running ${runModule.bspDisplayName}",
@@ -629,7 +643,8 @@ private class MillBuildServer(
         .foldLeft(StatusCode.OK) { (overallStatusCode, targetId) =>
           state.bspModulesById(targetId) match {
             case (testModule: TestModuleApi, ev) =>
-              val testTask = testModule.testLocal(argsMap(targetId.getUri)*)
+              val testTask =
+                UnresolvedTask(testModule.testLocal(argsMap(targetId.getUri)*), Map.empty)
 
               // notifying the client that the testing of this build target started
               val taskStartParams = new TaskStartParams(new TaskId(testTask.hashCode().toString))
@@ -706,7 +721,10 @@ private class MillBuildServer(
             val mainModule = ev.rootModule.asInstanceOf[mill.api.daemon.internal.MainModuleApi]
             val compileTaskName = (module.moduleSegments ++ Label("compile")).render
             logger.debug(s"about to clean: ${compileTaskName}")
-            val cleanTask = mainModule.bspMainModule().bspClean(ev, Seq(compileTaskName)*)
+            val cleanTask = UnresolvedTask(
+              mainModule.bspMainModule().bspClean(ev, Seq(compileTaskName)*),
+              Map.empty
+            )
             val cleanResult = evaluate(
               ev,
               s"Cleaning cache of ${module.bspDisplayName}",
@@ -718,15 +736,19 @@ private class MillBuildServer(
               cleanResult.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
             if (cleanResult.transitiveFailingApi.size > 0) (
               msg + s" Target ${compileTaskName} could not be cleaned. See message from mill: \n" +
-                cleanResult.transitiveTaskResultsApi(cleanTask).map {
-                  case (task0, res) =>
-                    res match {
-                      case ex: ExecResult.Exception => ex.toString()
-                      case ExecResult.Skipped => "Task was skipped"
-                      case ExecResult.Aborted => "Task was aborted"
-                      case _ => "could not retrieve the failure message"
+                cleanResult.goals
+                  .flatMap { goal =>
+                    cleanResult.transitiveTaskResultsApi(goal).map {
+                      case (task0, res) =>
+                        res match {
+                          case ex: ExecResult.Exception => s"${task0.displayName}: $ex"
+                          case ExecResult.Skipped => s"Task ${task0.displayName} was skipped"
+                          case ExecResult.Aborted => s"Task ${task0.displayName} was aborted"
+                          case _ => s"could not retrieve failure message for ${task0.displayName}"
+                        }
                     }
-                }.mkString(", "),
+                  }
+                  .mkString(", "),
               false
             )
             else {
@@ -754,7 +776,7 @@ private class MillBuildServer(
    */
   def handlerTasks[T, V, W](
       targetIds: BspEvaluators => collection.Seq[BuildTargetIdentifier],
-      tasks: PartialFunction[BspModuleApi, TaskApi[W]],
+      tasks: PartialFunction[BspModuleApi, UnresolvedTask[W]],
       requestDescription: String,
       originId: String
   )(block: (
@@ -778,7 +800,7 @@ private class MillBuildServer(
    */
   def handlerTasksEvaluators[T, V, W](
       targetIds: BspEvaluators => collection.Seq[BuildTargetIdentifier],
-      tasks: PartialFunction[BspModuleApi, TaskApi[W]],
+      tasks: PartialFunction[BspModuleApi, UnresolvedTask[W]],
       requestDescription: String,
       originId: String
   )(block: (EvaluatorApi, BspEvaluators, BuildTargetIdentifier, BspModuleApi, W) => T)(agg: (
@@ -994,7 +1016,7 @@ private class MillBuildServer(
   private def evaluate(
       evaluator: EvaluatorApi,
       requestDescription: String,
-      goals: Seq[TaskApi[?]],
+      goals: Seq[UnresolvedTask[?]],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
@@ -1030,7 +1052,7 @@ private class MillBuildServer(
       val tasksEvs = state.bspModulesIdList
         .collectFirst {
           case (_, (m: JavaModuleApi, ev)) =>
-            Seq(((m, m.bspJavaModule().bspLoggingTest), ev))
+            Seq(((m, UnresolvedTask(m.bspJavaModule().bspLoggingTest, Map.empty)), ev))
         }
         .getOrElse {
           sys.error("No BSP build target available")

@@ -116,7 +116,7 @@ final class EvaluatorImpl private[mill] (
    * Takes a sequence of [[Task]]s and returns a [[PlanImpl]] containing the
    * transitive upstream tasks necessary to evaluate those provided.
    */
-  def plan(tasks: Seq[UnresolvedTask[?]]): Plan0 = PlanImpl.plan0(tasks)
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan = PlanImpl.plan0(tasks)
 
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): TopoSorted[Task[?]] = {
     PlanImpl.topoSorted(transitiveTasks, _.inputs)
@@ -132,8 +132,7 @@ final class EvaluatorImpl private[mill] (
   }
 
   def execute[T](
-      tasks: Seq[Task[T]],
-      crossValues: Map[String, String] = Map.empty,
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -141,15 +140,13 @@ final class EvaluatorImpl private[mill] (
       selectiveExecution: Boolean = false
   ): Evaluator.Result[T] = {
 
-    val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.isExclusiveCommand)
-
-    val tasks0 = tasks.map(UnresolvedTask(_, crossValues))
+    val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.task.isExclusiveCommand)
 
     val selectedTasksOrErr =
-      if (!selectiveExecutionEnabled) (tasks0, Map.empty, None)
+      if (!selectiveExecutionEnabled) (tasks, Map.empty, None)
       else {
         val (named, unnamed) =
-          tasks0.map(t => (t, t.task)).partitionMap {
+          tasks.map(t => (t, t.task)).partitionMap {
             case (t, _: Task.Named[?]) => Left(t); case (t, _) => Right(t)
           }
         val newComputedMetadata =
@@ -167,7 +164,7 @@ final class EvaluatorImpl private[mill] (
           case None =>
             // Ran when previous selective execution metadata is not available, which happens the first time you run
             // selective execution.
-            (tasks0, Map.empty, Some(newComputedMetadata.metadata))
+            (tasks, Map.empty, Some(newComputedMetadata.metadata))
           case Some(changedTasks) =>
             val selectedSet = changedTasks.downstreamTasks.map(_.displayName).toSet
 
@@ -281,10 +278,9 @@ final class EvaluatorImpl private[mill] (
     // FIXME Get via scriptArgs?
     val crossValues = Map.empty[String, String]
 
-    for (task <- resolved)
+    for (tasks <- resolved)
       yield execute(
-        Seq.from(task),
-        crossValues = crossValues,
+        Seq.from(tasks.map(UnresolvedTask(_, crossValues))),
         reporter = reporter,
         selectiveExecution = selectiveExecution
       )

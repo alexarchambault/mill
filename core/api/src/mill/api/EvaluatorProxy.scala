@@ -57,7 +57,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       resolveToModuleTasks
     )
   }
-  def plan(tasks: Seq[UnresolvedTask[?]]): Plan0 = delegate.plan(tasks)
+  def plan(tasks: Seq[UnresolvedTask[?]]): Plan = delegate.plan(tasks)
 
   def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted[Task[?]])(
       important: PartialFunction[
@@ -72,8 +72,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
     delegate.topoSorted0(transitiveTasks, inputs)
 
   def execute[T](
-      tasks: Seq[Task[T]],
-      crossValues: Map[String, String] = Map.empty,
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -82,7 +81,6 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   ): Evaluator.Result[T] = {
     delegate.execute(
       tasks,
-      crossValues,
       reporter,
       testReporter,
       logger,

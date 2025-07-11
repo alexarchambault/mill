@@ -42,7 +42,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   }
 
   def computeDownstream(
-      plan: Plan0,
+      plan: Plan,
       transitiveNamed: Seq[ResolvedNamedTask[?]],
       oldHashes: SelectiveExecution.Metadata,
       newHashes: SelectiveExecution.Metadata

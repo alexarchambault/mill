@@ -12,8 +12,7 @@ trait EvaluatorApi extends AutoCloseable {
   ): Result[EvaluatorApi.Result[Any]]
 
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, String] = Map.empty,
+      tasks: Seq[UnresolvedTaskApi[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -23,13 +22,12 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val)]
 
-  final private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]]
-  ): EvaluatorApi.Result[T] =
-    executeApi(tasks, Map.empty)
+  // final private[mill] def executeApi[T](
+  //     tasks: Seq[UnresolvedTaskApi[T]]
+  // ): EvaluatorApi.Result[T] =
+  //   executeApi(tasks, Map.empty)
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
-      crossValues: Map[String, String]
+      tasks: Seq[UnresolvedTaskApi[T]]
   ): EvaluatorApi.Result[T]
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
@@ -46,9 +44,10 @@ object EvaluatorApi {
 }
 
 trait ExecutionResultsApi {
+  def goals: Seq[ResolvedTaskApi[?]]
   def results: Seq[ExecResult[Val]]
   private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]]
-  private[mill] def transitiveTaskResultsApi(task: TaskApi[?])
+  private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
       : Seq[(ResolvedTaskApi[?], ExecResult[Val])]
 
   private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]]

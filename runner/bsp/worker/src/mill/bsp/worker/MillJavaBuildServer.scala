@@ -13,6 +13,7 @@ import ch.epfl.scala.bsp4j.{
 import mill.api.daemon.internal.JavaModuleApi
 import mill.api.daemon.internal.bsp.BspModuleApi
 import mill.bsp.worker.Utils.sanitizeUri
+import mill.api.UnresolvedTask
 
 private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServer =>
 
@@ -23,9 +24,12 @@ private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServe
       tasks = {
         // We ignore all non-JavaModule
         case m: JavaModuleApi =>
-          m.bspJavaModule().bspBuildTargetJavacOptions(
-            sessionInfo.clientType.mergeResourcesIntoClasses,
-            sessionInfo.clientWantsSemanticDb
+          UnresolvedTask(
+            m.bspJavaModule().bspBuildTargetJavacOptions(
+              sessionInfo.clientType.mergeResourcesIntoClasses,
+              sessionInfo.clientWantsSemanticDb
+            ),
+            Map.empty
           )
       },
       requestDescription = "Getting javac options of {}",

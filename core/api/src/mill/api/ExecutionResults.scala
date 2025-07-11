@@ -26,11 +26,11 @@ trait ExecutionResults extends ExecutionResultsApi {
       case (task, res) =>
         (task, res)
     }
-  private[mill] def transitiveTaskResultsApi(task: TaskApi[?])
+  private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
       : Seq[(ResolvedTaskApi[?], ExecResult[Val])] = {
     // FIXME Optimize that?
     transitiveResults
-      .filter(_._1.task == task)
+      .filter(_._1 == task)
       .toSeq
   }
 

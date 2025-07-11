@@ -18,6 +18,7 @@ import mill.bsp.worker.Utils.sanitizeUri
 import java.util.concurrent.CompletableFuture
 
 import scala.jdk.CollectionConverters.*
+import mill.api.UnresolvedTask
 
 private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer =>
 
@@ -46,7 +47,9 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
   )(implicit name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
-      tasks = { case m: RunModuleApi => m.bspRunModule().bspJvmTestEnvironment },
+      tasks = { case m: RunModuleApi =>
+        UnresolvedTask(m.bspRunModule().bspJvmTestEnvironment, Map.empty)
+      },
       requestDescription = "Getting JVM test environment of {}",
       originId = originId
     ) {
@@ -93,7 +96,9 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
   )(implicit name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
-      tasks = { case m: RunModuleApi => m.bspRunModule().bspJvmRunEnvironment },
+      tasks = { case m: RunModuleApi =>
+        UnresolvedTask(m.bspRunModule().bspJvmRunEnvironment, Map.empty)
+      },
       requestDescription = "Getting JVM run environment of {}",
       originId = originId
     ) {
@@ -134,7 +139,10 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
       targetIds = _ => params.getTargets.asScala,
       tasks = {
         case m: JavaModuleApi =>
-          m.bspCompileClasspath(sessionInfo.clientType.mergeResourcesIntoClasses)
+          UnresolvedTask(
+            m.bspCompileClasspath(sessionInfo.clientType.mergeResourcesIntoClasses),
+            Map.empty
+          )
       },
       requestDescription = "Getting JVM compile class path of {}",
       originId = ""
