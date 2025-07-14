@@ -17,6 +17,7 @@ import mill.resolve.Resolve
 import java.io.InputStream
 import java.io.PrintStream
 import java.util.concurrent.ThreadPoolExecutor
+import mill.api.UnresolvedTask
 
 object UnitTester {
   case class Result[T](value: T, evalCount: Int)
@@ -179,7 +180,7 @@ class UnitTester(
       dummy: DummyImplicit = null
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks, crossValues).executionResults
+    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
 
     if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
     else {
@@ -210,7 +211,7 @@ class UnitTester(
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(task), crossValues).executionResults
+    val res = evaluator.execute(Seq(UnresolvedTask(task, crossValues))).executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
@@ -232,7 +233,7 @@ class UnitTester(
       expected: Seq[Task[?]]
   ): Unit = {
 
-    val evaluated = evaluator.execute(tasks, crossValues).executionResults
+    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
       .uncached
       .flatMap(_.task.asSimple)
       .filter(module.moduleInternal.simpleTasks.contains)
