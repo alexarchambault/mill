@@ -11,7 +11,6 @@ import mill.api.daemon.internal.bsp.{BspBuildTarget, BspModuleApi, ScalaBuildTar
 import mill.api.daemon.internal.{ScalaModuleApi, ScalaPlatform, internal}
 import mill.javalib.dependency.versions.{ValidVersion, Version}
 import mill.javalib.SemanticDbJavaModule
-import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileMixed, ZincScaladocJar}
 
 // this import requires scala-reflect library to be on the classpath
 // it was duplicated to scala3-compiler, but is that too powerful to add as a dependency?
@@ -277,29 +276,23 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
         |You may want to select another version. Upgrading to a more recent Scala version is recommended.
         |For details, see: https://github.com/sbt/zinc/issues/1010""".stripMargin
     )
-
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
-
     jvmWorker()
-      .internalWorker()
+      .worker()
       .compileMixed(
-        ZincCompileMixed(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = allSourceFiles().map(_.path),
-          compileClasspath = compileClasspath().map(_.path),
-          javacOptions = jOpts.compiler,
-          scalaVersion = sv,
-          scalaOrganization = scalaOrganization(),
-          scalacOptions = allScalacOptions(),
-          compilerClasspath = scalaCompilerClasspath(),
-          scalacPluginClasspath = scalacPluginClasspath(),
-          incrementalCompilation = zincIncrementalCompilation(),
-          auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
-        ),
+        upstreamCompileOutput = upstreamCompileOutput(),
+        sources = allSourceFiles().map(_.path),
+        compileClasspath = compileClasspath().map(_.path),
         javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
+        javacOptions = javacOptions() ++ mandatoryJavacOptions(),
+        scalaVersion = sv,
+        scalaOrganization = scalaOrganization(),
+        scalacOptions = allScalacOptions(),
+        compilerClasspath = scalaCompilerClasspath(),
+        scalacPluginClasspath = scalacPluginClasspath(),
         reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+        reportCachedProblems = zincReportCachedProblems(),
+        incrementalCompilation = zincIncrementalCompilation(),
+        auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
       )
   }
 
@@ -328,16 +321,15 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
         PathRef(javadocDir)
       } else {
         jvmWorker()
-          .internalWorker()
-          .scaladocJar(
-            ZincScaladocJar(
-              scalaVersion(),
-              scalaOrganization(),
-              scalaDocClasspath(),
-              scalacPluginClasspath(),
-              options ++ compileCp ++ scalaDocOptions() ++ files.map(_.toString())
-            ),
-            javaHome = javaHome().map(_.path)
+          .worker()
+          .docJar(
+            scalaVersion(),
+            scalaOrganization(),
+            scalaDocClasspath(),
+            scalacPluginClasspath(),
+            javaHome().map(_.path),
+            options ++ compileCp ++ scalaDocOptions() ++
+              files.map(_.toString())
           ) match {
           case true => PathRef(javadocDir)
           case false => Task.fail("scaladoc generation failed")
@@ -550,11 +542,13 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
             scalaDocPluginMvnDeps()
           ) ++
           (
-            jvmWorker().scalaCompilerBridgeJarV2(
+            jvmWorker().scalaCompilerBridgeJar(
               scalaVersion(),
               scalaOrganization(),
               defaultResolver()
-            ).fullClasspath
+            ) match {
+              case (opt, single) => opt.toSeq.flatten ++ Seq(single)
+            }
           ) ++
           Task.sequence(tasks)().flatten
       ).distinct
@@ -619,28 +613,23 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
     Task.log.debug(s"effective scalac options: ${scalacOptions}")
     Task.log.debug(s"effective javac options: ${javacOpts}")
 
-    val jOpts = JavaCompilerOptions(javacOpts)
-
-    jvmWorker().internalWorker()
+    jvmWorker().worker()
       .compileMixed(
-        ZincCompileMixed(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = allSourceFiles().map(_.path),
-          compileClasspath =
-            (compileClasspath() ++ resolvedSemanticDbJavaPluginMvnDeps()).map(_.path),
-          javacOptions = jOpts.compiler,
-          scalaVersion = sv,
-          scalaOrganization = scalaOrganization(),
-          scalacOptions = scalacOptions,
-          compilerClasspath = scalaCompilerClasspath(),
-          scalacPluginClasspath = semanticDbPluginClasspath(),
-          incrementalCompilation = zincIncrementalCompilation(),
-          auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
-        ),
+        upstreamCompileOutput = upstreamCompileOutput(),
+        sources = allSourceFiles().map(_.path),
+        compileClasspath =
+          (compileClasspath() ++ resolvedSemanticDbJavaPluginMvnDeps()).map(_.path),
         javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
+        javacOptions = javacOpts,
+        scalaVersion = sv,
+        scalaOrganization = scalaOrganization(),
+        scalacOptions = scalacOptions,
+        compilerClasspath = scalaCompilerClasspath(),
+        scalacPluginClasspath = semanticDbPluginClasspath(),
         reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+        reportCachedProblems = zincReportCachedProblems(),
+        incrementalCompilation = zincIncrementalCompilation(),
+        auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
       )
       .map { compileRes =>
         BuildCtx.withFilesystemCheckerDisabled {

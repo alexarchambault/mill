@@ -1,11 +1,11 @@
 package mill.daemon
 
+import mill.client.lock.{DoubleLock, Lock}
 import mill.constants.{DaemonFiles, OutFiles, Util}
-import mill.daemon.MillMain0.{handleMillException, main0}
+import mill.daemon.MillMain0.{handleMillException, main0, outMemoryLock}
 import mill.api.BuildCtx
 import mill.server.Server
-
-import scala.jdk.CollectionConverters.*
+import scala.jdk.CollectionConverters._
 import scala.util.Properties
 
 object MillNoDaemonMain {
@@ -24,17 +24,19 @@ object MillNoDaemonMain {
     val processId = Server.computeProcessId()
     val out = os.Path(OutFiles.out, BuildCtx.workspaceRoot)
     Server.watchProcessIdFile(
-      out / OutFiles.millNoDaemon / s"pid-$processId" / DaemonFiles.processId,
+      out / OutFiles.millNoDaemon / processId / DaemonFiles.processId,
       processId,
       running = () => true,
       exit = msg => {
         System.err.println(msg)
         System.exit(0)
-      },
-      log = System.err.println
+      }
     )
 
-    val outLock = MillMain0.doubleLock(out)
+    val outLock = new DoubleLock(
+      outMemoryLock,
+      Lock.file((out / OutFiles.millOutLock).toString)
+    )
 
     val daemonDir = os.Path(args.head)
     val (result, _) =
@@ -47,7 +49,7 @@ object MillNoDaemonMain {
           setIdle = _ => (),
           userSpecifiedProperties0 = Map(),
           initialSystemProperties = sys.props.toMap,
-          systemExit = ( /*reason*/ _, exitCode) => sys.exit(exitCode),
+          systemExit = i => sys.exit(i),
           daemonDir = daemonDir,
           outLock = outLock
         )

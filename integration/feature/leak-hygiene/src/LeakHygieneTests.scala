@@ -13,12 +13,13 @@ import utest._
  * doesn't increase when nothing has changed.
  */
 object LeakHygieneTests extends UtestIntegrationTestSuite {
-  def checkClassloaders(tester: IntegrationTester)(expected: utest.framework.GoldenFix.Span[Seq[
-    (String, Int)
+  def checkClassloaders(tester: IntegrationTester)(expected: utest.framework.GoldenFix.Span[Map[
+    String,
+    Int
   ]]) = {
     val res = tester.eval(("show", "countClassLoaders"), check = true)
 
-    val read = upickle.default.read[Map[String, Int]](res.out).toSeq.sorted
+    val read = upickle.default.read[Map[String, Int]](res.out)
 
     assertGoldenLiteral(read, expected)
   }
@@ -48,10 +49,6 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
         // Timers have incrementing IDs, but we don't care what
         // the ID is as long as it is a timer thread.
         case s"Timer-$_" => "Timer"
-        // The action runners have the socket address in them, we don't care about that
-        case s"MillServerActionRunner$_" => "MillServerActionRunner"
-        // Same here
-        case s"HandleRunThread$_" => "HandleRunThread"
         case s => s
       }
       .sorted
@@ -64,10 +61,10 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
       if (daemonMode) {
         checkClassloaders(tester)(
           Map(
-            "mill.javalib.JvmWorkerModule#internalWorker cl" -> 1,
+            "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 1,
             "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
-            "mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader" -> 1
-          ).toSeq.sorted
+            "mill.javalib.JvmWorkerModule#worker cl" -> 1
+          )
         )
         checkThreads(tester)(
           List(
@@ -91,11 +88,11 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
           tester.eval(("show", "__.compile"))
           checkClassloaders(tester)(
             Map(
-              "mill.kotlinlib.KotlinWorkerManager" -> 1,
-              "mill.javalib.JvmWorkerModule#internalWorker cl" -> 2,
               "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
-              "mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader" -> 2
-            ).toSeq.sorted
+              "mill.kotlinlib.KotlinWorkerManager" -> 1,
+              "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+              "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 2
+            )
           )
           checkThreads(tester)(
             List(
@@ -121,11 +118,11 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
           tester.eval(("show", "__.compile"))
           checkClassloaders(tester)(
             Map(
-              "mill.kotlinlib.KotlinWorkerManager" -> 1,
-              "mill.javalib.JvmWorkerModule#internalWorker cl" -> 2,
               "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
-              "mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader" -> 2
-            ).toSeq.sorted
+              "mill.kotlinlib.KotlinWorkerManager" -> 1,
+              "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+              "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 2
+            )
           )
           checkThreads(tester)(
             List(
@@ -149,9 +146,9 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
 
         tester.eval(("shutdown"), check = true)
         checkClassloaders(tester)(
-          List(
-            ("mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl", 1),
-            ("mill.javalib.JvmWorkerModule#internalWorker cl", 1)
+          Map(
+            "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
+            "mill.javalib.JvmWorkerModule#worker cl" -> 1
           )
         )
         checkThreads(tester)(
@@ -175,11 +172,11 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
           tester.eval(("show", "clean"))
           tester.eval(("show", "__.compile"))
           checkClassloaders(tester)(
-            List(
-              ("mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl", 1),
-              ("mill.javalib.JvmWorkerModule#internalWorker cl", 2),
-              ("mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader", 1),
-              ("mill.kotlinlib.KotlinWorkerManager", 1)
+            Map(
+              "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
+              "mill.kotlinlib.KotlinWorkerManager" -> 1,
+              "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+              "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 1
             )
           )
           checkThreads(tester)(
@@ -206,11 +203,11 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
 
           tester.eval(("show", "__.compile"))
           checkClassloaders(tester)(
-            List(
-              ("mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl", 1),
-              ("mill.javalib.JvmWorkerModule#internalWorker cl", 2),
-              ("mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader", 1),
-              ("mill.kotlinlib.KotlinWorkerManager", 1)
+            Map(
+              "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
+              "mill.kotlinlib.KotlinWorkerManager" -> 1,
+              "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+              "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 1
             )
           )
           checkThreads(tester)(
@@ -239,11 +236,11 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
 
           tester.eval(("show", "__.compile"))
           checkClassloaders(tester)(
-            List(
-              ("mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl", 1),
-              ("mill.javalib.JvmWorkerModule#internalWorker cl", 2),
-              ("mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader", 1),
-              ("mill.kotlinlib.KotlinWorkerManager", 1)
+            Map(
+              "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
+              "mill.kotlinlib.KotlinWorkerManager" -> 1,
+              "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+              "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 1
             )
           )
           checkThreads(tester)(
@@ -268,12 +265,12 @@ object LeakHygieneTests extends UtestIntegrationTestSuite {
         // Make sure we can detect leaked classloaders and threads when the do happen
         tester.eval(("leakThreadClassloader"))
         checkClassloaders(tester)(
-          List(
-            ("leaked classloader", 1),
-            ("mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl", 1),
-            ("mill.javalib.JvmWorkerModule#internalWorker cl", 2),
-            ("mill.javalib.zinc.ZincWorker#scalaCompilerCache $anon#setup classLoader", 1),
-            ("mill.kotlinlib.KotlinWorkerManager", 1)
+          Map(
+            "leaked classloader" -> 1,
+            "mill.daemon.MillBuildBootstrap#processRunClasspath classLoader cl" -> 1,
+            "mill.kotlinlib.KotlinWorkerManager" -> 1,
+            "mill.javalib.JvmWorkerModule#worker cl" -> 2,
+            "mill.javalib.worker.JvmWorkerImpl#scalaCompilerCache.setup loader" -> 1
           )
         )
         checkThreads(tester)(

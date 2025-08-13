@@ -4,8 +4,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Optional;
-import java.util.function.Consumer;
 import mill.client.*;
 import mill.client.lock.Locks;
 import mill.constants.OutFiles;
@@ -43,30 +41,29 @@ public class MillLauncherMain {
         optsArgs.addAll(MillProcessLauncher.millOpts());
         Collections.addAll(optsArgs, args);
 
-        MillServerLauncher launcher =
-            new MillServerLauncher(
-                new MillServerLauncher.Streams(System.in, System.out, System.err),
+        ServerLauncher launcher =
+            new ServerLauncher(
+                System.in,
+                System.out,
+                System.err,
                 System.getenv(),
                 optsArgs.toArray(new String[0]),
-                Optional.empty(),
+                null,
                 -1) {
-              public LaunchedServer initServer(Path daemonDir, Locks locks) throws Exception {
-                return new LaunchedServer.OsProcess(
-                    MillProcessLauncher.launchMillDaemon(daemonDir).toHandle());
+              public Process initServer(Path daemonDir, Locks locks) throws Exception {
+                return MillProcessLauncher.launchMillDaemon(daemonDir);
               }
 
-              public void prepareDaemonDir(Path daemonDir) throws Exception {
+              public void preparedaemonDir(Path daemonDir) throws Exception {
                 MillProcessLauncher.prepareMillRunFolder(daemonDir);
               }
             };
 
         Path daemonDir0 = Paths.get(OutFiles.out, OutFiles.millDaemon);
         String javaHome = MillProcessLauncher.javaHome();
-        // No logging.
-        Consumer<String> log = ignored -> {};
-        var exitCode = launcher.run(daemonDir0, javaHome, log).exitCode;
+        int exitCode = launcher.run(daemonDir0, javaHome).exitCode;
         if (exitCode == ClientUtil.ExitServerCodeWhenVersionMismatch()) {
-          exitCode = launcher.run(daemonDir0, javaHome, log).exitCode;
+          exitCode = launcher.run(daemonDir0, javaHome).exitCode;
         }
         System.exit(exitCode);
       } catch (Exception e) {
