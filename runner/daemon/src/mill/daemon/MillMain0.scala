@@ -5,19 +5,19 @@ import mill.api.daemon.internal.bsp.BspServerHandle
 import mill.api.daemon.internal.{CompileProblemReporter, EvaluatorApi}
 import mill.api.{Logger, MillException, Result, SystemStreams}
 import mill.bsp.BSP
-import mill.client.lock.{DoubleLock, Lock}
+import mill.client.lock.Lock
 import mill.constants.{DaemonFiles, OutFiles}
 import mill.api.BuildCtx
 import mill.internal.{
   Colors,
   JsonArrayLogger,
-  MillCliConfig,
   MultiStream,
   PrefixLogger,
   PromptLogger,
-  SimpleLogger
+  SimpleLogger,
+  MillCliConfig
 }
-import mill.server.{MillDaemonServer, Server}
+import mill.server.Server
 import mill.util.BuildInfo
 import mill.api
 import mill.api.daemon.internal.bsp.BspServerResult
@@ -52,16 +52,7 @@ object MillMain0 {
       throw e
   }
 
-  private val outMemoryLock = Lock.memory()
-
-  /**
-   * We need a double lock because file system locks are not reentrant and blows up if you try to take them twice, while
-   * memory locks just block until the lock is available.
-   */
-  def doubleLock(out: os.Path): DoubleLock = DoubleLock(
-    outMemoryLock,
-    Lock.file((out / OutFiles.millOutLock).toString)
-  )
+  val outMemoryLock = Lock.memory()
 
   private def withStreams[T](
       bspMode: Boolean,
@@ -106,7 +97,7 @@ object MillMain0 {
       setIdle: Boolean => Unit,
       userSpecifiedProperties0: Map[String, String],
       initialSystemProperties: Map[String, String],
-      systemExit: Server.StopServer,
+      systemExit: Int => Nothing,
       daemonDir: os.Path,
       outLock: Lock
   ): (Boolean, RunnerState) =
@@ -252,7 +243,7 @@ object MillMain0 {
                         reporter: EvaluatorApi => Int => Option[CompileProblemReporter] =
                           _ => _ => None,
                         extraEnv: Seq[(String, String)] = Nil
-                    ) = MillDaemonServer.withOutLock(
+                    ) = Server.withOutLock(
                       config.noBuildLock.value,
                       config.noWaitForBuildLock.value,
                       out,

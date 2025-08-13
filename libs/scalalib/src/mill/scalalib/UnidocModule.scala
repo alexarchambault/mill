@@ -2,7 +2,6 @@ package mill.scalalib
 import mill.*
 import mill.api.BuildCtx
 import mill.javalib.api.JvmWorkerUtil
-import mill.javalib.api.internal.ZincScaladocJar
 
 /**
  * Mix this in to any [[ScalaModule]] to provide a [[unidocSite]] task that
@@ -102,15 +101,13 @@ trait UnidocModule extends ScalaModule {
           |""".stripMargin
     )
 
-    jvmWorker().internalWorker().scaladocJar(
-      ZincScaladocJar(
-        scalaVersion(),
-        scalaOrganization(),
-        scalaDocClasspath(),
-        scalacPluginClasspath(),
-        options ++ unidocSourceFiles0.map(_.path.toString)
-      ),
-      javaHome().map(_.path)
+    jvmWorker().worker().docJar(
+      scalaVersion(),
+      scalaOrganization(),
+      scalaDocClasspath(),
+      scalacPluginClasspath(),
+      javaHome().map(_.path),
+      options ++ unidocSourceFiles0.map(_.path.toString)
     ) match {
       case true => PathRef(Task.dest)
       case false => Task.fail("unidoc generation failed")

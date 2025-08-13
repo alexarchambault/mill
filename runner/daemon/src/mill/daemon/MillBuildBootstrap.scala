@@ -17,7 +17,6 @@ import mill.api.{BuildCtx, PathRef, SelectMode}
 import mill.internal.PrefixLogger
 import mill.meta.{FileImportGraph, MillBuildRootModule}
 import mill.meta.CliImports
-import mill.server.Server
 import mill.util.BuildInfo
 
 import java.io.File
@@ -55,7 +54,7 @@ class MillBuildBootstrap(
     needBuildFile: Boolean,
     requestedMetaLevel: Option[Int],
     allowPositionalCommandArgs: Boolean,
-    systemExit: Server.StopServer,
+    systemExit: Int => Nothing,
     streams0: SystemStreams,
     selectiveExecution: Boolean,
     offline: Boolean,
@@ -393,7 +392,7 @@ object MillBuildBootstrap {
       logger: Logger,
       ec: Option[ThreadPoolExecutor],
       allowPositionalCommandArgs: Boolean,
-      systemExit: Server.StopServer,
+      systemExit: Int => Nothing,
       streams0: SystemStreams,
       selectiveExecution: Boolean,
       offline: Boolean,
@@ -437,7 +436,7 @@ object MillBuildBootstrap {
         !keepGoing,
         ec,
         codeSignatures,
-        (reason: String, exitCode: Int) => systemExit(reason, exitCode),
+        systemExit,
         streams0,
         () => evaluator,
         offline,

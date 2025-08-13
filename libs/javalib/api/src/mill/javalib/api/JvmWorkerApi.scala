@@ -1,7 +1,7 @@
 package mill.javalib.api
 
-import mill.api.PathRef
 import mill.api.daemon.internal.CompileProblemReporter
+import mill.api.PathRef
 
 object JvmWorkerApi {
   type Ctx = mill.api.TaskCtx.Dest & mill.api.TaskCtx.Log & mill.api.TaskCtx.Env
@@ -38,7 +38,6 @@ trait JvmWorkerApi {
       auxiliaryClassFileExtensions: Seq[String]
   )(using ctx: JvmWorkerApi.Ctx): mill.api.Result[CompilationResult]
 
-  /** Compiles a Scaladoc jar. */
   def docJar(
       scalaVersion: String,
       scalaOrganization: String,
@@ -47,4 +46,5 @@ trait JvmWorkerApi {
       javaHome: Option[os.Path],
       args: Seq[String]
   )(using ctx: JvmWorkerApi.Ctx): Boolean
+
 }

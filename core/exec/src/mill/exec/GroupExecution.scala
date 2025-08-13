@@ -24,17 +24,12 @@ private trait GroupExecution {
   def rootModule: BaseModuleApi
   def classLoaderSigHash: Int
   def classLoaderIdentityHash: Int
-
-  /**
-   * `String` is the worker name, `Int` is the worker hash, `Val` is the result of the worker invocation.
-   */
   def workerCache: mutable.Map[String, (Int, Val)]
-
   def env: Map[String, String]
   def failFast: Boolean
   def ec: Option[ThreadPoolExecutor]
   def codeSignatures: Map[String, Int]
-  def systemExit: ( /* reason */ String, /* exitCode */ Int) => Nothing
+  def systemExit: Int => Nothing
   def exclusiveSystemStreams: SystemStreams
   def getEvaluator: () => EvaluatorApi
   def headerData: String
@@ -292,7 +287,7 @@ private trait GroupExecution {
             reporter = reporter,
             testReporter = testReporter,
             workspace = workspace,
-            _systemExitWithReason = systemExit,
+            systemExit = systemExit,
             fork = executionContext,
             jobs = effectiveThreadCount,
             offline = offline

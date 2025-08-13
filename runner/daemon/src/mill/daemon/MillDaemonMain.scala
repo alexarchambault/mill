@@ -1,12 +1,11 @@
 package mill.daemon
 
-import mill.api.{BuildCtx, SystemStreams}
+import mill.api.SystemStreams
 import mill.client.ClientUtil
-import mill.client.lock.{Lock, Locks}
+import mill.client.lock.{DoubleLock, Lock, Locks}
 import mill.constants.OutFiles
-import mill.server.Server
-
-import scala.concurrent.duration.*
+import sun.misc.{Signal, SignalHandler}
+import mill.api.BuildCtx
 import scala.util.{Properties, Try}
 
 object MillDaemonMain {
@@ -23,14 +22,26 @@ object MillDaemonMain {
       sys.props("coursier.windows.disable-ffm") = "true"
 
     mill.api.SystemStreamsUtils.withTopLevelSystemStreamProxy {
-      Server.overrideSigIntHandling()
+      // Disable SIGINT interrupt signal in the Mill server.
+      //
+      // This gets passed through from the client to server whenever the user
+      // hits `Ctrl-C`, which by default kills the server, which defeats the purpose
+      // of running a background daemon. Furthermore, the background daemon already
+      // can detect when the Mill client goes away, which is necessary to handle
+      // the case when a Mill client that did *not* spawn the server gets `CTRL-C`ed
+      Signal.handle(
+        new Signal("INT"),
+        new SignalHandler() {
+          def handle(sig: Signal) = {} // do nothing
+        }
+      )
 
-      val acceptTimeout =
-        Try(System.getProperty("mill.server_timeout").toInt.millis).getOrElse(30.minutes)
+      val acceptTimeoutMillis =
+        Try(System.getProperty("mill.server_timeout").toInt).getOrElse(30 * 60 * 1000) // 30 minutes
 
       new MillDaemonMain(
         daemonDir = os.Path(args0(0)),
-        acceptTimeout = acceptTimeout,
+        acceptTimeoutMillis = acceptTimeoutMillis,
         Locks.files(args0(0))
       ).run()
 
@@ -40,19 +51,22 @@ object MillDaemonMain {
 }
 class MillDaemonMain(
     daemonDir: os.Path,
-    acceptTimeout: FiniteDuration,
+    acceptTimeoutMillis: Int,
     locks: Locks
-) extends mill.server.MillDaemonServer[RunnerState](
+) extends mill.server.Server[RunnerState](
       daemonDir,
-      acceptTimeout,
+      acceptTimeoutMillis,
       locks
     ) {
 
   def stateCache0 = RunnerState.empty
 
-  val out: os.Path = os.Path(OutFiles.out, BuildCtx.workspaceRoot)
+  val out = os.Path(OutFiles.out, BuildCtx.workspaceRoot)
 
-  val outLock = MillMain0.doubleLock(out)
+  val outLock = new DoubleLock(
+    MillMain0.outMemoryLock,
+    Lock.file((out / OutFiles.millOutLock).toString)
+  )
 
   def main0(
       args: Array[String],
@@ -63,7 +77,7 @@ class MillDaemonMain(
       setIdle: Boolean => Unit,
       userSpecifiedProperties: Map[String, String],
       initialSystemProperties: Map[String, String],
-      systemExit: Server.StopServer
+      systemExit: Int => Nothing
   ): (Boolean, RunnerState) = {
     try MillMain0.main0(
         args = args,

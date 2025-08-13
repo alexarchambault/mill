@@ -210,8 +210,7 @@ final class EvaluatorImpl private[mill] (
                 reporter = reporter,
                 testReporter = testReporter,
                 workspace = workspace,
-                _systemExitWithReason = (reason, exitCode) =>
-                  throw Exception(s"systemExit called: reason=$reason, exitCode=$exitCode"),
+                systemExit = _ => ???,
                 fork = null,
                 jobs = execution.effectiveThreadCount,
                 offline = offline

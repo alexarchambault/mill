@@ -9,7 +9,6 @@ import mill.api.daemon.internal.bsp.BspBuildTarget
 import mill.api.{ModuleRef, PathRef, Task}
 import mill.javalib.*
 import mill.javalib.api.CompilationResult
-import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileJava}
 import os.Path
 
 import scala.collection.immutable
@@ -475,21 +474,17 @@ trait AndroidModule extends JavaModule { outer =>
    * The Java compiled classes of [[androidResources]]
    */
   def androidCompiledRClasses: T[CompilationResult] = Task(persistent = true) {
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
     jvmWorker()
-      .internalWorker()
+      .worker()
       .compileJava(
-        ZincCompileJava(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = androidLibsRClasses().map(_.path),
-          compileClasspath = Seq.empty,
-          javacOptions = jOpts.compiler,
-          incrementalCompilation = zincIncrementalCompilation()
-        ),
+        upstreamCompileOutput = upstreamCompileOutput(),
+        sources = androidLibsRClasses().map(_.path),
+        compileClasspath = Seq.empty,
         javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
+        javacOptions = javacOptions() ++ mandatoryJavacOptions(),
         reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+        reportCachedProblems = zincReportCachedProblems(),
+        incrementalCompilation = zincIncrementalCompilation()
       )
   }
 
@@ -640,21 +635,17 @@ trait AndroidModule extends JavaModule { outer =>
 
     val rJar = Task.dest / "R.jar"
 
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
     val classesDest = jvmWorker()
-      .internalWorker()
+      .worker()
       .compileJava(
-        ZincCompileJava(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = sources.map(_.path),
-          compileClasspath = androidTransitiveLibRClasspath().map(_.path),
-          javacOptions = jOpts.compiler,
-          incrementalCompilation = zincIncrementalCompilation()
-        ),
+        upstreamCompileOutput = upstreamCompileOutput(),
+        sources = sources.map(_.path),
+        compileClasspath = androidTransitiveLibRClasspath().map(_.path),
         javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
+        javacOptions = javacOptions() ++ mandatoryJavacOptions(),
         reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+        reportCachedProblems = zincReportCachedProblems(),
+        incrementalCompilation = zincIncrementalCompilation()
       ).get.classes.path
 
     os.zip(rJar, Seq(classesDest))

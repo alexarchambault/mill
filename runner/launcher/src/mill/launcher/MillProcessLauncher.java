@@ -59,7 +59,8 @@ public class MillProcessLauncher {
   }
 
   static Process launchMillDaemon(Path daemonDir) throws Exception {
-    List<String> l = new ArrayList<>(millLaunchJvmCommand());
+    List<String> l = new ArrayList<>();
+    l.addAll(millLaunchJvmCommand());
     l.add("mill.daemon.MillDaemonMain");
     l.add(daemonDir.toFile().getCanonicalPath());
 

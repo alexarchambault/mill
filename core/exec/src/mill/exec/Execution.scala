@@ -27,7 +27,7 @@ private[mill] case class Execution(
     failFast: Boolean,
     ec: Option[ThreadPoolExecutor],
     codeSignatures: Map[String, Int],
-    systemExit: ( /* reason */ String, /* exitCode */ Int) => Nothing,
+    systemExit: Int => Nothing,
     exclusiveSystemStreams: SystemStreams,
     getEvaluator: () => EvaluatorApi,
     offline: Boolean,
@@ -48,7 +48,7 @@ private[mill] case class Execution(
       failFast: Boolean,
       ec: Option[ThreadPoolExecutor],
       codeSignatures: Map[String, Int],
-      systemExit: ( /* reason */ String, /* exitCode */ Int) => Nothing,
+      systemExit: Int => Nothing,
       exclusiveSystemStreams: SystemStreams,
       getEvaluator: () => EvaluatorApi,
       offline: Boolean,
@@ -254,14 +254,8 @@ private[mill] case class Execution(
                   }
                 }
               } catch {
-                // Wrapping the fatal error in a non-fatal exception, so it would be caught by Scala's Future
-                // infrastructure, rather than silently terminating the future and leaving downstream Awaits hanging.
                 case e: Throwable if !scala.util.control.NonFatal(e) =>
-                  val nonFatal = new Exception(s"fatal exception occurred: $e", e)
-                  // Set the stack trace of the non-fatal exception to the original exception's stack trace
-                  // as it actually indicates the location of the error.
-                  nonFatal.setStackTrace(e.getStackTrace)
-                  throw nonFatal
+                  throw new Exception(e)
               }
             }
           }
