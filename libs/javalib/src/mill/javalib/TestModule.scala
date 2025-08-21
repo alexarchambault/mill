@@ -298,10 +298,15 @@ trait TestModule
       frameworkName: String,
       classes: Seq[String]
   )] = Task.Anon {
+    val hasTwoClassLoaders =
+      classOf[sbt.testing.Framework].getClassLoader != getClass.getClassLoader
     val (frameworkName, classFingerprint) =
       mill.util.Jvm.withClassLoader(
         classPath = runClasspath().map(_.path),
-        sharedPrefixes = Seq("sbt.testing.", "mill.api.daemon.internal.TestReporter")
+        parent = if (hasTwoClassLoaders) classOf[sbt.testing.Framework].getClassLoader else null,
+        sharedPrefixes =
+          if (hasTwoClassLoaders) Nil
+          else Seq("sbt.testing.", "mill.api.daemon.internal.TestReporter")
       ) { classLoader =>
         val framework = Framework.framework(testFramework())(classLoader)
         framework.name() -> TestRunnerUtils
@@ -406,9 +411,14 @@ object TestModule {
      * override this method.
      */
     override def discoveredTestClasses: T[Seq[String]] = Task {
+      val hasTwoClassLoaders =
+        classOf[sbt.testing.Framework].getClassLoader != getClass.getClassLoader
       Jvm.withClassLoader(
         classPath = runClasspath().map(_.path).toVector,
-        sharedPrefixes = Seq("sbt.testing.", "mill.api.daemon.internal.TestReporter")
+        parent = if (hasTwoClassLoaders) classOf[sbt.testing.Framework].getClassLoader else null,
+        sharedPrefixes =
+          if (hasTwoClassLoaders) Nil
+          else Seq("sbt.testing.", "mill.api.daemon.internal.TestReporter")
       ) { classLoader =>
         val builderClass: Class[?] =
           classLoader.loadClass("com.github.sbt.junit.jupiter.api.JupiterTestCollector$Builder")
