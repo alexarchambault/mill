@@ -80,6 +80,22 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       ]
   ): MultiBiMap[T, Task[?]] = delegate.groupAroundImportantTasks(topoSortedTasks)(important)
 
+  def groupAroundImportantTasks0[T](
+      topoSortedTasks: mill.api.TopoSorted[ResolvedTask[?]],
+      plan: Plan
+  )(
+      important: PartialFunction[
+        ResolvedTask[?],
+        T
+      ]
+  ): MultiBiMap[T, ResolvedTask[?]] =
+    delegate.groupAroundImportantTasks0(topoSortedTasks, plan)(important)
+
+  def transitiveTasks0(sourceNodes: Seq[ResolvedTask[_]])(
+      inputsFor: ResolvedTask[_] => Seq[ResolvedTask[_]]
+  ): IndexedSeq[ResolvedTask[_]] =
+    delegate.transitiveTasks0(sourceNodes)(inputsFor)
+
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted[Task[?]] =
     delegate.topoSorted(transitiveTasks)
   def topoSorted0[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T] =
