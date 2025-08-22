@@ -145,7 +145,7 @@ object VisualizeModule extends ExternalModule {
 
           org.jgrapht.alg.TransitiveReduction.INSTANCE.reduce(jgraph)
           val nodes = indexToTask.map(t =>
-            node(plan.sortedGroups.lookupValue(???).toString)
+            node(plan.sortedGroups.lookupValue(t.asTask).toString)
               .`with` {
                 if (tasks.contains(t)) Style.SOLID
                 else Style.DASHED

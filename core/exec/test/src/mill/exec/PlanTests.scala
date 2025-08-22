@@ -29,9 +29,10 @@ object PlanTests extends TestSuite {
 
     test("topoSortedTransitiveTasks") {
       def check(tasks: Seq[UnresolvedTask[?]], expected: Seq[ResolvedTask[?]]) = {
-        val result = PlanImpl.plan0(tasks)
-        checkTopological(result.goals, result.inputs)
-        assert(result.goals == expected)
+        val plan = PlanImpl.plan0(tasks)
+        val result = plan.topoSorted.values
+        checkTopological(result, plan.inputs)
+        assert(result == expected)
       }
 
       test("singleton") - check(
