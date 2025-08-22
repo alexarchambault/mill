@@ -1,7 +1,7 @@
 package mill.api
 
 import mill.api.*
-import mill.api.daemon.internal.{ResolvedTaskApi, TaskApi, ExecutionResultsApi}
+import mill.api.daemon.internal.{ResolvedTaskApi, ExecutionResultsApi}
 import mill.api.ResolvedTask
 
 /**
