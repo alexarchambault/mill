@@ -31,7 +31,7 @@ object PlanTests extends TestSuite {
       def check(tasks: Seq[UnresolvedTask[?]], expected: Seq[ResolvedTask[?]]) = {
         val result = PlanImpl.plan0(tasks)
         checkTopological(result.goals, result.inputs)
-        assert(result == expected)
+        assert(result.goals == expected)
       }
 
       test("singleton") - check(

@@ -5,7 +5,7 @@ import mill.api.*
 import mill.api.daemon.Watchable
 import mill.api.BuildCtx
 import mill.api.ResolvedTask
-import mill.api.daemon.internal.{EvaluatorApi, TaskApi, UnresolvedTaskApi}
+import mill.api.daemon.internal.{EvaluatorApi, UnresolvedTaskApi}
 import mill.api.internal.{Resolved, RootModule0}
 
 import scala.util.DynamicVariable
@@ -80,6 +80,24 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
         T
       ]
   ): MultiBiMap[T, Task[?]]
+
+  def groupAroundImportantTasks0[T](
+      topoSortedTasks: mill.api.TopoSorted[ResolvedTask[?]],
+      plan: Plan
+  )(
+      important: PartialFunction[
+        ResolvedTask[?],
+        T
+      ]
+  ): MultiBiMap[T, ResolvedTask[?]]
+
+  /**
+   * Collects all transitive dependencies (tasks) of the given tasks,
+   * including the given tasks.
+   */
+  def transitiveTasks0(sourceNodes: Seq[ResolvedTask[_]])(
+      inputsFor: ResolvedTask[_] => Seq[ResolvedTask[_]]
+  ): IndexedSeq[ResolvedTask[_]]
 
   /**
    * Takes the given tasks, finds all the tasks they transitively depend

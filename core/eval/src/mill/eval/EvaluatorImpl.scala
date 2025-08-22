@@ -134,6 +134,11 @@ final class EvaluatorImpl private[mill] (
    */
   def plan(tasks: Seq[UnresolvedTask[?]]): Plan = PlanImpl.plan0(tasks)
 
+  def transitiveTasks0(sourceNodes: Seq[ResolvedTask[_]])(
+      inputsFor: ResolvedTask[_] => Seq[ResolvedTask[_]]
+  ): IndexedSeq[ResolvedTask[_]] =
+    PlanImpl.transitiveNodes(sourceNodes)(inputsFor)
+
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): TopoSorted[Task[?]] = {
     PlanImpl.topoSorted(transitiveTasks, _.inputs)
   }
@@ -145,6 +150,16 @@ final class EvaluatorImpl private[mill] (
     T
   ]) = {
     PlanImpl.groupAroundImportantTasks(topoSortedTasks, _.inputs)(important)
+  }
+
+  def groupAroundImportantTasks0[T](
+      topoSortedTasks: TopoSorted[ResolvedTask[?]],
+      plan: Plan
+  )(important: PartialFunction[
+    ResolvedTask[?],
+    T
+  ]) = {
+    PlanImpl.groupAroundImportantTasks(topoSortedTasks, plan.inputs(_))(important)
   }
 
   def execute[T](

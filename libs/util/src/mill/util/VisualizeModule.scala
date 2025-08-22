@@ -10,6 +10,8 @@ import guru.nidi.graphviz.attribute.Rank.RankDir
 import guru.nidi.graphviz.attribute.{Rank, Shape, Style}
 import mill.api.BuildCtx
 import mill.api.UnresolvedTask
+import mill.api.ResolvedNamedTask
+import mill.api.ResolvedTask
 
 object VisualizeModule extends ExternalModule {
   def repositories: Seq[Repository] =
@@ -20,8 +22,7 @@ object VisualizeModule extends ExternalModule {
   private type VizWorker = (
       LinkedBlockingQueue[(
           scala.Seq[UnresolvedTask[Any]],
-          scala.Seq[UnresolvedTask[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )],
@@ -40,20 +41,19 @@ object VisualizeModule extends ExternalModule {
         transitiveTasks: List[UnresolvedTask[Any]]
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
-      val plan = evaluator.plan(tasks)
-      // val transitive = evaluator.transitiveTasks(tasks)
-      // val topoSorted = evaluator.topoSorted(transitive)
-      // val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
-      //   case x: Task.Named[Any] if transitiveTasks.contains(x) => x
-      // }
-      // val plan = evaluator.plan(transitiveTasks)
-      // in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
-      // val res = out.take()
-      // res.map { v =>
-      //   println(upickle.write(v.map(_.path.toString()), indent = 2))
-      //   v
-      // }
-      ???
+      val plan = evaluator.plan(transitiveTasks)
+      val transitive = evaluator.transitiveTasks0(plan.goals)(plan.inputs(_))
+      val topoSorted = evaluator.topoSorted0(transitive, plan.inputs)
+      val sortedGroups = evaluator.groupAroundImportantTasks0(topoSorted, plan) {
+        case t if t.asNamed.map(_.task).exists(n => transitiveTasks.exists(_.task == n)) =>
+          t.asNamed.get
+      }
+      in.put((tasks, sortedGroups, plan, ctx.dest))
+      val res = out.take()
+      res.map { v =>
+        println(upickle.write(v.map(_.path.toString()), indent = 2))
+        v
+      }
     }
 
     evaluator.resolveTasks(tasks, SelectMode.Multi).flatMap {
@@ -99,8 +99,7 @@ object VisualizeModule extends ExternalModule {
   private[mill] def worker: Worker[(
       LinkedBlockingQueue[(
           scala.Seq[UnresolvedTask[Any]],
-          scala.Seq[UnresolvedTask[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )],
@@ -109,8 +108,7 @@ object VisualizeModule extends ExternalModule {
     val in =
       new LinkedBlockingQueue[(
           scala.Seq[UnresolvedTask[Any]],
-          scala.Seq[UnresolvedTask[Any]],
-          MultiBiMap[Task.Named[Any], Task[?]],
+          MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
       )]()
@@ -118,9 +116,9 @@ object VisualizeModule extends ExternalModule {
     val visualizeThread = new java.lang.Thread(() =>
       while (true) {
         val res = Result.Success {
-          val (tasks, transitiveTasks, sortedGroups, plan, dest) = in.take()
+          val (tasks, sortedGroups, plan, dest) = in.take()
 
-          val goalSet = transitiveTasks.toSet
+          val goalSet = plan.goals.toSet
           import guru.nidi.graphviz.model.Factory._
           val edgesIterator =
             for ((k, vs) <- sortedGroups.items())
@@ -128,8 +126,8 @@ object VisualizeModule extends ExternalModule {
                 k,
                 for {
                   v <- vs
-                  dest <- v.inputs.collect { case v: mill.api.Task.Named[Any] => v }
-                  if goalSet.contains(???)
+                  dest <- plan.inputs(v).flatMap(_.asNamed)
+                  if goalSet.contains(dest.asTask)
                 } yield dest
               )
 

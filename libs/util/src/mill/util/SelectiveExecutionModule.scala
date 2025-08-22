@@ -5,7 +5,6 @@ import mill.constants.OutFiles
 import mill.*
 import mill.api.Evaluator
 import mill.api.SelectMode
-import mill.api.ResolvedTask
 import mill.api.ResolvedNamedTask
 
 /**
