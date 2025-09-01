@@ -53,6 +53,9 @@ sealed abstract class Task[+T] extends Task.Ops[T] with Applyable[Task, T] with 
 
   def cross(keyValues: (String, String)*): Task.WithCrossValue[T] =
     new Task.WithCrossValue[T](this, keyValues)
+
+  def unresolved(crossValues: Map[String, String]): UnresolvedTask[T] =
+    UnresolvedTask(this, crossValues)
 }
 
 object Task {

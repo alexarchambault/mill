@@ -95,10 +95,10 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
       evaluator.allowPositionalCommandArgs
     ).map { tasks =>
       computeChangedTasks0(
-        tasks.map(UnresolvedTask(_, rootCrossValues)),
+        tasks.map(_.unresolved(rootCrossValues)),
         SelectiveExecutionImpl.Metadata.compute(
           evaluator,
-          tasks.map(UnresolvedTask(_, rootCrossValues))
+          tasks.map(_.unresolved(rootCrossValues))
         )
       )
         // If we did not have the metadata, presume everything was changed.

@@ -26,7 +26,7 @@ private[mill] object PlanImpl {
             Nil
         }
         val inputs = task.task.inputs.map { inputTask =>
-          UnresolvedTask(inputTask, task.crossValues ++ extraCrossValues)
+          inputTask.unresolved(task.crossValues ++ extraCrossValues)
         }
         val details = TaskDetails(inputs)
         details.remainingInputs.addAll(inputs)

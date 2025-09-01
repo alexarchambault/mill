@@ -4,7 +4,6 @@ import mill.api.Task
 import mill.testkit.{TestRootModule, UnitTester}
 
 import utest.*
-import mill.api.UnresolvedTask
 
 class Checker[T <: mill.testkit.TestRootModule](
     module: T,
@@ -29,7 +28,7 @@ class Checker[T <: mill.testkit.TestRootModule](
       crossValues: Map[String, String] = Map.empty
   ) = {
 
-    val evaled = execution.executeTasks(Seq(UnresolvedTask(task, crossValues)))
+    val evaled = execution.executeTasks(Seq(task.unresolved(crossValues)))
 
     val (matchingReturnedEvaled, extra) =
       // FIXME We're discarding cross values here
@@ -44,7 +43,7 @@ class Checker[T <: mill.testkit.TestRootModule](
 
     // Second time the value is already cached, so no evaluation needed
     if (secondRunNoOp) {
-      val evaled2 = execution.executeTasks(Seq(UnresolvedTask(task, crossValues)))
+      val evaled2 = execution.executeTasks(Seq(task.unresolved(crossValues)))
       val expectedSecondRunEvaluated = Seq()
       assert(
         evaled2.values.map(_.value) == evaled.values.map(_.value),

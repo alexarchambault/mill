@@ -27,10 +27,9 @@ object InitModuleTests extends TestSuite {
         errStream = new PrintStream(OutputStream.nullOutputStream(), true)
       ).scoped { evaluator =>
 
-        val results = evaluator.evaluator.execute(Seq(UnresolvedTask(
-          initmodule.init(None),
-          Map.empty
-        ))).executionResults
+        val results = evaluator.evaluator.execute(Seq(
+          initmodule.init(None).unresolved(Map.empty)
+        )).executionResults
 
         assert(results.transitiveFailing.size == 0)
 
@@ -56,10 +55,7 @@ object InitModuleTests extends TestSuite {
 
         val nonExistingModuleId = "nonExistingExampleId"
         val results = evaluator.evaluator.execute(Seq(
-          UnresolvedTask(
-            initmodule.init(Some(nonExistingModuleId)),
-            Map.empty
-          )
+          initmodule.init(Some(nonExistingModuleId)).unresolved(Map.empty)
         )).executionResults
         assert(results.transitiveFailing.size == 1)
         val err = errStream.toString
@@ -97,10 +93,7 @@ object InitModuleTests extends TestSuite {
 
         val results = evaluator.evaluator.execute(
           Seq(
-            UnresolvedTask(
-              initmodule.init(Some("scalalib/basic/1-simple")),
-              Map.empty
-            )
+            initmodule.init(Some("scalalib/basic/1-simple")).unresolved(Map.empty)
           )
         ).executionResults
 

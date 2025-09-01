@@ -58,10 +58,10 @@ object VisualizeModule extends ExternalModule {
       rs =>
         // FIXME Get those via the Seq[String]
         val crossValues = Map.empty[String, String]
-        val rs0 = rs.map(UnresolvedTask(_, crossValues))
+        val rs0 = rs.map(_.unresolved(crossValues))
         planTasks match {
           case Some(allRs) =>
-            val allRs0 = allRs.map(UnresolvedTask(_, crossValues))
+            val allRs0 = allRs.map(_.unresolved(crossValues))
             callVisualizeModule(allRs0)
           case None => callVisualizeModule(rs0)
         }

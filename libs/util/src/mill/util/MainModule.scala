@@ -373,7 +373,7 @@ object MainModule {
     evaluator.resolveTasks(tasks, SelectMode.Multi).map {
       rs =>
         val crossValues = Map.empty[String, String] // FIXME Get those from the Seq[String]
-        val plan = evaluator.plan(rs.map(UnresolvedTask(_, crossValues)))
+        val plan = evaluator.plan(rs.map(_.unresolved(crossValues)))
         plan
           .sortedGroups
           .keys()

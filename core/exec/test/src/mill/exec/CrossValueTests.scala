@@ -1,7 +1,7 @@
 package mill.exec
 
 import mill.api.{Discover, Module}
-import mill.{Cross, Task}
+import mill.Task
 import mill.testkit.{TestRootModule, UnitTester}
 import mill.testkit.UnitTester.Result
 import utest.*

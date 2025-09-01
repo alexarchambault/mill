@@ -7,7 +7,6 @@ import mill.constants.OutFiles.millChromeProfile
 import mill.constants.OutFiles.millProfile
 import mill.api.Evaluator
 import mill.api.SelectMode
-import mill.api.UnresolvedTask
 import mill.internal.JsonArrayLogger
 import mill.resolve.Resolve
 
@@ -178,7 +177,7 @@ class UnitTester(
       crossValues: Map[String, String] = Map.empty
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
+    val evaluated = evaluator.execute(tasks.map(_.unresolved(crossValues))).executionResults
 
     if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
     else {
@@ -209,7 +208,7 @@ class UnitTester(
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(UnresolvedTask(task, crossValues))).executionResults
+    val res = evaluator.execute(Seq(task.unresolved(crossValues))).executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
@@ -231,7 +230,7 @@ class UnitTester(
       expected: Seq[Task[?]]
   ): Unit = {
 
-    val evaluated = evaluator.execute(tasks.map(UnresolvedTask(_, crossValues))).executionResults
+    val evaluated = evaluator.execute(tasks.map(_.unresolved(crossValues))).executionResults
       .uncached
       .flatMap(_.task.asSimple)
       .filter(module.moduleInternal.simpleTasks.contains)

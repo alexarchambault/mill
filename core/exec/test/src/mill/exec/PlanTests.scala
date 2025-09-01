@@ -36,22 +36,22 @@ object PlanTests extends TestSuite {
       }
 
       test("singleton") - check(
-        tasks = Seq(singleton.single).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(singleton.single).map(_.unresolved(Map.empty)),
         expected = Seq(singleton.single).map(ResolvedTask(_, Map.empty))
       )
       test("backtickIdentifiers") - check(
-        tasks = Seq(bactickIdentifiers.`a-down-task`).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(bactickIdentifiers.`a-down-task`).map(_.unresolved(Map.empty)),
         expected = Seq(
           bactickIdentifiers.`up-task`,
           bactickIdentifiers.`a-down-task`
         ).map(ResolvedTask(_, Map.empty))
       )
       test("pair") - check(
-        tasks = Seq(pair.down).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(pair.down).map(_.unresolved(Map.empty)),
         expected = Seq(pair.up, pair.down).map(ResolvedTask(_, Map.empty))
       )
       test("anonTriple") - check(
-        tasks = Seq(anonTriple.down).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(anonTriple.down).map(_.unresolved(Map.empty)),
         expected = Seq(
           anonTriple.up,
           anonTriple.down.inputs(0),
@@ -59,12 +59,12 @@ object PlanTests extends TestSuite {
         ).map(ResolvedTask(_, Map.empty))
       )
       test("diamond") - check(
-        tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(diamond.down).map(_.unresolved(Map.empty)),
         expected =
           Seq(diamond.up, diamond.left, diamond.right, diamond.down).map(ResolvedTask(_, Map.empty))
       )
       test("anonDiamond") - check(
-        tasks = Seq(diamond.down).map(UnresolvedTask(_, Map.empty)),
+        tasks = Seq(diamond.down).map(_.unresolved(Map.empty)),
         expected = Seq(
           diamond.up,
           diamond.down.inputs(0),
@@ -80,7 +80,7 @@ object PlanTests extends TestSuite {
           expected: Seq[(R, Int)]
       ) = {
 
-        val plan = PlanImpl.plan0(Seq(UnresolvedTask(task(base), Map.empty)))
+        val plan = PlanImpl.plan0(Seq(task(base).unresolved(Map.empty)))
 
         val important = important0.map(_(base))
         val grouped = PlanImpl.groupAroundImportantTasks(plan.topoSorted, plan.inputs(_)) {
@@ -148,7 +148,7 @@ object PlanTests extends TestSuite {
     test("multiTerminalGroupCounts") {
       def countGroups(goals: Task[?]*) = {
 
-        val plan = PlanImpl.plan0(goals.map(UnresolvedTask(_, Map.empty)))
+        val plan = PlanImpl.plan0(goals.map(_.unresolved(Map.empty)))
 
         val grouped = PlanImpl.groupAroundImportantTasks(plan.topoSorted, plan.inputs(_)) {
           case ResolvedTask(t: Task.Named[Any], _) => t

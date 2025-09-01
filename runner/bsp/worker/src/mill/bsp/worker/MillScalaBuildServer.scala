@@ -18,7 +18,6 @@ import mill.bsp.worker.Utils.sanitizeUri
 
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters._
-import mill.api.UnresolvedTask
 
 private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildServer =>
 
@@ -28,14 +27,13 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
         case m: ScalaModuleApi =>
-          UnresolvedTask(
-            m.bspJavaModule().bspBuildTargetScalacOptions(
+          m.bspJavaModule()
+            .bspBuildTargetScalacOptions(
               sessionInfo.clientType.mergeResourcesIntoClasses,
               enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
               clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb
-            ),
-            Map.empty
-          )
+            )
+            .unresolved(Map.empty)
       },
       requestDescription = "Getting scalac options of {}",
       originId = ""
@@ -63,7 +61,7 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = { case m: ScalaModuleApi =>
-        UnresolvedTask(m.bspJavaModule().bspBuildTargetScalaMainClasses, Map.empty)
+        m.bspJavaModule().bspBuildTargetScalaMainClasses.unresolved(Map.empty)
       },
       requestDescription = "Getting main classes of {}",
       originId = p.getOriginId
@@ -89,7 +87,7 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
         case m: (ScalaModuleApi & TestModuleApi) =>
-          UnresolvedTask(m.bspBuildTargetScalaTestClasses, Map.empty)
+          m.bspBuildTargetScalaTestClasses.unresolved(Map.empty)
       },
       requestDescription = "Getting test classes of {}",
       originId = p.getOriginId

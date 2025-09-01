@@ -88,7 +88,7 @@ def customPlanCommand(evaluator: Evaluator, tasks: String*) = Task.Command(exclu
     .get
 
   val crossValues = Map.empty[String, String]
-  val plan = evaluator.plan(resolved.map(mill.api.UnresolvedTask(_, crossValues)))
+  val plan = evaluator.plan(resolved.map(_.unresolved(crossValues)))
     .sortedGroups
     .keys()
     .map(_.displayName)

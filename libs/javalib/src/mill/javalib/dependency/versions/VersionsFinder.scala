@@ -8,7 +8,6 @@ import mill.api.internal.RootModule0
 
 import java.time.{Clock, Instant, ZoneId}
 import java.util.concurrent.atomic.AtomicInteger
-import mill.api.UnresolvedTask
 
 private[dependency] object VersionsFinder {
 
@@ -33,12 +32,12 @@ private[dependency] object VersionsFinder {
       val progress = new Progress(javaModules.size)
       javaModules.map(classpath(progress, ctx.offline, clock))
     }
-    val resolvedDependencies = evaluator.execute(tasks.map(UnresolvedTask(_, Map.empty))).values.get
+    val resolvedDependencies = evaluator.execute(tasks.map(_.unresolved(Map.empty))).values.get
 
     evaluator.execute(
       {
         val progress = new Progress(resolvedDependencies.map(_._3.size).sum)
-        resolvedDependencies.map(resolveVersions(progress)).map(UnresolvedTask(_, Map.empty))
+        resolvedDependencies.map(resolveVersions(progress)).map(_.unresolved(Map.empty))
       }
     ).values.get
   }

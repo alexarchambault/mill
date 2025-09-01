@@ -1,6 +1,5 @@
 package mill.init
 
-import mill.api.UnresolvedTask
 import mill.testkit.UnitTester
 import mill.testkit.TestRootModule
 import utest.*
@@ -29,10 +28,9 @@ object Giter8Tests extends TestSuite {
             "--description=hello_desc" // need to pass all args
           )
           val res =
-            evaluator.evaluator.execute(Seq(UnresolvedTask(
-              g8Module.init(giter8Args*),
-              Map.empty
-            ))).executionResults
+            evaluator.evaluator.execute(Seq(
+              g8Module.init(giter8Args*).unresolved(Map.empty)
+            )).executionResults
 
           val files = Seq(
             os.sub / "build.mill",

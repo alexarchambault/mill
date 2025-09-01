@@ -171,7 +171,7 @@ class GenIdeaImpl(
         tasks.groupBy(_._2).toSeq.flatMap {
           case (crossValues, tasks0) =>
             evaluator
-              .executeApi(tasks0.map(_._1).map(UnresolvedTask(_, crossValues)))
+              .executeApi(tasks0.map(_._1).map(_.unresolved(crossValues)))
               .executionResults match {
               case r if r.transitiveFailingApi.nonEmpty =>
                 throw GenIdeaException(

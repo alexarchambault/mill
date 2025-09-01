@@ -5,7 +5,6 @@ import mill.api.TestGraphs
 import mill.testkit.{TestRootModule, UnitTester}
 import mill.{PathRef, exec}
 import utest.*
-import mill.api.UnresolvedTask
 
 object ExecutionTests extends TestSuite {
   object traverseBuild extends TestRootModule {
@@ -452,7 +451,7 @@ object ExecutionTests extends TestSuite {
     test("anonTaskFailure") {
       UnitTester(anonTaskFailure, null).scoped { tester =>
         val res =
-          tester.evaluator.execute(Seq(UnresolvedTask(anonTaskFailure.task, Map.empty)), Map.empty)
+          tester.evaluator.execute(Seq(anonTaskFailure.task.unresolved(Map.empty)), Map.empty)
         assert(
           res.executionResults.transitiveFailing.keySet.map(_.task) == Set(anonTaskFailure.task)
         )

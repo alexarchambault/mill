@@ -320,7 +320,7 @@ final class EvaluatorImpl private[mill] (
 
     for (tasks <- resolved)
       yield execute(
-        Seq.from(tasks.map(UnresolvedTask(_, crossValues))),
+        Seq.from(tasks.map(_.unresolved(crossValues))),
         reporter = reporter,
         selectiveExecution = selectiveExecution
       )
