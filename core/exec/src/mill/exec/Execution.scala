@@ -189,7 +189,7 @@ private[mill] case class Execution(
                   logger0 = logger,
                   key0 = Seq(countMsg),
                   keySuffix = keySuffix,
-                  message = terminal.toString,
+                  message = terminal.displayName,
                   noPrefix = exclusive
                 )
 
@@ -249,7 +249,7 @@ private[mill] case class Execution(
                       duration,
                       res.cached,
                       res.valueHashChanged,
-                      deps.map(_.toString),
+                      deps.map(_.displayName),
                       res.inputsHash,
                       res.previousInputsHash
                     )
