@@ -21,7 +21,6 @@ object VisualizeModule extends ExternalModule {
 
   private type VizWorker = (
       LinkedBlockingQueue[(
-          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
@@ -37,7 +36,6 @@ object VisualizeModule extends ExternalModule {
       planTasks: Option[List[Task.Named[?]]] = None
   ): Result[Seq[PathRef]] = {
     def callVisualizeModule(
-        tasks: List[UnresolvedTask[Any]],
         transitiveTasks: List[UnresolvedTask[Any]]
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
@@ -48,7 +46,7 @@ object VisualizeModule extends ExternalModule {
         case t if t.asNamed.map(_.task).exists(n => transitiveTasks.exists(_.task == n)) =>
           t.asNamed.get
       }
-      in.put((tasks, sortedGroups, plan, ctx.dest))
+      in.put((sortedGroups, plan, ctx.dest))
       val res = out.take()
       res.map { v =>
         println(upickle.write(v.map(_.path.toString()), indent = 2))
@@ -64,8 +62,8 @@ object VisualizeModule extends ExternalModule {
         planTasks match {
           case Some(allRs) =>
             val allRs0 = allRs.map(UnresolvedTask(_, crossValues))
-            callVisualizeModule(rs0, allRs0)
-          case None => callVisualizeModule(rs0, rs0)
+            callVisualizeModule(allRs0)
+          case None => callVisualizeModule(rs0)
         }
     }
   }
@@ -98,7 +96,6 @@ object VisualizeModule extends ExternalModule {
    */
   private[mill] def worker: Worker[(
       LinkedBlockingQueue[(
-          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
@@ -107,7 +104,6 @@ object VisualizeModule extends ExternalModule {
   )] = mill.api.Task.Worker {
     val in =
       new LinkedBlockingQueue[(
-          scala.Seq[UnresolvedTask[Any]],
           MultiBiMap[ResolvedNamedTask[Any], ResolvedTask[?]],
           mill.api.Plan,
           os.Path
@@ -116,7 +112,7 @@ object VisualizeModule extends ExternalModule {
     val visualizeThread = new java.lang.Thread(() =>
       while (true) {
         val res = Result.Success {
-          val (tasks, sortedGroups, plan, dest) = in.take()
+          val (sortedGroups, plan, dest) = in.take()
 
           val goalSet = plan.goals.toSet
           import guru.nidi.graphviz.model.Factory._
@@ -145,9 +141,9 @@ object VisualizeModule extends ExternalModule {
 
           org.jgrapht.alg.TransitiveReduction.INSTANCE.reduce(jgraph)
           val nodes = indexToTask.map(t =>
-            node(plan.sortedGroups.lookupValue(t.asTask).toString)
+            node(plan.sortedGroups.lookupValue(t.asTask).displayName)
               .`with` {
-                if (tasks.contains(t)) Style.SOLID
+                if (goalSet.contains(t.asTask)) Style.SOLID
                 else Style.DASHED
               }
               .`with`(Shape.BOX)
