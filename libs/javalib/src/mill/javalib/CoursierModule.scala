@@ -105,8 +105,7 @@ trait CoursierModule extends mill.api.Module {
 
   // Bincompat stub
   private[mill] def repositoriesTask0 = Task.Anon {
-    val repos = coursierConfigModule().defaultRepositories()
-    Jvm.reposFromStrings(repositories()).map(_ ++ repos)
+    Jvm.reposFromStrings("default" +: repositories(), coursierConfigModule().defaultRepositories())
   }
 
   /**
@@ -132,6 +131,10 @@ trait CoursierModule extends mill.api.Module {
    *
    * - https://maven.google.com
    *   Google-managed repository that distributes some Android artifacts in particular
+   *
+   * - default
+   *   The default repositories, that might have been changed via COURSIER_REPOSITORIES in the environment,
+   *   the coursier.repositories Java property, or the Scala CLI configuration file
    */
   def repositories: T[Seq[String]] = Task { Seq.empty[String] }
 

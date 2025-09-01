@@ -882,8 +882,11 @@ object Jvm {
     )
 
   // Parse a list of repositories from their string representation
-  private[mill] def reposFromStrings(repoList: Seq[String]): Result[Seq[Repository]] = {
-    RepositoryParser.repositories(repoList).either match {
+  private[mill] def reposFromStrings(
+      repoList: Seq[String],
+      defaultRepos: Seq[Repository]
+  ): Result[Seq[Repository]] = {
+    RepositoryParser.repositories(repoList, defaultRepos).either match {
       case Left(errs) =>
         val msg =
           s"Invalid repository string:" + System.lineSeparator() +
