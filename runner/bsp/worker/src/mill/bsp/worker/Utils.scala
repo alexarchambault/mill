@@ -11,7 +11,7 @@ import ch.epfl.scala.bsp4j.{
   TaskId
 }
 import mill.api.ExecResult.{Skipped, Success}
-import mill.api.daemon.internal.{ExecutionResultsApi, TaskApi}
+import mill.api.daemon.internal.ExecutionResultsApi
 
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.scalaUtilChainingOps

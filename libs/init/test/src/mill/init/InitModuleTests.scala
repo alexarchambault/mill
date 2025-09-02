@@ -1,6 +1,6 @@
 package mill.init
 
-import mill.api.{Discover, UnresolvedTask, Val}
+import mill.api.{Discover, Val}
 import mill.testkit.UnitTester
 import mill.testkit.TestRootModule
 import utest._
