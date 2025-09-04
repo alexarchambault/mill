@@ -57,6 +57,8 @@ public class MillLauncherMain {
                   + " make it less responsive.");
     }
 
+    coursier.Resolve.proxySetup();
+
     if (runNoServer) {
       // start in no-server mode
       System.exit(MillProcessLauncher.launchMillNoDaemon(args, outMode));

@@ -239,3 +239,25 @@ include::partial$example/fundamentals/dependencies/2-managed.adoc[]
 == Searching For Dependency Updates
 
 include::partial$example/fundamentals/dependencies/3-search-updates.adoc[]
+
+=== Download dependencies via a proxy
+
+HTTP / HTTPS proxies can be configured via Java properties in `.mill-jvm-opts`:
+[source,console]
+----
+-Dhttp.proxyProtocol=http
+-Dhttp.proxyHost=proxy.corp.com
+-Dhttp.proxyPort=8080
+-Dhttp.proxyUsername=alex
+-Dhttp.proxyPassword=1234
+-Dhttps.proxyProtocol=http
+-Dhttps.proxyHost=proxy.corp.com
+-Dhttps.proxyPort=8080
+-Dhttps.proxyUsername=alex
+-Dhttps.proxyPassword=1234
+----
+
+Mill also takes into account the proxy configuration of Maven, in `~/.m2/settings.xml`, if there's one.
+
+Mill reads the proxy configuration the same way https://scala-cli.virtuslab.org/docs/guides/power/proxy[Scala CLI does],
+so it can also read the https://scala-cli.virtuslab.org/docs/guides/power/proxy#scala-cli-configuration-files[Scala CLI configuration file].
