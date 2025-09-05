@@ -4,6 +4,8 @@ import mill.*
 import mill.scalalib.*
 
 object `package` extends ScalaModule {
+  pprint.err.log(sys.props.get("https.proxyUser"))
+  pprint.err.log(sys.props.get("https.proxyPassword"))
   def scalaVersion = "2.13.16"
   def mvnDeps = Seq(
     // random library that's not part of the Mill class path

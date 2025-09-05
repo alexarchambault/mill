@@ -248,12 +248,12 @@ HTTP / HTTPS proxies can be configured via Java properties in `.mill-jvm-opts`:
 -Dhttp.proxyProtocol=http
 -Dhttp.proxyHost=proxy.corp.com
 -Dhttp.proxyPort=8080
--Dhttp.proxyUsername=alex
+-Dhttp.proxyUser=alex
 -Dhttp.proxyPassword=1234
 -Dhttps.proxyProtocol=http
 -Dhttps.proxyHost=proxy.corp.com
 -Dhttps.proxyPort=8080
--Dhttps.proxyUsername=alex
+-Dhttps.proxyUser=alex
 -Dhttps.proxyPassword=1234
 ----
 
