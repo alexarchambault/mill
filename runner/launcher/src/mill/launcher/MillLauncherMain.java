@@ -1,12 +1,9 @@
 package mill.launcher;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import mill.client.*;
@@ -60,7 +57,6 @@ public class MillLauncherMain {
                   + " make it less responsive.");
     }
 
-    readProxyProperties(Paths.get(".mill-jvm-opts"));
     coursier.Resolve.proxySetup();
 
     if (runNoServer) {
@@ -130,26 +126,6 @@ public class MillLauncherMain {
   private static void exitInTestsAfterBspCheck() {
     if (System.getenv("MILL_TEST_EXIT_AFTER_BSP_CHECK") != null) {
       System.exit(0);
-    }
-  }
-
-  private static void readProxyProperties(Path readFrom) throws IOException {
-    if (Files.isRegularFile(readFrom)) {
-      List<String> lines = Files.readAllLines(readFrom);
-      // ???
-      /*
-
--Dhttp.proxyProtocol=http
--Dhttp.proxyHost=proxy.corp.com
--Dhttp.proxyPort=8080
--Dhttp.proxyUsername=alex
--Dhttp.proxyPassword=1234
--Dhttps.proxyProtocol=http
--Dhttps.proxyHost=proxy.corp.com
--Dhttps.proxyPort=8080
--Dhttps.proxyUsername=alex
--Dhttps.proxyPassword=1234
-      */
     }
   }
 }
