@@ -23,12 +23,12 @@ object CrossValueTests extends TestSuite {
 
     // a module that relies on the cross value
     object crossValueModule extends SbtModule {
-      def scalaVersion = Task(theScalaVersion())
+      def scalaVersion = theScalaVersion
     }
 
     // another module depending on the cross value and the other module using it
     object crossValueApp extends SbtModule {
-      def scalaVersion = Task(theScalaVersion())
+      def scalaVersion = theScalaVersion
       def moduleDeps = Seq(
         crossValueModule
       )

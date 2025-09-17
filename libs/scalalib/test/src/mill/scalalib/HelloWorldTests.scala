@@ -125,7 +125,7 @@ object HelloWorldTests extends TestSuite {
 
         assert(
           result.value == scala212Version,
-          result.evalCount > 0
+          result.evalCount == 0
         )
       }
       test("override") - UnitTester(HelloWorldScalaOverride, resourcePath).scoped { eval =>

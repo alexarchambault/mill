@@ -27,7 +27,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
 
   trait ScalaTests extends JavaTests with ScalaModule {
     override def scalaOrganization: T[String] = outer.scalaOrganization()
-    override def scalaVersion: T[String] = outer.scalaVersion()
+    override def scalaVersion: Task[String] = outer.scalaVersion
     override def scalacPluginMvnDeps: T[Seq[Dep]] = outer.scalacPluginMvnDeps()
     override def scalacPluginClasspath: T[Seq[PathRef]] = outer.scalacPluginClasspath()
     override def scalacOptions: T[Seq[String]] = outer.scalacOptions()
@@ -64,7 +64,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
   /**
    * What version of Scala to use
    */
-  def scalaVersion: T[String]
+  def scalaVersion: Task[String]
 
   override def mapDependencies: Task[coursier.Dependency => coursier.Dependency] = Task.Anon {
     super.mapDependencies().andThen { (d: coursier.Dependency) =>
