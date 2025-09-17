@@ -59,7 +59,17 @@ object CrossValueTests extends TestSuite {
         val expectedSourceRes = Seq(
           Seq(
             os.sub / "crossValueModule/src/main/scala",
-            os.sub / "crossValueModule/src/main/java"
+            os.sub / "crossValueModule/src/main/java",
+            os.sub / "crossValueModule/src/main/scala-2.13.16",
+            os.sub / "crossValueModule/src/main/scala-2.13",
+            os.sub / "crossValueModule/src/main/scala-2"
+          ),
+          Seq(
+            os.sub / "crossValueModule/src/main/scala",
+            os.sub / "crossValueModule/src/main/java",
+            os.sub / "crossValueModule/src/main/scala-3.3.4",
+            os.sub / "crossValueModule/src/main/scala-3.3",
+            os.sub / "crossValueModule/src/main/scala-3"
           )
         )
 
