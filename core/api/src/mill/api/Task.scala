@@ -311,7 +311,8 @@ object Task {
       (_, _) => Result.Success(upickle.default.read[T](s)(using li.reader)),
       li.ctx,
       li.writer,
-      None
+      None,
+      Nil
     )
   }
 
@@ -497,9 +498,9 @@ object Task {
       val evaluate0: (Seq[Any], mill.api.TaskCtx) => Result[T],
       val ctx0: mill.api.ModuleCtx,
       val writer: upickle.Writer[?],
-      val isPrivate: Option[Boolean]
+      val isPrivate: Option[Boolean],
+      override val inputs: Seq[Task.CrossValue[?]]
   ) extends Simple[T] {
-    val inputs = Nil
     override def sideHash: Int = util.Random.nextInt()
     // FIXME: deprecated return type: Change to Option
     override def writerOpt: Some[Writer[?]] = Some(writer)
@@ -508,23 +509,27 @@ object Task {
   class Sources(
       evaluate0: (Seq[Any], mill.api.TaskCtx) => Result[Seq[PathRef]],
       ctx0: mill.api.ModuleCtx,
-      isPrivate: Option[Boolean]
+      isPrivate: Option[Boolean],
+      inputs0: Seq[Task.CrossValue[?]]
   ) extends Input[Seq[PathRef]](
         evaluate0,
         ctx0,
         upickle.readwriter[Seq[PathRef]],
-        isPrivate
+        isPrivate,
+        inputs0
       ) {}
 
   class Source(
       evaluate0: (Seq[Any], mill.api.TaskCtx) => Result[PathRef],
       ctx0: mill.api.ModuleCtx,
-      isPrivate: Option[Boolean]
+      isPrivate: Option[Boolean],
+      inputs0: Seq[Task.CrossValue[?]]
   ) extends Input[PathRef](
         evaluate0,
         ctx0,
         upickle.readwriter[PathRef],
-        isPrivate
+        isPrivate,
+        inputs0
       ) {}
 
   class WithCrossValue[+T](
@@ -549,6 +554,7 @@ object Task {
     def readParam(input: String): T = toFromSegment.read(input)
 
     val stringValues = allowedValues.map(toFromSegment.write)
+    val valuesMap = stringValues.zip(allowedValues).toMap
 
     lazy val key: String = actualKeyOpt.getOrElse {
       ctx.segments.value
@@ -591,6 +597,17 @@ object Task {
     ): Expr[M[T]] =
       Applicative.impl[M, Task, Result, T, mill.api.TaskCtx](traverseCtx, t, allowTaskReferences)
 
+    def inputAppImpl[M[_]: Type, T: Type](using
+        Quotes
+    )(
+        traverseCtx: (
+            Expr[Seq[Task.CrossValue[?]]],
+            Expr[(Seq[Any], mill.api.TaskCtx) => Result[T]]
+        ) => Expr[M[T]],
+        t: Expr[Result[T]]
+    ): Expr[M[T]] =
+      Applicative.impl[M, Task.CrossValue, Result, T, mill.api.TaskCtx](traverseCtx, t)
+
     private def taskIsPrivate()(using Quotes): Expr[Option[Boolean]] =
       Cacher.withMacroOwner {
         owner =>
@@ -630,10 +647,9 @@ object Task {
         ctx: Expr[mill.api.ModuleCtx]
     ): Expr[Simple[Seq[PathRef]]] = {
       assertTaskShapeOwner("Task.Sources", 0)
-      val expr = appImpl[Simple, Seq[PathRef]](
-        ( /*in*/ _, ev) => '{ new Sources($ev, $ctx, ${ taskIsPrivate() }) },
-        values,
-        allowTaskReferences = false
+      val expr = inputAppImpl[Simple, Seq[PathRef]](
+        (in, ev) => '{ new Sources($ev, $ctx, ${ taskIsPrivate() }, $in) },
+        values
       )
       Cacher.impl0(expr)
     }
@@ -663,10 +679,9 @@ object Task {
         ctx: Expr[mill.api.ModuleCtx]
     ): Expr[Simple[PathRef]] = {
       assertTaskShapeOwner("Task.Source", 0)
-      val expr = appImpl[Simple, PathRef](
-        ( /*in*/ _, ev) => '{ new Source($ev, $ctx, ${ taskIsPrivate() }) },
-        value,
-        allowTaskReferences = false
+      val expr = inputAppImpl[Simple, PathRef](
+        (in, ev) => '{ new Source($ev, $ctx, ${ taskIsPrivate() }, $in) },
+        value
       )
       Cacher.impl0(expr)
 
@@ -679,10 +694,9 @@ object Task {
         ctx: Expr[mill.api.ModuleCtx]
     ): Expr[Simple[T]] = {
       assertTaskShapeOwner("Task.Input", 0)
-      val expr = appImpl[Simple, T](
-        ( /*in*/ _, ev) => '{ new Input[T]($ev, $ctx, $w, ${ taskIsPrivate() }) },
-        value,
-        allowTaskReferences = false
+      val expr = inputAppImpl[Simple, T](
+        (in, ev) => '{ new Input[T]($ev, $ctx, $w, ${ taskIsPrivate() }, $in) },
+        value
       )
       Cacher.impl0(expr)
     }

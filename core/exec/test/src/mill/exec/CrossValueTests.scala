@@ -12,6 +12,10 @@ object CrossValueTests extends TestSuite {
   object simple extends TestRootModule {
     def firstParam: Task.CrossValue[String] = Task.CrossValue(Seq("a", "b"))
 
+    def source = Task.Source {
+      os.sub / "thing" / s"foo-${firstParam()}"
+    }
+
     object myCross extends Module {
       def param1 = Task { "Param Value: " + firstParam() }
     }
@@ -55,6 +59,19 @@ object CrossValueTests extends TestSuite {
           "firstParam doesn't accept value 'c' (allowed values: a, b), firstParam doesn't accept value 'c' (allowed values: b)"
         )) =
           check(Seq("__.param1"), Map("firstParam" -> "c")): @unchecked
+
+        val Right(Result(sourceRes, _)) =
+          check(simple.source, Map()): @unchecked
+        val sourceRes0 = sourceRes.map(_.path.relativeTo(simple.moduleDir))
+        val expectedSourceRes = Seq(
+          os.sub / "thing/foo-a",
+          os.sub / "thing/foo-b"
+        )
+        assert(sourceRes0 == expectedSourceRes)
+        val Right(Result(Seq(pathRef), _)) =
+          check(simple.source, Map("firstParam" -> "a")): @unchecked
+        val sourcePath = pathRef.path.relativeTo(simple.moduleDir)
+        assert(sourcePath == os.rel / "thing/foo-a")
       }
     }
   }

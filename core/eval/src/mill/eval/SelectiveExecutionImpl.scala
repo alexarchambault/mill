@@ -230,8 +230,15 @@ object SelectiveExecutionImpl {
       val results: Map[ResolvedNamedTask[?], mill.api.Result[Val]] = transitiveNamed
         .map(t => (t, t.task))
         .collect { case (t, task: Task.Input[_]) =>
+          val args = task.inputs.toVector.map { crossValueTask =>
+            val str = t.crossValues.getOrElse(
+              crossValueTask.key,
+              s"Missing cross value ${crossValueTask.key} when evaluating $t (available cross-values: ${t.crossValues.toSeq.sorted})"
+            )
+            crossValueTask.valuesMap(str)
+          }
           val ctx = new mill.api.TaskCtx.Impl(
-            args = Vector(),
+            args = args,
             dest0 = () => null,
             log = evaluator.baseLogger,
             env = evaluator.env,
