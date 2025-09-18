@@ -169,10 +169,10 @@ object Task {
    * Similar to [[Sources]], but only for a single source file or folder. Defined
    * using `Task.Source`.
    */
-  inline def Source(inline value: os.SubPath | os.FilePath | String)(using
+  inline def Source(inline value: Result[os.SubPath | os.FilePath | String])(using
       inline ctx: mill.api.ModuleCtx
   ): Simple[PathRef] =
-    ${ Macros.sourceImpl('{ PathRef(mapToPath(value)) })('ctx) }
+    ${ Macros.sourceImpl('{ value.map(v => PathRef(mapToPath(v))) })('ctx) }
 
   /**
    * [[Input]]s, normally defined using `Task.Input`, are [[Task.Named]]s that
