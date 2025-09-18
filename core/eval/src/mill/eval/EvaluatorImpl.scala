@@ -39,7 +39,11 @@ final class EvaluatorImpl private[mill] (
   private[mill] def baseLogger = execution.baseLogger
   private[mill] def outPath = execution.outPath
   private[mill] def codeSignatures = execution.codeSignatures
-  private[mill] def rootModule = execution.rootModule.asInstanceOf[RootModule0]
+  private[mill] def rootModule =
+    execution.rootModule match {
+      case m: RootModule0 => m
+      case _ => sys.error("should not happen")
+    }
   private[mill] def workerCache = execution.workerCache
   private[mill] def env = execution.env
   private[mill] def effectiveThreadCount = execution.effectiveThreadCount

@@ -71,6 +71,9 @@ object ExecResult {
       case f: ExecResult.Failure[?] => throw new Result.Exception(f.msg)
       case f: ExecResult.Exception => throw f.throwable
     }
+
+    private[mill] def as[U]: Failing[U] =
+      this.asInstanceOf[Failing[U]]
   }
 
   /**

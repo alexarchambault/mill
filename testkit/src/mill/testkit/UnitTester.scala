@@ -196,7 +196,7 @@ class UnitTester(
       crossValues: Map[String, String]
   ): Either[ExecResult.Failing[T], UnitTester.Result[Seq[T]]] = {
     apply(Seq(task), crossValues) match {
-      case Left(f) => Left(f.asInstanceOf[ExecResult.Failing[T]])
+      case Left(f) => Left(f.as[T])
       case Right(UnitTester.Result(seq, i)) =>
         Right(UnitTester.Result(seq.map(_.asInstanceOf[T]), i))
     }
@@ -213,7 +213,10 @@ class UnitTester(
       case Right(evaluated) =>
         if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
         else {
-          val values = evaluated.results.map(_.asInstanceOf[ExecResult.Success[Val]].value.value)
+          val values = evaluated.results.map {
+            case s: ExecResult.Success[Val] => s.value.value
+            case _ => sys.error("Cannot happen")
+          }
           val evalCount = evaluated
             .uncached
             .map(_.task)

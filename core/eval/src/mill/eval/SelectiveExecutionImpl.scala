@@ -70,7 +70,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
     (
       changedRootTasks,
       breadthFirst(changedRootTasks) { t =>
-        downstreamEdgeMap.getOrElse(t.asInstanceOf[ResolvedTask[Nothing]], Nil)
+        downstreamEdgeMap.getOrElse(t, Nil)
       }
     )
   }

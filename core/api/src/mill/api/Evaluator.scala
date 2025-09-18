@@ -102,7 +102,10 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       tasks: Seq[UnresolvedTaskApi[T]]
   ): mill.api.Result[Evaluator.Result[T]] =
     execute[T](
-      tasks.map(_.asInstanceOf[UnresolvedTask[T]])
+      tasks.map {
+        case task: UnresolvedTask[T] => task
+        case _ => ???
+      }
     )
 
   def execute[T](
@@ -131,7 +134,10 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): mill.api.Result[EvaluatorApi.Result[T]] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
-        tasks.map(_.asInstanceOf[UnresolvedTask[T]]),
+        tasks.map {
+          case task: UnresolvedTask[T] => task
+          case _ => ???
+        },
         reporter,
         testReporter,
         logger,

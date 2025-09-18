@@ -606,8 +606,14 @@ object GroupExecution {
 
     val validReadDests = validWriteDests ++ upstreamPathRefs.map(_.path)
 
-    val isCommand = terminal.task.isInstanceOf[Task.Command[?]]
-    val isInput = terminal.task.isInstanceOf[Task.Input[?]]
+    val isCommand = terminal.task match {
+      case _: Task.Command[?] => true
+      case _ => false
+    }
+    val isInput = terminal.task match {
+      case _: Task.Input[?] => true
+      case _ => false
+    }
     val executionChecker =
       new ExecutionChecker(workspace, isCommand, isInput, terminal, validReadDests, validWriteDests)
     val (streams, destFunc) =

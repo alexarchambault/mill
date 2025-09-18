@@ -22,7 +22,10 @@ trait ExecutionResults extends ExecutionResultsApi {
    */
   def transitiveResults: Map[ResolvedTask[?], ExecResult[Val]]
   private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]] =
-    transitiveResults.asInstanceOf[Map[ResolvedTaskApi[?], ExecResult[Val]]]
+    transitiveResults.map {
+      case (task, res) =>
+        (task, res)
+    }
   private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
       : Seq[(ResolvedTaskApi[?], ExecResult[Val])] = {
     // FIXME Optimize that?
@@ -46,7 +49,10 @@ trait ExecutionResults extends ExecutionResultsApi {
   def transitiveFailing: Map[ResolvedTask[?], ExecResult.Failing[Val]] =
     transitiveResults.collect { case (k, v: ExecResult.Failing[Val]) => (k, v) }
   private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]] =
-    transitiveFailing.asInstanceOf[Map[ResolvedTaskApi[?], ExecResult.Failing[Val]]]
+    transitiveFailing.map {
+      case (task, res) =>
+        (task, res)
+    }
 
   /**
    * The values returned by successful tasks in [[results]]
