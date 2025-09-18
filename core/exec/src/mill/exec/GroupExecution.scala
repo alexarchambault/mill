@@ -323,6 +323,8 @@ trait GroupExecution {
                 ExecResult.Exception(
                   e,
                   new OuterStack(new Exception().getStackTrace.toIndexedSeq)
+                  // Use this one when debugging the resolver
+                  // new OuterStack(Nil.toIndexedSeq)
                 )
               case e: Throwable => throw e
             }
