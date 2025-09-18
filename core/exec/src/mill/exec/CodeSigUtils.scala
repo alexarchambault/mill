@@ -27,7 +27,7 @@ private[mill] object CodeSigUtils {
     }
 
     val classToTransitiveClasses: Map[Class[?], IndexedSeq[Class[?]]] = transitiveNamed
-      .map { case namedTask: Task.Named[?] => namedTask.ctx.enclosingCls }
+      .map(_.ctx.enclosingCls)
       .distinct
       .map(cls => cls -> resolveTransitiveParents(cls).toVector)
       .toMap

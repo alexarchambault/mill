@@ -25,7 +25,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
 
     transitiveNamed
       .map { namedTask =>
-        namedTask.ctx.segments.render -> CodeSigUtils
+        namedTask.toString -> CodeSigUtils
           .codeSigForTask(
             namedTask,
             classToTransitiveClasses,
@@ -228,7 +228,7 @@ object SelectiveExecutionImpl {
         .toMap
 
       val inputHashes = results.map {
-        case (task, execResultVal) => (task.ctx.segments.render, execResultVal.get.value.hashCode)
+        case (task, execResultVal) => (task.toString, execResultVal.get.value.hashCode)
       }
       SelectiveExecution.Metadata.Computed(
         new SelectiveExecution.Metadata(
