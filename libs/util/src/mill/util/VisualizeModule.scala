@@ -18,8 +18,6 @@ object VisualizeModule extends ExternalModule {
 
   private type VizWorker = (
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -35,18 +33,19 @@ object VisualizeModule extends ExternalModule {
       planTasks: Option[List[Task.Named[?]]] = None
   ): Result[Seq[PathRef]] = {
     def callVisualizeModule(
-        tasks: List[Task.Named[Any]],
         transitiveTasks: List[Task.Named[Any]]
     ): Result[Seq[PathRef]] = {
       val (in, out) = vizWorker
-      val transitive = evaluator.transitiveTasks(tasks)
-      val topoSorted = evaluator.topoSorted(transitive)
-      val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
-        case x: Task.Named[Any] if transitiveTasks.contains(x) => x
-      }
       for {
         plan <- evaluator.plan(transitiveTasks)
-        _ = in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
+        _ = {
+          val transitive = evaluator.transitiveTasks(plan.goals)
+          val topoSorted = evaluator.topoSorted(transitive)
+          val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
+            case x: Task.Named[Any] if transitiveTasks.contains(x) => x
+          }
+          in.put((sortedGroups, plan, ctx.dest))
+        }
         v <- out.take()
       } yield {
         println(upickle.write(v.map(_.path.toString()), indent = 2))
@@ -57,8 +56,8 @@ object VisualizeModule extends ExternalModule {
     evaluator.resolveTasks(tasks, SelectMode.Multi).flatMap {
       rs =>
         planTasks match {
-          case Some(allRs) => callVisualizeModule(rs, allRs)
-          case None => callVisualizeModule(rs, rs)
+          case Some(allRs) => callVisualizeModule(allRs)
+          case None => callVisualizeModule(rs)
         }
     }
   }
@@ -91,8 +90,6 @@ object VisualizeModule extends ExternalModule {
    */
   private[mill] def worker: Worker[(
       LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -101,8 +98,6 @@ object VisualizeModule extends ExternalModule {
   )] = mill.api.Task.Worker {
     val in =
       new LinkedBlockingQueue[(
-          scala.Seq[Task.Named[Any]],
-          scala.Seq[Task.Named[Any]],
           MultiBiMap[Task.Named[Any], Task[?]],
           mill.api.Plan,
           os.Path
@@ -111,9 +106,9 @@ object VisualizeModule extends ExternalModule {
     val visualizeThread = new java.lang.Thread(() =>
       while (true) {
         val res = Result.Success {
-          val (tasks, transitiveTasks, sortedGroups, plan, dest) = in.take()
+          val (sortedGroups, plan, dest) = in.take()
 
-          val goalSet = transitiveTasks.toSet
+          val goalSet = plan.goals.toSet
           import guru.nidi.graphviz.model.Factory._
           val edgesIterator =
             for ((k, vs) <- sortedGroups.items())
@@ -142,7 +137,7 @@ object VisualizeModule extends ExternalModule {
           val nodes = indexToTask.map(t =>
             node(plan.sortedGroups.lookupValue(t).toString)
               .`with` {
-                if (tasks.contains(t)) Style.SOLID
+                if (goalSet.contains(t)) Style.SOLID
                 else Style.DASHED
               }
               .`with`(Shape.BOX)

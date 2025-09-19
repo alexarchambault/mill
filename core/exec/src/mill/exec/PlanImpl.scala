@@ -17,7 +17,7 @@ private[mill] object PlanImpl {
         case t if goalSet.contains(t) => t
       }
 
-    new Plan(sortedGroups)
+    new Plan(sortedGroups, goals)
   }
 
   /**

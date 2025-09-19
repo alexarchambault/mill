@@ -5,6 +5,9 @@ package mill.api
  * the transitive tasks upstream of the tasks selected by the user,
  * grouped by the "terminal" named or selected task downstream of each group
  */
-final class Plan private[mill] (val sortedGroups: MultiBiMap[Task[?], Task[?]]) {
+final class Plan private[mill] (
+    val sortedGroups: MultiBiMap[Task[?], Task[?]],
+    val goals: Seq[Task[?]]
+) {
   def transitive: IndexedSeq[Task[?]] = sortedGroups.values().flatten.toVector
 }
