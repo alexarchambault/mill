@@ -75,24 +75,24 @@ private[mill] object PlanImpl {
       for ((_, details) <- edges)
         details.remainingInputs.remove(task)
       val maybeAppliedTask: Either[Seq[String], Seq[ResolvedTask[Any]]] = task.task match {
-        case c: Task.CrossValue =>
+        case c: Task.CrossValue[?] =>
           task.crossValues.get(c.key) match {
             case None =>
               Right {
-                c.allowedValues.map { value =>
+                c.stringValues.map { value =>
                   val appliedTask = c.resolved(Map(c.key -> value))
                   inputs(appliedTask) = Nil
                   appliedTask
                 }
               }
             case Some(value) =>
-              if (c.allowedValues.contains(value)) {
+              if (c.allowedValues.contains(c.readParam(value))) {
                 val appliedTask = task.task.resolved(Map(c.key -> value))
                 inputs(appliedTask) = Nil
                 Right(Seq(appliedTask))
               } else
                 Left(Seq(
-                  s"$c doesn't accept value '$value' (allowed values: ${c.allowedValues.mkString(", ")})"
+                  s"$c doesn't accept value '$value' (allowed values: ${c.stringValues.mkString(", ")})"
                 ))
           }
         case _ =>

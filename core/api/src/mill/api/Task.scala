@@ -2,6 +2,7 @@ package mill.api
 
 import mill.api.Logger
 import mill.api.Result
+import mill.api.Cross.ToFromSegment
 import mill.api.daemon.internal.CompileProblemReporter
 import mill.api.daemon.internal.{NamedTaskApi, TaskApi, TestReporter}
 import mill.api.internal.Applicative.Applyable
@@ -533,14 +534,19 @@ object Task {
       Result.Success(ctx.arg[T](0))
   }
 
-  class CrossValue(
-      val allowedValues: Seq[String],
+  class CrossValue[+T: ToFromSegment](
+      val allowedValues: Seq[T],
       actualKeyOpt: Option[String] = None
-  )(implicit ctx: ModuleCtx) extends Named[String] {
+  )(implicit ctx: ModuleCtx) extends Named[T] {
     private val allowedValuesSet = allowedValues.toSet
     val inputs = Nil
     def ctx0 = ctx
     def isPrivate: Option[Boolean] = None
+
+    private val toFromSegment: ToFromSegment[T] = implicitly[ToFromSegment[T]]
+    def readParam(input: String): T = toFromSegment.read(input)
+
+    val stringValues = allowedValues.map(toFromSegment.write)
 
     lazy val key: String = actualKeyOpt.getOrElse {
       ctx.segments.value
@@ -555,7 +561,7 @@ object Task {
 
     val evaluate0 = (_, ctx: TaskCtx) => {
       Result.fromEither(
-        ctx.crossValue(key) match {
+        ctx.crossValue[T](key) match {
           case None => Left(s"No cross value available for $key")
           case Some(value) =>
             if (allowedValuesSet.contains(value)) Right(value)
@@ -566,8 +572,8 @@ object Task {
       )
     }
 
-    def withValues(newAllowedValues: Seq[String]): CrossValue =
-      new CrossValue(newAllowedValues, Some(key))
+    def withValues[U >: T: ToFromSegment](newAllowedValues: Seq[U]): CrossValue[U] =
+      new CrossValue[U](newAllowedValues, Some(key))
   }
 
   private object Macros {

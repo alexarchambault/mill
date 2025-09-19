@@ -10,7 +10,7 @@ import utest.*
 object CrossValueTests extends TestSuite {
 
   object simple extends TestRootModule {
-    def firstParam: Task.CrossValue = Task.CrossValue(Seq("a", "b"))
+    def firstParam: Task.CrossValue[String] = Task.CrossValue(Seq("a", "b"))
 
     object myCross extends Module {
       def param1 = Task { "Param Value: " + firstParam() }

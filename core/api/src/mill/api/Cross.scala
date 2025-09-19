@@ -119,6 +119,27 @@ object Cross {
     )
   }
 
+  /**
+   * A type-class defining what types [[T]] are allowed to be used in a
+   * cross-module definition
+   */
+  class ToFromSegment[T](val read: String => T, val write: T => String)
+  object ToFromSegment {
+    implicit object StringToPathSegment extends ToFromSegment[String](identity, identity)
+    implicit object CharToPathSegment
+        extends ToFromSegment[Char](_.headOption.getOrElse(???), _.toString)
+    implicit object LongToPathSegment
+        extends ToFromSegment[Long](_.toLongOption.getOrElse(???), _.toString)
+    implicit object IntToPathSegment
+        extends ToFromSegment[Int](_.toIntOption.getOrElse(???), _.toString)
+    implicit object ShortToPathSegment
+        extends ToFromSegment[Short](_.toShortOption.getOrElse(???), _.toString)
+    implicit object ByteToPathSegment
+        extends ToFromSegment[Byte](_.toByteOption.getOrElse(???), _.toString)
+    implicit object BooleanToPathSegment
+        extends ToFromSegment[Boolean](_.toBooleanOption.getOrElse(???), _.toString)
+  }
+
   class Factory[T](
       val makeList: Seq[(Class[?], mill.api.ModuleCtx => T)],
       val crossValuesListLists: Seq[Seq[Any]],

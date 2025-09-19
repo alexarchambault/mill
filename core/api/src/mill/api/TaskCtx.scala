@@ -6,6 +6,7 @@ import mill.api.daemon.internal.{CompileProblemReporter, TestReporter}
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.implicitConversions
 import mill.api.Result
+import mill.api.Cross.ToFromSegment
 
 /**
  * Represents the data and utilities that are contextually available inside the
@@ -132,8 +133,10 @@ object TaskCtx {
 
   trait Cross {
     def crossValues: Map[String, String]
-    def crossValue(key: String): Option[String] =
-      crossValues.get(key)
+    def crossValue[T: ToFromSegment](key: String): Option[T] = {
+      val read = implicitly[ToFromSegment[T]].read
+      crossValues.get(key).map(read)
+    }
   }
 
   /**
