@@ -33,6 +33,8 @@ runs:
 
     - run: ./mill -i -k selective.resolve ${{ inputs.millargs }}
       shell: ${{ inputs.shell }}
+      env:
+        COURSIER_JNI: force
 
     # This generates a lot of logs and slows down the github actions UI like crazy, 
     # so only uncomment it when really necessary
@@ -41,6 +43,8 @@ runs:
 
     - run: ./mill -i -k selective.resolveTree ${{ inputs.millargs }}
       shell: ${{ inputs.shell }}
+      env:
+        COURSIER_JNI: force
 
     # Comment this out because it can be very verbose when broad codesig
     # invalidation results in all tasks being counted as changed inputs
@@ -50,6 +54,7 @@ runs:
     - run: ./mill -i -k selective.run ${{ inputs.millargs }}
       env:
         COURSIER_ARCHIVE_CACHE: ${{ inputs.coursierarchive }}
+        COURSIER_JNI: force
       shell: ${{ inputs.shell }}
 
     - name: Clean-up Test Reports
