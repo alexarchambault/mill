@@ -118,7 +118,7 @@ private[mill] case class Execution(
       for (plan <- PlanImpl.planOrErr(goals)) yield {
         val interGroupDeps = Execution.findInterGroupDeps(plan.sortedGroups, plan.inputs)
         val indexToTerminal = plan.sortedGroups.keys().toArray
-        ExecutionLogs.logDependencyTree(interGroupDeps, indexToTerminal, outPath, _.toString)
+        ExecutionLogs.logDependencyTree(interGroupDeps, indexToTerminal, outPath, _.displayName)
         // Prepare a lookup tables up front of all the method names that each class owns,
         // and the class hierarchy, so during evaluation it is cheap to look up what class
         // each task belongs to determine of the enclosing class code signature changed.
@@ -191,7 +191,7 @@ private[mill] case class Execution(
                       logger0 = logger,
                       key0 = Seq(countMsg),
                       keySuffix = keySuffix,
-                      message = terminal.toString,
+                      message = terminal.displayName,
                       noPrefix = exclusive
                     )
 
@@ -248,11 +248,11 @@ private[mill] case class Execution(
                         if (res.valueHashChanged) changedValueHash.put(terminal, ())
 
                         profileLogger.log(
-                          terminal.toString,
+                          terminal.displayName,
                           duration,
                           res.cached,
                           res.valueHashChanged,
-                          deps.map(_.toString),
+                          deps.map(_.displayName),
                           res.inputsHash,
                           res.previousInputsHash
                         )
@@ -308,7 +308,7 @@ private[mill] case class Execution(
             outPath,
             uncached,
             changedValueHash,
-            _.toString,
+            _.displayName,
             drop = task =>
               task.task match {
                 case _: Task.Input[?] => true

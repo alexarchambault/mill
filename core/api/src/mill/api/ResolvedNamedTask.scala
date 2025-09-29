@@ -5,7 +5,4 @@ final case class ResolvedNamedTask[+T](task: Task.Named[T], crossValues: Map[Str
 
   def asTask: ResolvedTask[T] =
     ResolvedTask(task, crossValues)
-
-  override def toString(): String =
-    ResolvedTask.displayName(task, crossValues)
 }

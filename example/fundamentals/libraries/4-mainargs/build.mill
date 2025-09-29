@@ -92,7 +92,7 @@ def customPlanCommand(evaluator: Evaluator, tasks: String*) = Task.Command(exclu
     .get
     .sortedGroups
     .keys()
-    .map(_.toString)
+    .map(_.displayName)
     .toArray
 
   plan.foreach(println)

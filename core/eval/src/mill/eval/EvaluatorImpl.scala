@@ -207,13 +207,13 @@ final class EvaluatorImpl private[mill] (
               // selective execution.
               (tasks, Map.empty, Some(newComputedMetadata.metadata))
             case Some(changedTasks) =>
-              val selectedSet = changedTasks.downstreamTasks.map(_.toString).toSet
+              val selectedSet = changedTasks.downstreamTasks.map(_.displayName).toSet
 
               (
                 unnamed ++ named.filter(t =>
                   t.task.isExclusiveCommand ||
                     // FIXME We need to compute ResolvedTask-s out of named using Plan here
-                    selectedSet(t.task.resolved(t.crossValues).toString)
+                    selectedSet(t.task.resolved(t.crossValues).displayName)
                 ),
                 newComputedMetadata.results,
                 Some(newComputedMetadata.metadata)

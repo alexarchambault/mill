@@ -355,9 +355,9 @@ object MainModule {
               case Some(namedTask) =>
                 val jsonFile = ExecutionPaths.resolve(evaluator.outPath, namedTask).meta
                 val metadata = upickle.read[Cached](ujson.read(jsonFile.toIO))
-                // FIXME kind of meh in JSON, better group things
+                // FIXME displayName is kind of meh in JSON, better group things
                 // by crossValues there?
-                Some((namedTask.toString, metadata.value))
+                Some((namedTask.displayName, metadata.value))
               case _ => None
             }
           }

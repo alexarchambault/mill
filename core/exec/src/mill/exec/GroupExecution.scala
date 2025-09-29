@@ -182,7 +182,7 @@ trait GroupExecution {
                     inputs = inputsMap,
                     inputsHash = inputsHash,
                     paths = Some(paths),
-                    taskLabelOpt = Some(terminal.toString),
+                    taskLabelOpt = Some(terminal.displayName),
                     counterMsg = countMsg,
                     reporter = zincProblemReporter,
                     testReporter = testReporter,
@@ -557,7 +557,7 @@ object GroupExecution {
         if (!isCommand && !isInput && mill.api.FilesystemCheckerEnabled.value) {
           if (path.startsWith(workspace) && !validReadDests.exists(path.startsWith(_))) {
             sys.error(
-              s"Reading from ${path.relativeTo(workspace)} not allowed during execution of `$terminal`.\n" +
+              s"Reading from ${path.relativeTo(workspace)} not allowed during execution of `${terminal.displayName}`.\n" +
                 "You can only read files referenced by `Task.Source` or `Task.Sources`, or within a `Task.Input"
             )
           }
@@ -569,7 +569,7 @@ object GroupExecution {
       if (!isCommand && mill.api.FilesystemCheckerEnabled.value) {
         if (path.startsWith(workspace) && !validWriteDests.exists(path.startsWith(_))) {
           sys.error(
-            s"Writing to ${path.relativeTo(workspace)} not allowed during execution of `$terminal`.\n" +
+            s"Writing to ${path.relativeTo(workspace)} not allowed during execution of `${terminal.displayName}`.\n" +
               "Normal `Task`s can only write to files within their `Task.dest` folder, only `Task.Command`s can write to other arbitrary files."
           )
         }

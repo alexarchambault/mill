@@ -744,10 +744,11 @@ private class MillBuildServer(
                 cleanResult.goals
                   .flatMap { goal =>
                     cleanResult.transitiveTaskResultsApi(goal).map {
-                      case (task0, ex: ExecResult.Exception) => s"$task0: $ex"
-                      case (task0, ExecResult.Skipped) => s"Task $task0 was skipped"
-                      case (task0, ExecResult.Aborted) => s"Task $task0 was aborted"
-                      case (task0, _) => s"could not retrieve failure message for $task0"
+                      case (task0, ex: ExecResult.Exception) => s"${task0.displayName}: $ex"
+                      case (task0, ExecResult.Skipped) => s"Task ${task0.displayName} was skipped"
+                      case (task0, ExecResult.Aborted) => s"Task ${task0.displayName} was aborted"
+                      case (task0, _) =>
+                        s"could not retrieve failure message for ${task0.displayName}"
                     }
                   }
                   .mkString(", "),
@@ -1134,5 +1135,8 @@ private object MillBuildServer {
   }
 
   private final case class UnresolvedTask[+T](task: TaskApi[T], crossValues: Map[String, String])
-      extends UnresolvedTaskApi[T]
+      extends UnresolvedTaskApi[T] {
+    def displayName: String =
+      ResolvedTask.displayName(task.toString, crossValues)
+  }
 }

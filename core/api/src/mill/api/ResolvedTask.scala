@@ -19,7 +19,7 @@ abstract class ResolvedTask[+T] extends ResolvedTaskApi[T] {
   def asUnappliedTask: UnresolvedTask[T] =
     UnresolvedTask(task, crossValues)
 
-  override def toString(): String =
+  def displayName: String =
     ResolvedTask.displayName(task, crossValues)
 }
 
@@ -34,7 +34,9 @@ object ResolvedTask {
     (resolved.task, resolved.crossValues)
 
   private[mill] def displayName(task: Task[?], crossValues: Map[String, String]): String =
-    task.toString + {
+    displayName(task.toString, crossValues)
+  private[mill] def displayName(task: String, crossValues: Map[String, String]): String =
+    task + {
       if (crossValues.isEmpty) ""
       else
         crossValues
@@ -42,8 +44,8 @@ object ResolvedTask {
           .sortBy(_._1)
           .map {
             case (k, v) =>
-              s"$k=$v"
+              s",$k=$v"
           }
-          .mkString(" (", ", ", ")")
+          .mkString
     }
 }

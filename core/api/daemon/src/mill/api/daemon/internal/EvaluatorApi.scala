@@ -61,7 +61,7 @@ object ExecutionResultsApi {
           case ex: ExecResult.Exception => ex.toString
         }
         val keyPrefix = Logger.formatPrefix(evaluated.transitivePrefixesApi.getOrElse(k, Nil))
-        s"$keyPrefix$k $fss"
+        s"$keyPrefix${k.displayName} $fss"
       }).mkString("\n")
   }
 

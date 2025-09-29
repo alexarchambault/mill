@@ -25,7 +25,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
 
     transitiveNamed
       .map { namedTask =>
-        namedTask.toString -> CodeSigUtils
+        namedTask.displayName -> CodeSigUtils
           .codeSigForTask(
             namedTask.task,
             classToTransitiveClasses,
@@ -44,7 +44,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
       oldHashes: SelectiveExecution.Metadata,
       newHashes: SelectiveExecution.Metadata
   ): (Set[ResolvedTask[?]], Seq[ResolvedTask[Any]]) = {
-    val namesToTasks = transitiveNamed.map(t => (t.toString -> t)).toMap
+    val namesToTasks = transitiveNamed.map(t => (t.displayName -> t)).toMap
 
     def diffMap[K, V](lhs: Map[K, V], rhs: Map[K, V]) = {
       (lhs.keys ++ rhs.keys)
@@ -251,7 +251,7 @@ object SelectiveExecutionImpl {
         .toMap
 
       val inputHashes = results.map {
-        case (task, execResultVal) => (task.toString, execResultVal.get.value.hashCode)
+        case (task, execResultVal) => (task.displayName, execResultVal.get.value.hashCode)
       }
       SelectiveExecution.Metadata.Computed(
         new SelectiveExecution.Metadata(
