@@ -32,6 +32,61 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/cross/App"
+      },
+      "modules": [
+        {
+          "name": "org.scala-lang:scala-library",
+          "version": "<scala-version>"
+        }
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala212-version>"
+      },
+      "modules": [
+        {
+          "name": "org.scala-lang:scala-library",
+          "version": "<scala212-version>"
+        }
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala-version>"
+      },
+      "modules": [
+        {
+          "name": "org.scala-lang:scala-library",
+          "version": "<scala-version>"
+        }
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala212-version>"
+      },
+      "modules": [
+        {
+          "name": "org.scala-lang:scala-library",
+          "version": "<scala212-version>"
+        }
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala-version>"
+      },
+      "modules": [
+        {
+          "name": "org.scala-lang:scala-library",
+          "version": "<scala-version>"
+        }
+      ]
+    },
+    {
+      "target": {
         "uri": "file:///workspace/delayed"
       },
       "modules": [

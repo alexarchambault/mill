@@ -20,6 +20,46 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/cross/App"
+      },
+      "sources": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>-sources.jar"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala212-version>"
+      },
+      "sources": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>-sources.jar"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala-version>"
+      },
+      "sources": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>-sources.jar"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala212-version>"
+      },
+      "sources": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>-sources.jar"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala-version>"
+      },
+      "sources": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>-sources.jar"
+      ]
+    },
+    {
+      "target": {
         "uri": "file:///workspace/delayed"
       },
       "sources": [

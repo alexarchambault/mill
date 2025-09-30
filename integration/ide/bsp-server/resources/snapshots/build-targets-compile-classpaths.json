@@ -28,6 +28,59 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/cross/App"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/cross/lib/compile-resources",
+        "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compile.dest/classes",
+        "file:///workspace/cross/App/compile-resources"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala212-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compile.dest/classes",
+        "file:///workspace/cross/lib/compile-resources"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/cross/lib/compile-resources"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala212-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/cross/util/compile-resources"
+      ]
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/cross/util/compile-resources"
+      ]
+    },
+    {
+      "target": {
         "uri": "file:///workspace/delayed"
       },
       "classpath": [

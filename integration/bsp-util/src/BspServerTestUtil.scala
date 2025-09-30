@@ -241,13 +241,22 @@ object BspServerTestUtil {
     )
 
   def scalaVersionNormalizedValues(): Seq[(String, String)] = {
-    val scala2Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
+    val scala212Version = sys.props.getOrElse("TEST_SCALA_2_12_VERSION", ???)
+    val scala213Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
     val scala3Version = sys.props.getOrElse("MILL_SCALA_3_NEXT_VERSION", ???)
-    val scala2TransitiveSubstitutions = transitiveDependenciesSubstitutions(
+    val scala213TransitiveSubstitutions = transitiveDependenciesSubstitutions(
       coursierapi.Dependency.of(
         "org.scala-lang",
         "scala-compiler",
-        scala2Version
+        scala213Version
+      ),
+      _.getModule.getOrganization != "org.scala-lang"
+    )
+    val scala212TransitiveSubstitutions = transitiveDependenciesSubstitutions(
+      coursierapi.Dependency.of(
+        "org.scala-lang",
+        "scala-compiler",
+        scala212Version
       ),
       _.getModule.getOrganization != "org.scala-lang"
     )
@@ -260,9 +269,11 @@ object BspServerTestUtil {
       _.getModule.getOrganization != "org.scala-lang"
     )
 
-    scala2TransitiveSubstitutions ++ scala3TransitiveSubstitutions ++
+    scala213TransitiveSubstitutions ++ scala212TransitiveSubstitutions ++
+      scala3TransitiveSubstitutions ++
       Seq(
-        scala2Version -> "<scala-version>",
+        scala213Version -> "<scala-version>",
+        scala212Version -> "<scala212-version>",
         scala3Version -> "<scala3-version>"
       )
   }

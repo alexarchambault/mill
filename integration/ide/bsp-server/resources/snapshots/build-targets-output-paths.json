@@ -14,6 +14,36 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/cross/App"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala212-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala212-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
         "uri": "file:///workspace/delayed"
       },
       "outputPaths": []

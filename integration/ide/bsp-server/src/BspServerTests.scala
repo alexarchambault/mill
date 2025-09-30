@@ -279,6 +279,8 @@ object BspServerTests extends UtestIntegrationTestSuite {
           .buildTargetScalacOptions(new b.ScalacOptionsParams(targetIds))
           .get()
 
+        val scala212Version = sys.props.getOrElse("TEST_SCALA_2_12_VERSION", ???)
+        val scala213Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
         val expectedScalaSemDbs = Map(
           os.sub / "hello-scala" -> Seq(
             os.sub / "hello-scala/src/Hello.scala.semanticdb"
@@ -299,7 +301,12 @@ object BspServerTests extends UtestIntegrationTestSuite {
           os.sub / "errored/compilation-error" -> Nil,
           os.sub / "delayed" -> Nil,
           os.sub / "diag/many" -> Nil,
-          os.sub / "sourcesNeedCompile" -> Nil
+          os.sub / "sourcesNeedCompile" -> Nil,
+          os.sub / "cross/util" / scala213Version -> Nil,
+          os.sub / "cross/util" / scala212Version -> Nil,
+          os.sub / "cross/lib" / scala213Version -> Nil,
+          os.sub / "cross/lib" / scala212Version -> Nil,
+          os.sub / "cross/App" -> Nil
         )
 
         {

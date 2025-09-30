@@ -2,6 +2,36 @@
   "items": [
     {
       "target": {
+        "uri": "file:///workspace/cross/App"
+      },
+      "classes": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala212-version>"
+      },
+      "classes": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/lib/<scala-version>"
+      },
+      "classes": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala212-version>"
+      },
+      "classes": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/cross/util/<scala-version>"
+      },
+      "classes": []
+    },
+    {
+      "target": {
         "uri": "file:///workspace/delayed"
       },
       "classes": []
