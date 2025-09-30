@@ -104,6 +104,36 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/legacy-cross/App"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala212-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+      },
+      "outputPaths": []
+    },
+    {
+      "target": {
         "uri": "file:///workspace/lib"
       },
       "outputPaths": []

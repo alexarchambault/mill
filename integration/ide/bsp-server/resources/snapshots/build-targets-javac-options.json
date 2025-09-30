@@ -240,6 +240,69 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/legacy-cross/App"
+      },
+      "options": [],
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/App/compile-resources"
+      ],
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/App/compiledClassesAndSemanticDbFiles.dest"
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala212-version>"
+      },
+      "options": [],
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources"
+      ],
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
+      },
+      "options": [],
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources"
+      ],
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
+      },
+      "options": [],
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources"
+      ],
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+      },
+      "options": [],
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources"
+      ],
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+    },
+    {
+      "target": {
         "uri": "file:///workspace/lib"
       },
       "options": [

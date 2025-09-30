@@ -642,6 +642,219 @@
     },
     {
       "id": {
+        "uri": "file:///workspace/legacy-cross/App"
+      },
+      "displayName": "legacy-cross.App",
+      "baseDirectory": "file:///workspace/legacy-cross/App",
+      "tags": [
+        "library",
+        "application"
+      ],
+      "languageIds": [
+        "java",
+        "scala"
+      ],
+      "dependencies": [
+        {
+          "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+        },
+        {
+          "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
+        }
+      ],
+      "capabilities": {
+        "canCompile": true,
+        "canTest": false,
+        "canRun": true,
+        "canDebug": false
+      },
+      "dataKind": "scala",
+      "data": {
+        "scalaOrganization": "org.scala-lang",
+        "scalaVersion": "<scala-version>",
+        "scalaBinaryVersion": "2.13",
+        "platform": 1,
+        "jars": [
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/<scala-version>/scala-compiler-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/<scala-version>/scala-reflect-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils/<java-diff-utils-version>/java-diff-utils-<java-diff-utils-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/jline/jline/<jline-version>/jline-<jline-version>-jdk8.jar"
+        ],
+        "jvmBuildTarget": {
+          "javaHome": "java-home",
+          "javaVersion": "17.0.16"
+        }
+      }
+    },
+    {
+      "id": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala212-version>"
+      },
+      "displayName": "legacy-cross.lib[<scala212-version>]",
+      "baseDirectory": "file:///workspace/legacy-cross/lib",
+      "tags": [
+        "library",
+        "application"
+      ],
+      "languageIds": [
+        "java",
+        "scala"
+      ],
+      "dependencies": [
+        {
+          "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
+        }
+      ],
+      "capabilities": {
+        "canCompile": true,
+        "canTest": false,
+        "canRun": true,
+        "canDebug": false
+      },
+      "dataKind": "scala",
+      "data": {
+        "scalaOrganization": "org.scala-lang",
+        "scalaVersion": "<scala212-version>",
+        "scalaBinaryVersion": "2.12",
+        "platform": 1,
+        "jars": [
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/<scala212-version>/scala-compiler-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/<scala212-version>/scala-reflect-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-xml_2.12/<scala-xml_2.12-version>/scala-xml_2.12-<scala-xml_2.12-version>.jar"
+        ],
+        "jvmBuildTarget": {
+          "javaHome": "java-home",
+          "javaVersion": "17.0.16"
+        }
+      }
+    },
+    {
+      "id": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
+      },
+      "displayName": "legacy-cross.lib[<scala-version>]",
+      "baseDirectory": "file:///workspace/legacy-cross/lib",
+      "tags": [
+        "library",
+        "application"
+      ],
+      "languageIds": [
+        "java",
+        "scala"
+      ],
+      "dependencies": [
+        {
+          "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+        }
+      ],
+      "capabilities": {
+        "canCompile": true,
+        "canTest": false,
+        "canRun": true,
+        "canDebug": false
+      },
+      "dataKind": "scala",
+      "data": {
+        "scalaOrganization": "org.scala-lang",
+        "scalaVersion": "<scala-version>",
+        "scalaBinaryVersion": "2.13",
+        "platform": 1,
+        "jars": [
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/<scala-version>/scala-compiler-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/<scala-version>/scala-reflect-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils/<java-diff-utils-version>/java-diff-utils-<java-diff-utils-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/jline/jline/<jline-version>/jline-<jline-version>-jdk8.jar"
+        ],
+        "jvmBuildTarget": {
+          "javaHome": "java-home",
+          "javaVersion": "17.0.16"
+        }
+      }
+    },
+    {
+      "id": {
+        "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
+      },
+      "displayName": "legacy-cross.util[<scala212-version>]",
+      "baseDirectory": "file:///workspace/legacy-cross/util",
+      "tags": [
+        "library",
+        "application"
+      ],
+      "languageIds": [
+        "java",
+        "scala"
+      ],
+      "dependencies": [],
+      "capabilities": {
+        "canCompile": true,
+        "canTest": false,
+        "canRun": true,
+        "canDebug": false
+      },
+      "dataKind": "scala",
+      "data": {
+        "scalaOrganization": "org.scala-lang",
+        "scalaVersion": "<scala212-version>",
+        "scalaBinaryVersion": "2.12",
+        "platform": 1,
+        "jars": [
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/<scala212-version>/scala-compiler-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/<scala212-version>/scala-reflect-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-xml_2.12/<scala-xml_2.12-version>/scala-xml_2.12-<scala-xml_2.12-version>.jar"
+        ],
+        "jvmBuildTarget": {
+          "javaHome": "java-home",
+          "javaVersion": "17.0.16"
+        }
+      }
+    },
+    {
+      "id": {
+        "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+      },
+      "displayName": "legacy-cross.util[<scala-version>]",
+      "baseDirectory": "file:///workspace/legacy-cross/util",
+      "tags": [
+        "library",
+        "application"
+      ],
+      "languageIds": [
+        "java",
+        "scala"
+      ],
+      "dependencies": [],
+      "capabilities": {
+        "canCompile": true,
+        "canTest": false,
+        "canRun": true,
+        "canDebug": false
+      },
+      "dataKind": "scala",
+      "data": {
+        "scalaOrganization": "org.scala-lang",
+        "scalaVersion": "<scala-version>",
+        "scalaBinaryVersion": "2.13",
+        "platform": 1,
+        "jars": [
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/<scala-version>/scala-compiler-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/<scala-version>/scala-reflect-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils/<java-diff-utils-version>/java-diff-utils-<java-diff-utils-version>.jar",
+          "file:///coursier-cache/https/repo1.maven.org/maven2/org/jline/jline/<jline-version>/jline-<jline-version>-jdk8.jar"
+        ],
+        "jvmBuildTarget": {
+          "javaHome": "java-home",
+          "javaVersion": "17.0.16"
+        }
+      }
+    },
+    {
+      "id": {
         "uri": "file:///workspace/lib"
       },
       "displayName": "lib",

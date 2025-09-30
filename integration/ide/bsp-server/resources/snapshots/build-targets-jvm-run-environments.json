@@ -304,6 +304,103 @@
     },
     {
       "target": {
+        "uri": "file:///workspace/legacy-cross/App"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/legacy-cross/util/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources",
+        "file:///workspace/legacy-cross/lib/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/App/compile-resources",
+        "file:///workspace/legacy-cross/App/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/App/compile.dest/classes"
+      ],
+      "jvmOptions": [],
+      "workingDirectory": "/workspace",
+      "environmentVariables": {
+        "MILL_WORKSPACE_ROOT": "/workspace"
+      },
+      "mainClasses": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala212-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/legacy-cross/util/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources",
+        "file:///workspace/legacy-cross/lib/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala212-version>/compile.dest/classes"
+      ],
+      "jvmOptions": [],
+      "workingDirectory": "/workspace",
+      "environmentVariables": {
+        "MILL_WORKSPACE_ROOT": "/workspace"
+      },
+      "mainClasses": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/legacy-cross/util/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/legacy-cross/lib/compile-resources",
+        "file:///workspace/legacy-cross/lib/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compile.dest/classes"
+      ],
+      "jvmOptions": [],
+      "workingDirectory": "/workspace",
+      "environmentVariables": {
+        "MILL_WORKSPACE_ROOT": "/workspace"
+      },
+      "mainClasses": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/legacy-cross/util/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compile.dest/classes"
+      ],
+      "jvmOptions": [],
+      "workingDirectory": "/workspace",
+      "environmentVariables": {
+        "MILL_WORKSPACE_ROOT": "/workspace"
+      },
+      "mainClasses": []
+    },
+    {
+      "target": {
+        "uri": "file:///workspace/legacy-cross/util/<scala-version>"
+      },
+      "classpath": [
+        "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
+        "file:///workspace/legacy-cross/util/compile-resources",
+        "file:///workspace/legacy-cross/util/resources",
+        "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes"
+      ],
+      "jvmOptions": [],
+      "workingDirectory": "/workspace",
+      "environmentVariables": {
+        "MILL_WORKSPACE_ROOT": "/workspace"
+      },
+      "mainClasses": []
+    },
+    {
+      "target": {
         "uri": "file:///workspace/lib"
       },
       "classpath": [

@@ -306,7 +306,12 @@ object BspServerTests extends UtestIntegrationTestSuite {
           os.sub / "cross/util" / scala212Version -> Nil,
           os.sub / "cross/lib" / scala213Version -> Nil,
           os.sub / "cross/lib" / scala212Version -> Nil,
-          os.sub / "cross/App" -> Nil
+          os.sub / "cross/App" -> Nil,
+          os.sub / "legacy-cross/util" / scala213Version -> Nil,
+          os.sub / "legacy-cross/util" / scala212Version -> Nil,
+          os.sub / "legacy-cross/lib" / scala213Version -> Nil,
+          os.sub / "legacy-cross/lib" / scala212Version -> Nil,
+          os.sub / "legacy-cross/App" -> Nil
         )
 
         {
