@@ -28,7 +28,7 @@ object InitModuleTests extends TestSuite {
         errStream = new PrintStream(OutputStream.nullOutputStream(), true)
       ).scoped { evaluator =>
 
-        val results = evaluator.evaluator.execute(Seq(initmodule.init(None))).executionResults
+        val results = evaluator.evaluator.execute(Seq(initmodule.init(None))).get.executionResults
 
         assert(results.transitiveFailing.size == 0)
 
@@ -55,7 +55,7 @@ object InitModuleTests extends TestSuite {
         val nonExistingModuleId = "nonExistingExampleId"
         val results = evaluator.evaluator.execute(Seq(
           initmodule.init(Some(nonExistingModuleId))
-        )).executionResults
+        )).get.executionResults
         assert(results.transitiveFailing.size == 1)
         val err = errStream.toString
 
@@ -92,7 +92,7 @@ object InitModuleTests extends TestSuite {
 
         val results = evaluator.evaluator.execute(
           Seq(initmodule.init(Some("scalalib/basic/1-simple")))
-        ).executionResults
+        ).get.executionResults
 
         val expected =
           "Downloading example from https://repo1.maven.org/maven2/com/lihaoyi/mill-dist/SNAPSHOT/mill-dist-SNAPSHOT-example-scalalib-basic-1-simple.zip."

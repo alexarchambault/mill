@@ -164,7 +164,7 @@ class GenIdeaImpl(
 
     val resolvedModules: Seq[ResolvedModule] = {
       resolveTasks.toSeq.flatMap { case (evaluator, tasks) =>
-        evaluator.executeApi(tasks).executionResults match {
+        evaluator.executeApi(tasks).get.executionResults match {
           case r if r.transitiveFailingApi.nonEmpty =>
             throw GenIdeaException(
               s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"

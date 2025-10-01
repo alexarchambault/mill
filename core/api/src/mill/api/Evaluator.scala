@@ -70,7 +70,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       resolveToModuleTasks: Boolean = false
   ): mill.api.Result[List[Either[Module, Task.Named[?]]]]
 
-  def plan(tasks: Seq[Task[?]]): Plan
+  def plan(tasks: Seq[Task[?]]): mill.api.Result[Plan]
 
   def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
       important: PartialFunction[
@@ -91,7 +91,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
    */
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): Evaluator.Result[T] =
+  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): mill.api.Result[Evaluator.Result[T]] =
     execute[T](tasks.map(_.asInstanceOf[Task[T]]))
 
   def execute[T](
@@ -101,7 +101,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
       selectiveExecution: Boolean = false
-  ): Evaluator.Result[T]
+  ): mill.api.Result[Evaluator.Result[T]]
 
   def evaluate(
       scriptArgs: Seq[String],
@@ -117,7 +117,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       logger: Logger = null,
       serialCommandExec: Boolean = false,
       selectiveExecution: Boolean = false
-  ): EvaluatorApi.Result[T] = {
+  ): mill.api.Result[EvaluatorApi.Result[T]] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
         tasks.map(_.asInstanceOf[Task[T]]),

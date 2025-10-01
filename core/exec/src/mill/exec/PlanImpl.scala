@@ -1,11 +1,11 @@
 package mill.exec
 
-import mill.api.{Plan, Task}
+import mill.api.{Plan, Result, Task}
 import mill.api.MultiBiMap
 import mill.api.TopoSorted
 
 private[mill] object PlanImpl {
-  def plan(goals: Seq[Task[?]]): Plan = {
+  def plan(goals: Seq[Task[?]]): Result[Plan] = {
     val transitive = PlanImpl.transitiveTasks(goals.toIndexedSeq)
     val goalSet = goals.toSet
     val topoSorted = PlanImpl.topoSorted(transitive)

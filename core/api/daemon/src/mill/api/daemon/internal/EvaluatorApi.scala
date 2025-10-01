@@ -18,11 +18,12 @@ trait EvaluatorApi extends AutoCloseable {
       logger: Logger = null,
       serialCommandExec: Boolean = false,
       selectiveExecution: Boolean = false
-  ): EvaluatorApi.Result[T]
+  ): mill.api.daemon.Result[EvaluatorApi.Result[T]]
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val)]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): EvaluatorApi.Result[T]
+  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]])
+      : mill.api.daemon.Result[EvaluatorApi.Result[T]]
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
   private[mill] def outPathJava: java.nio.file.Path

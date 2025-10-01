@@ -70,7 +70,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       resolveToModuleTasks
     )
   }
-  def plan(tasks: Seq[Task[?]]): Plan = delegate.plan(tasks)
+  def plan(tasks: Seq[Task[?]]): mill.api.Result[Plan] = delegate.plan(tasks)
 
   def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
       important: PartialFunction[
@@ -92,7 +92,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
       selectiveExecution: Boolean = false
-  ): Evaluator.Result[T] = {
+  ): mill.api.Result[Evaluator.Result[T]] = {
     delegate.execute(
       tasks,
       reporter,

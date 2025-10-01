@@ -33,12 +33,12 @@ private[dependency] object VersionsFinder {
     val resolvedDependencies = evaluator.execute {
       val progress = new Progress(javaModules.size)
       javaModules.map(classpath(progress, ctx.offline, clock, coursierConfigModule))
-    }.values.get
+    }.get.values.get
 
     evaluator.execute {
       val progress = new Progress(resolvedDependencies.map(_._3.size).sum)
       resolvedDependencies.map(resolveVersions(progress))
-    }.values.get
+    }.get.values.get
   }
 
   class Progress(val count: Int) {

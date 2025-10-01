@@ -23,7 +23,7 @@ private[mill] trait SelectiveExecution {
   def computeChangedTasks0(
       tasks: Seq[Task.Named[?]],
       computedMetadata: SelectiveExecution.Metadata.Computed
-  ): Option[ChangedTasks]
+  ): Option[Result[ChangedTasks]]
 
   def resolve0(tasks: Seq[String]): Result[Array[String]]
 
@@ -33,7 +33,7 @@ private[mill] trait SelectiveExecution {
 
   def computeMetadata(
       tasks: Seq[Task.Named[?]]
-  ): SelectiveExecution.Metadata.Computed
+  ): mill.api.Result[SelectiveExecution.Metadata.Computed]
 }
 object SelectiveExecution {
   case class Metadata(inputHashes: Map[String, Int], codeSignatures: Map[String, Int])

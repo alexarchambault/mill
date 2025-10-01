@@ -20,14 +20,13 @@ trait SelectiveExecutionModule extends mill.api.Module {
    */
   def prepare(evaluator: Evaluator, tasks: String*): Command[Unit] =
     Task.Command(exclusive = true) {
-      evaluator.resolveTasks(
-        if (tasks.isEmpty) Seq("__") else tasks,
-        SelectMode.Multi
-      ).map { resolvedTasks =>
-        val computed = evaluator.selective.computeMetadata(resolvedTasks)
-
-        evaluator.selective.saveMetadata(computed.metadata)
-      }
+      for {
+        resolvedTasks <- evaluator.resolveTasks(
+          if (tasks.isEmpty) Seq("__") else tasks,
+          SelectMode.Multi
+        )
+        computed <- evaluator.selective.computeMetadata(resolvedTasks)
+      } yield evaluator.selective.saveMetadata(computed.metadata)
     }
 
   /**

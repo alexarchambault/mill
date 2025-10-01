@@ -118,7 +118,7 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
       val evaluator = dto.evaluatorApi
       val moduleTask = dto.module.genEclipseInternal().genEclipseModuleInformation()
 
-      val resolvedModule = evaluator.executeApi(Seq(moduleTask)).executionResults match {
+      val resolvedModule = evaluator.executeApi(Seq(moduleTask)).get.executionResults match {
         case r if r.transitiveFailingApi.nonEmpty =>
           throw GenEclipseException(
             s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
@@ -132,7 +132,7 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
       )
 
       val sourceSetResolvedModules = {
-        evaluator.executeApi(sourceSetModuleTasks.toSeq).executionResults match {
+        evaluator.executeApi(sourceSetModuleTasks.toSeq).get.executionResults match {
           case r if r.transitiveFailingApi.nonEmpty =>
             throw GenEclipseException(
               s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"

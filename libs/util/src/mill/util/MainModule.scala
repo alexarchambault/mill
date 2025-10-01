@@ -370,10 +370,11 @@ object MainModule {
       evaluator: Evaluator,
       tasks: Seq[String]
   ): Result[Array[Task.Named[?]]] = {
-    evaluator.resolveTasks(tasks, SelectMode.Multi).map {
-      rs =>
-        val plan = evaluator.plan(rs)
-        plan.sortedGroups.keys().collect { case r: Task.Named[_] => r }.toArray
+    for {
+      rs <- evaluator.resolveTasks(tasks, SelectMode.Multi)
+      plan <- evaluator.plan(rs)
+    } yield {
+      plan.sortedGroups.keys().collect { case r: Task.Named[_] => r }.toArray
     }
   }
 

@@ -44,10 +44,11 @@ object VisualizeModule extends ExternalModule {
       val sortedGroups = evaluator.groupAroundImportantTasks(topoSorted) {
         case x: Task.Named[Any] if transitiveTasks.contains(x) => x
       }
-      val plan = evaluator.plan(transitiveTasks)
-      in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
-      val res = out.take()
-      res.map { v =>
+      for {
+        plan <- evaluator.plan(transitiveTasks)
+        _ = in.put((tasks, transitiveTasks, sortedGroups, plan, ctx.dest))
+        v <- out.take()
+      } yield {
         println(upickle.write(v.map(_.path.toString()), indent = 2))
         v
       }

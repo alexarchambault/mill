@@ -451,7 +451,7 @@ object ExecutionTests extends TestSuite {
     test("anonTaskFailure") {
       UnitTester(anonTaskFailure, null).scoped { tester =>
         val res = tester.evaluator.execute(Seq(anonTaskFailure.task))
-        assert(res.executionResults.transitiveFailing.keySet == Set(anonTaskFailure.task))
+        assert(res.get.executionResults.transitiveFailing.keySet == Set(anonTaskFailure.task))
       }
     }
     test("overloaded") {

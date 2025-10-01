@@ -83,15 +83,17 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   def computeChangedTasks(
       tasks: Seq[String]
   ): Result[ChangedTasks] = {
-    evaluator.resolveTasks(
-      tasks,
-      SelectMode.Separated,
-      evaluator.allowPositionalCommandArgs
-    ).map { tasks =>
-      computeChangedTasks0(tasks, SelectiveExecutionImpl.Metadata.compute(evaluator, tasks))
+    for {
+      tasks <- evaluator.resolveTasks(
+        tasks,
+        SelectMode.Separated,
+        evaluator.allowPositionalCommandArgs
+      )
+      computedMetadata <- SelectiveExecutionImpl.Metadata.compute(evaluator, tasks)
+      res <- computeChangedTasks0(tasks, computedMetadata)
         // If we did not have the metadata, presume everything was changed.
-        .getOrElse(ChangedTasks.all(tasks))
-    }
+        .getOrElse(Result.Success(ChangedTasks.all(tasks)))
+    } yield res
   }
 
   /**
@@ -101,7 +103,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   def computeChangedTasks0(
       tasks: Seq[Task.Named[?]],
       computedMetadata: SelectiveExecution.Metadata.Computed
-  ): Option[ChangedTasks] = {
+  ): Option[Result[ChangedTasks]] = {
     val oldMetadataTxt = os.read(evaluator.outPath / OutFiles.millSelectiveExecution)
 
     // We allow to clear the selective execution metadata to rerun all tasks.
@@ -145,9 +147,11 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   }
 
   def resolveTree(tasks: Seq[String]): Result[ujson.Value] = {
-    for (changedTasks <- this.computeChangedTasks(tasks)) yield {
-      val taskSet = changedTasks.downstreamTasks.toSet[Task[?]]
-      val plan = PlanImpl.plan(Seq.from(changedTasks.downstreamTasks))
+    for {
+      changedTasks <- this.computeChangedTasks(tasks)
+      taskSet = changedTasks.downstreamTasks.toSet[Task[?]]
+      plan <- PlanImpl.plan(Seq.from(changedTasks.downstreamTasks))
+    } yield {
       val indexToTerminal = plan
         .sortedGroups
         .keys()
@@ -190,7 +194,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
 
   def computeMetadata(
       tasks: Seq[Task.Named[?]]
-  ): SelectiveExecution.Metadata.Computed =
+  ): mill.api.Result[SelectiveExecution.Metadata.Computed] =
     SelectiveExecutionImpl.Metadata.compute(evaluator, tasks)
 }
 object SelectiveExecutionImpl {
@@ -198,7 +202,7 @@ object SelectiveExecutionImpl {
     def compute(
         evaluator: Evaluator,
         tasks: Seq[Task.Named[?]]
-    ): SelectiveExecution.Metadata.Computed = {
+    ): mill.api.Result[SelectiveExecution.Metadata.Computed] = {
       compute0(evaluator, PlanImpl.transitiveNamed(tasks))
     }
 

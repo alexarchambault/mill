@@ -412,6 +412,7 @@ private class MillBuildServer(
                 reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client),
                 logger = logger
               )
+              .get
               .values
               .get
         }
@@ -1017,7 +1018,7 @@ private class MillBuildServer(
       testReporter,
       logger,
       serialCommandExec = false
-    )
+    ).get
     errorOpt(result) match {
       case None =>
         logger.info("Done")

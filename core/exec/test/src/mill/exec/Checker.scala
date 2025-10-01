@@ -27,7 +27,7 @@ class Checker[T <: mill.testkit.TestRootModule](
       secondRunNoOp: Boolean = true
   ) = {
 
-    val evaled = execution.executeTasks(Seq(task))
+    val evaled = execution.executeTasks(Seq(task)).get
 
     val (matchingReturnedEvaled, extra) =
       evaled.uncached.partition(expEvaled.contains)
@@ -41,7 +41,7 @@ class Checker[T <: mill.testkit.TestRootModule](
 
     // Second time the value is already cached, so no evaluation needed
     if (secondRunNoOp) {
-      val evaled2 = execution.executeTasks(Seq(task))
+      val evaled2 = execution.executeTasks(Seq(task)).get
       val expectedSecondRunEvaluated = Seq()
       assert(
         evaled2.values.map(_.value) == evaled.values.map(_.value),
