@@ -216,6 +216,7 @@ object SelectiveExecutionImpl {
             reporter = _ => None,
             testReporter = TestReporter.DummyTestReporter,
             workspace = evaluator.workspace,
+            outFolder = evaluator.outPath,
             _systemExitWithReason = (reason, exitCode) =>
               throw Exception(s"systemExit called: reason=$reason, exitCode=$exitCode"),
             fork = null,

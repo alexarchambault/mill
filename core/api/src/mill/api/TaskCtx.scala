@@ -45,6 +45,7 @@ object TaskCtx {
       val reporter: Int => Option[CompileProblemReporter],
       val testReporter: TestReporter,
       val workspace: os.Path,
+      val outFolder: os.Path,
       _systemExitWithReason: (String, Int) => Nothing,
       val fork: TaskCtx.Fork.Api,
       val jobs: Int,
@@ -146,6 +147,8 @@ object TaskCtx {
      * use cases like BSP or LSP server usage).
      */
     def workspace: os.Path
+
+    def outFolder: os.Path
   }
 
   /**
