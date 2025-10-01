@@ -229,6 +229,7 @@ final class EvaluatorImpl private[mill] (
                 reporter = reporter,
                 testReporter = testReporter,
                 workspace = workspace,
+                outFolder = outPath,
                 _systemExitWithReason = (reason, exitCode) =>
                   throw Exception(s"systemExit called: reason=$reason, exitCode=$exitCode"),
                 fork = null,

@@ -315,6 +315,7 @@ trait GroupExecution {
             reporter = reporter,
             testReporter = testReporter,
             workspace = workspace,
+            outFolder = outPath,
             _systemExitWithReason = systemExit,
             fork = executionContext,
             jobs = effectiveThreadCount,
