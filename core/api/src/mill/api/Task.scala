@@ -149,17 +149,17 @@ object Task {
    * signature for you source files/folders and decides whether or not downstream
    * [[Task.Computed]]s need to be invalidated and re-computed.
    */
-  inline def Sources(inline values: (os.SubPath | os.FilePath)*)(using
+  inline def Sources(inline values: (os.SubPath | os.FilePath | String)*)(using
       inline ctx: mill.api.ModuleCtx
   ): Simple[Seq[PathRef]] = ${
     Macros.sourcesImpl('{ values.map(p => PathRef(mapToPath(p))) })('ctx)
   }
 
-  inline private def mapToPath(value: os.SubPath | os.FilePath)(using
+  inline private def mapToPath(value: os.SubPath | os.FilePath | String)(using
       inline ctx: mill.api.ModuleCtx
   ): os.Path = value match {
     // TODO: support "."
-//    case str: String => ctx.millSourcePath / os.up / os.PathChunk.segmentsFromString(str)
+    case str: String => ctx.millSourcePath / os.up / os.PathChunk.segmentsFromString(str)
     case sub: os.SubPath => ctx.millSourcePath / os.up / os.PathChunk.SubPathChunk(sub)
     case rel: os.RelPath => ctx.millSourcePath / os.up / os.PathChunk.RelPathChunk(rel)
     case p: os.Path => p
@@ -169,7 +169,7 @@ object Task {
    * Similar to [[Sources]], but only for a single source file or folder. Defined
    * using `Task.Source`.
    */
-  inline def Source(inline value: os.SubPath | os.FilePath)(using
+  inline def Source(inline value: os.SubPath | os.FilePath | String)(using
       inline ctx: mill.api.ModuleCtx
   ): Simple[PathRef] =
     ${ Macros.sourceImpl('{ PathRef(mapToPath(value)) })('ctx) }
