@@ -122,6 +122,14 @@ object MillMain0 {
         // early on, when developing on Mill or debugging things for example.
         val bspMode = parserResult.toOption.exists(_.bsp.value)
         withStreams(bspMode, streams0) { streams =>
+          if (bspMode)
+            if (OutFiles.mergeBspOut)
+              streams.err.println(
+                "Warning: BSP mode enabled, but main and BSP out directories are merged. " +
+                  "BSP specific options (semanticdbs) will be disabled."
+              )
+            else
+              sys.props("mill.bsp-mode") = "true"
           parserResult match {
             // Cannot parse args
             case Result.Failure(msg) =>
