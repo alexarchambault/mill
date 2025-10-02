@@ -24,13 +24,15 @@ class Checker[T <: mill.testkit.TestRootModule](
       // Perform a second evaluation of the same tasks, and make sure the
       // outputs are the same but nothing was evaluated. Disable this if you
       // are directly evaluating tasks which need to re-evaluate every time
-      secondRunNoOp: Boolean = true
+      secondRunNoOp: Boolean = true,
+      crossValues: Map[String, String] = Map.empty
   ) = {
 
-    val evaled = execution.executeTasks(Seq(task)).get
+    val evaled = execution.executeTasks(Seq(task.unresolved(crossValues))).get
 
     val (matchingReturnedEvaled, extra) =
-      evaled.uncached.partition(expEvaled.contains)
+      // FIXME We're discarding cross values here
+      evaled.uncached.map(_.task).partition(expEvaled.contains)
 
     val evaledValues = evaled.values.map(_.value)
     assert(
@@ -41,7 +43,7 @@ class Checker[T <: mill.testkit.TestRootModule](
 
     // Second time the value is already cached, so no evaluation needed
     if (secondRunNoOp) {
-      val evaled2 = execution.executeTasks(Seq(task)).get
+      val evaled2 = execution.executeTasks(Seq(task.unresolved(crossValues))).get
       val expectedSecondRunEvaluated = Seq()
       assert(
         evaled2.values.map(_.value) == evaled.values.map(_.value),

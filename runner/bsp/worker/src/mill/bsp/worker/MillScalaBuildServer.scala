@@ -27,10 +27,13 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
         case m: ScalaModuleApi =>
-          m.bspJavaModule().bspBuildTargetScalacOptions(
-            enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
-            clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb
-          )
+          m.bspJavaModule()
+            .bspBuildTargetScalacOptions(
+              enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
+              clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb,
+              crossValues = Map.empty
+            )
+            .unresolved(Map.empty)
       },
       requestDescription = "Getting scalac options of {}",
       originId = ""
@@ -57,7 +60,9 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       : CompletableFuture[ScalaMainClassesResult] =
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
-      tasks = { case m: ScalaModuleApi => m.bspJavaModule().bspBuildTargetScalaMainClasses },
+      tasks = { case m: ScalaModuleApi =>
+        m.bspJavaModule().bspBuildTargetScalaMainClasses.unresolved(Map.empty)
+      },
       requestDescription = "Getting main classes of {}",
       originId = p.getOriginId
     ) {
@@ -81,7 +86,8 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
-        case m: (ScalaModuleApi & TestModuleApi) => m.bspBuildTargetScalaTestClasses
+        case m: (ScalaModuleApi & TestModuleApi) =>
+          m.bspBuildTargetScalaTestClasses.unresolved(Map.empty)
       },
       requestDescription = "Getting test classes of {}",
       originId = p.getOriginId

@@ -4,5 +4,5 @@ import mill._
 import mill.api.Evaluator
 
 def customPlanCommand(evaluator: Evaluator, tasks: String*) = Task.Command {
-  evaluator.plan(Nil).transitive.foreach(println)
+  evaluator.plan(Nil).get.transitive.foreach(println)
 }

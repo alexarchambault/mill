@@ -11,7 +11,7 @@ import ch.epfl.scala.bsp4j.{
   TaskId
 }
 import mill.api.ExecResult.{Skipped, Success}
-import mill.api.daemon.internal.{ExecutionResultsApi, TaskApi}
+import mill.api.daemon.internal.ExecutionResultsApi
 
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.scalaUtilChainingOps
@@ -47,10 +47,7 @@ private[mill] object Utils {
 
   // Get the execution status code given the results from Evaluator.evaluate
   def getStatusCode(resultsLists: Seq[ExecutionResultsApi]): StatusCode = {
-    val statusCodes =
-      resultsLists.flatMap(r =>
-        r.transitiveResultsApi.keys.map(task => getStatusCodePerTask(r, task)).toSeq
-      )
+    val statusCodes = resultsLists.flatMap(getStatusCodePerTask(_))
     if (statusCodes.contains(StatusCode.ERROR)) StatusCode.ERROR
     else if (statusCodes.contains(StatusCode.CANCELLED)) StatusCode.CANCELLED
     else StatusCode.OK
@@ -109,15 +106,12 @@ private[mill] object Utils {
     else Nil
   }
 
-  private def getStatusCodePerTask(
-      results: ExecutionResultsApi,
-      task: TaskApi[?]
-  ): StatusCode = {
-    results.transitiveResultsApi(task) match {
+  private def getStatusCodePerTask(results: ExecutionResultsApi): Seq[StatusCode] = {
+    results.transitiveResultsApi.valuesIterator.map {
       case Success(_) => StatusCode.OK
       case Skipped => StatusCode.CANCELLED
       case _ => StatusCode.ERROR
-    }
+    }.toSeq
   }
 
 }

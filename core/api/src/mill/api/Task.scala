@@ -50,6 +50,15 @@ sealed abstract class Task[+T] extends Task.Ops[T] with Applyable[Task, T] with 
     case c: Task.Command[_] if c.exclusive => true
     case _ => false
   }
+
+  def cross(keyValues: (String, String)*): Task.WithCrossValue[T] =
+    new Task.WithCrossValue[T](this, keyValues)
+
+  def unresolved(crossValues: Map[String, String]): UnresolvedTask[T] =
+    UnresolvedTask(this, crossValues)
+
+  def resolved(crossValues: Map[String, String] = Map.empty): ResolvedTask[T] =
+    ResolvedTask(this, crossValues)
 }
 
 object Task {
@@ -390,6 +399,9 @@ object Task {
     def readWriterOpt: Option[upickle.ReadWriter[?]] = None
 
     def writerOpt: Option[upickle.Writer[?]] = readWriterOpt.orElse(None)
+
+    override def resolved(crossValues: Map[String, String] = Map.empty): ResolvedNamedTask[T] =
+      ResolvedNamedTask(this, crossValues)
   }
 
   class Computed[+T](
@@ -511,6 +523,52 @@ object Task {
         upickle.readwriter[PathRef],
         isPrivate
       ) {}
+
+  class WithCrossValue[+T](
+      wrapped: Task[T],
+      val crossValues: Seq[(String, String)]
+  ) extends Task[T] {
+    val inputs: Seq[Task[?]] = Seq(wrapped)
+    def evaluate(ctx: TaskCtx): Result[T] =
+      Result.Success(ctx.arg[T](0))
+  }
+
+  class CrossValue(
+      val allowedValues: Seq[String],
+      actualKeyOpt: Option[String] = None
+  )(implicit ctx: ModuleCtx) extends Named[String] {
+    private val allowedValuesSet = allowedValues.toSet
+    val inputs = Nil
+    def ctx0 = ctx
+    def isPrivate: Option[Boolean] = None
+
+    lazy val key: String = actualKeyOpt.getOrElse {
+      ctx.segments.value
+        .map {
+          case Segment.Label(v) => v
+          case c @ Segment.Cross(_) => throw new IllegalArgumentException(
+              s"Task.CrossValue only support a ctx with Label segments, but found a Cross $c."
+            )
+        }
+        .mkString(".")
+    }
+
+    val evaluate0 = (_, ctx: TaskCtx) => {
+      Result.fromEither(
+        ctx.crossValue(key) match {
+          case None => Left(s"No cross value available for $key")
+          case Some(value) =>
+            if (allowedValuesSet.contains(value)) Right(value)
+            else Left(
+              s"Invalid $key value: '$value' (expected: one of ${allowedValues.mkString(", ")})"
+            )
+        }
+      )
+    }
+
+    def withValues(newAllowedValues: Seq[String]): CrossValue =
+      new CrossValue(newAllowedValues, Some(key))
+  }
 
   private object Macros {
     def appImpl[M[_]: Type, T: Type](using

@@ -146,7 +146,10 @@ class UnitTester(
     scriptModuleResolver = (_, _, _, _) => Nil
   )
 
-  def apply(args: String*): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
+  def apply(
+      args: Seq[String],
+      crossValues: Map[String, String]
+  ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
     Evaluator.withCurrentEvaluator(evaluator) {
       Resolve.Tasks.resolve(
         evaluator.rootModule,
@@ -156,51 +159,85 @@ class UnitTester(
       )
     } match {
       case Result.Failure(err) => Left(ExecResult.Failure(err))
-      case Result.Success(resolved) => apply(resolved)
+      case Result.Success(resolved) =>
+        apply(resolved, crossValues)
     }
   }
 
-  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] = {
-    apply(Seq(task)) match {
+  def apply(args: String*): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] =
+    apply(args, Map.empty)
+
+  /**
+   * Evaluates a task
+   *
+   * Beware that this override assumes the task corresponds to one and only one actual task,
+   * after taking into account cross values. Pass a cross values map using the override below
+   * if the task might correspond to zero or several actual tasks.
+   */
+  def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] =
+    apply(task, Map.empty).flatMap {
+      case UnitTester.Result(Seq(t), i) =>
+        Right(UnitTester.Result(t, i))
+      case UnitTester.Result(Nil, _) =>
+        Left(ExecResult.Failure("Got no result, expected one"))
+      case UnitTester.Result(other, _) =>
+        Left(ExecResult.Failure(s"Got too many results ($other), expected one"))
+    }
+
+  /**
+   * Evaluates a task
+   *
+   * Unlike the override not accepting a cross values map, this one returns a sequence
+   * of results, as cross values can make a task correspond to several actual tasks (like
+   * one per cross value for example).
+   */
+  def apply[T](
+      task: Task[T],
+      crossValues: Map[String, String]
+  ): Either[ExecResult.Failing[T], UnitTester.Result[Seq[T]]] = {
+    apply(Seq(task), crossValues) match {
       case Left(f) => Left(f.asInstanceOf[ExecResult.Failing[T]])
-      case Right(UnitTester.Result(Seq(v), i)) =>
-        Right(UnitTester.Result(v.asInstanceOf[T], i))
-      case _ => ???
+      case Right(UnitTester.Result(seq, i)) =>
+        Right(UnitTester.Result(seq.map(_.asInstanceOf[T]), i))
     }
   }
 
   @targetName("applyTasks")
   def apply(
-      tasks: Seq[Task[?]]
+      tasks: Seq[Task[?]],
+      crossValues: Map[String, String] = Map.empty
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks).get.executionResults
+    evaluator.execute(tasks.map(_.unresolved(crossValues))).toEither.map(_.executionResults) match {
+      case Left(err) => Left(ExecResult.Failure(err))
+      case Right(evaluated) =>
+        if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
+        else {
+          val values = evaluated.results.map(_.asInstanceOf[ExecResult.Success[Val]].value.value)
+          val evalCount = evaluated
+            .uncached
+            .map(_.task)
+            .count {
+              case t: Task.Computed[_]
+                  if module.moduleInternal.simpleTasks.contains(t)
+                    && !t.ctx.external => true
+              case _: Task.Command[_] => true
+              case _ => false
+            }
 
-    if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
-    else {
-      val values = evaluated.results.map(_.asInstanceOf[ExecResult.Success[Val]].value.value)
-      val evalCount = evaluated
-        .uncached
-        .collect {
-          case t: Task.Computed[_]
-              if module.moduleInternal.simpleTasks.contains(t)
-                && !t.ctx.external => t
-          case t: Task.Command[_] => t
+          Right(UnitTester.Result(values, evalCount))
         }
-        .size
-
-      Right(UnitTester.Result(values, evalCount))
     }
-
   }
 
   def fail(
       task: Task.Simple[?],
+      crossValues: Map[String, String],
       expectedFailCount: Int,
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(task)).get.executionResults
+    val res = evaluator.execute(Seq(task.unresolved(crossValues))).get.executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
@@ -213,10 +250,18 @@ class UnitTester(
   }
 
   def check(tasks: Seq[Task[?]], expected: Seq[Task[?]]): Unit = {
+    check(tasks, Map.empty, expected)
+  }
 
-    val evaluated = evaluator.execute(tasks).get.executionResults
+  def check(
+      tasks: Seq[Task[?]],
+      crossValues: Map[String, String],
+      expected: Seq[Task[?]]
+  ): Unit = {
+
+    val evaluated = evaluator.execute(tasks.map(_.unresolved(crossValues))).get.executionResults
       .uncached
-      .flatMap(_.asSimple)
+      .flatMap(_.task.asSimple)
       .filter(module.moduleInternal.simpleTasks.contains)
       .filter(!_.isInstanceOf[Task.Input[?]])
     assert(

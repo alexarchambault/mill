@@ -61,7 +61,7 @@ object NodeJSConfigTests extends TestSuite {
     def checkLog(command: Command[?], nodeArgs: List[String], notNodeArgs: List[String]) = {
       UnitTester(HelloJSWorld, millSourcePath).scoped { helloWorldEvaluator =>
         helloWorldEvaluator(command)
-        val paths = ExecutionPaths.resolve(helloWorldEvaluator.outPath, command)
+        val paths = ExecutionPaths.resolve(helloWorldEvaluator.outPath, command.resolved())
         val log = os.read(paths.log)
         assert(
           nodeArgs.forall(log.contains),

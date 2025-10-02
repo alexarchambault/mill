@@ -20,7 +20,9 @@ trait JavaModuleApi extends ModuleApi with GenIdeaModuleApi {
 
   private[mill] def bspBuildTargetCompile: TaskApi[java.nio.file.Path]
 
-  private[mill] def bspCompileClasspath: TaskApi[EvaluatorApi => Seq[String]]
+  private[mill] def bspCompileClasspath(
+      crossValues: Map[String, String]
+  ): TaskApi[EvaluatorApi => Seq[String]]
 
   /**
    * Internal access to some BSP helper tasks

@@ -22,9 +22,12 @@ private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServe
       tasks = {
         // We ignore all non-JavaModule
         case m: JavaModuleApi =>
-          m.bspJavaModule().bspBuildTargetJavacOptions(
-            sessionInfo.clientWantsSemanticDb
-          )
+          m.bspJavaModule()
+            .bspBuildTargetJavacOptions(
+              sessionInfo.clientWantsSemanticDb,
+              crossValues = Map.empty
+            )
+            .unresolved(Map.empty)
       },
       requestDescription = "Getting javac options of {}",
       originId = ""

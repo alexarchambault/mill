@@ -25,7 +25,9 @@ trait SelectiveExecutionModule extends mill.api.Module {
           if (tasks.isEmpty) Seq("__") else tasks,
           SelectMode.Multi
         )
-        computed <- evaluator.selective.computeMetadata(resolvedTasks)
+        tasks0 = resolvedTasks.map(_.resolved())
+        // FIXME We need to compute ResolvedTask-s via Plan here
+        computed <- evaluator.selective.computeMetadata(tasks0)
       } yield evaluator.selective.saveMetadata(computed.metadata)
     }
 

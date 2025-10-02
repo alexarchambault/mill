@@ -152,24 +152,34 @@ class GenIdeaImpl(
     val buildDepsPaths = GenIdeaImpl.allJars(evaluators.head.rootModule.getClass.getClassLoader)
       .map(url => os.Path(java.nio.file.Paths.get(url.toURI)))
 
-    def resolveTasks: Map[EvaluatorApi, Seq[TaskApi[ResolvedModule]]] =
+    def resolveTasks: Map[EvaluatorApi, Seq[(TaskApi[ResolvedModule], Map[String, String])]] =
       modulesByEvaluator.map { case (ev, ms) =>
         (
           ev,
+          // FIXME Get all cross values of this task, associate them with the task here
           ms.map { m =>
-            m.module.genIdeaInternal().genIdeaResolvedModule(ideaConfigVersion, m.segments)
+            (
+              m.module.genIdeaInternal().genIdeaResolvedModule(ideaConfigVersion, m.segments),
+              Map.empty[String, String]
+            )
           }
         )
       }
 
     val resolvedModules: Seq[ResolvedModule] = {
       resolveTasks.toSeq.flatMap { case (evaluator, tasks) =>
-        evaluator.executeApi(tasks).get.executionResults match {
-          case r if r.transitiveFailingApi.nonEmpty =>
-            throw GenIdeaException(
-              s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
-            )
-          case r => r.values.map(_.value).asInstanceOf[Seq[ResolvedModule]]
+        tasks.groupBy(_._2).toSeq.flatMap {
+          case (crossValues, tasks0) =>
+            evaluator
+              .executeApi(tasks0.map(_._1).map(_.unresolved(crossValues)))
+              .get
+              .executionResults match {
+              case r if r.transitiveFailingApi.nonEmpty =>
+                throw GenIdeaException(
+                  s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
+                )
+              case r => r.values.map(_.value).asInstanceOf[Seq[ResolvedModule]]
+            }
         }
       }
     }

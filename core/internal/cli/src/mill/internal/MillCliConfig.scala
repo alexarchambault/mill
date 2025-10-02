@@ -35,6 +35,10 @@ case class MillCliConfig(
     )
     extraSystemProperties: Map[String, String] = Map(),
     @arg(
+      doc = """Cross values"""
+    )
+    cross: Map[String, String] = Map(),
+    @arg(
       name = "jobs",
       short = 'j',
       doc =

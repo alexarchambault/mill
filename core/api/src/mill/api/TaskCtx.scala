@@ -14,6 +14,7 @@ import mill.api.Result
 trait TaskCtx extends TaskCtx.Dest
     with TaskCtx.Log
     with TaskCtx.Args
+    with TaskCtx.Cross
     with TaskCtx.Env
     with TaskCtx.Workspace
     with TaskCtx.Fork
@@ -39,6 +40,7 @@ object TaskCtx {
 
   private[mill] class Impl(
       val args: IndexedSeq[?],
+      val crossValues: Map[String, String],
       dest0: () => os.Path,
       val log: Logger,
       val env: Map[String, String],
@@ -126,6 +128,12 @@ object TaskCtx {
   trait Args {
     def args: IndexedSeq[?]
     def arg[T](index: Int): T
+  }
+
+  trait Cross {
+    def crossValues: Map[String, String]
+    def crossValue(key: String): Option[String] =
+      crossValues.get(key)
   }
 
   /**

@@ -1,12 +1,15 @@
 package mill.api
 
 import mill.api.*
-import mill.api.daemon.internal.{TaskApi, ExecutionResultsApi}
+import mill.api.daemon.internal.{ResolvedTaskApi, ExecutionResultsApi}
+import mill.api.ResolvedTask
 
 /**
  * The output of executing tasks via an [[Evaluator]]
  */
 trait ExecutionResults extends ExecutionResultsApi {
+
+  def goals: Seq[ResolvedTask[?]]
 
   /**
    * The values returned by the tasks specified by the user
@@ -17,26 +20,33 @@ trait ExecutionResults extends ExecutionResultsApi {
    * The full mapping of all tasks transitively upstream of the specified
    * tasks, and their results
    */
-  def transitiveResults: Map[Task[?], ExecResult[Val]]
-  private[mill] def transitiveResultsApi: Map[TaskApi[?], ExecResult[Val]] =
-    transitiveResults.asInstanceOf[Map[TaskApi[?], ExecResult[Val]]]
+  def transitiveResults: Map[ResolvedTask[?], ExecResult[Val]]
+  private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]] =
+    transitiveResults.asInstanceOf[Map[ResolvedTaskApi[?], ExecResult[Val]]]
+  private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
+      : Seq[(ResolvedTaskApi[?], ExecResult[Val])] = {
+    // FIXME Optimize that?
+    transitiveResults
+      .filter(_._1 == task)
+      .toSeq
+  }
 
-  def transitivePrefixes: Map[Task[?], Seq[String]] = Map()
-  private[mill] override def transitivePrefixesApi: Map[TaskApi[?], Seq[String]] =
-    transitivePrefixes.asInstanceOf[Map[TaskApi[?], Seq[String]]]
+  def transitivePrefixes: Map[ResolvedTask[?], Seq[String]] = Map()
+  private[mill] override def transitivePrefixesApi: Map[ResolvedTaskApi[?], Seq[String]] =
+    transitivePrefixes.asInstanceOf[Map[ResolvedTaskApi[?], Seq[String]]]
 
   /**
    * The tasks that were executed without being read from cache
    */
-  def uncached: Seq[Task[?]]
+  def uncached: Seq[ResolvedTask[?]]
 
   /**
    * The tasks and failures returned by failing tasks in [[transitiveResults]]
    */
-  def transitiveFailing: Map[Task[?], ExecResult.Failing[Val]] =
+  def transitiveFailing: Map[ResolvedTask[?], ExecResult.Failing[Val]] =
     transitiveResults.collect { case (k, v: ExecResult.Failing[Val]) => (k, v) }
-  private[mill] def transitiveFailingApi: Map[TaskApi[?], ExecResult.Failing[Val]] =
-    transitiveFailing.asInstanceOf[Map[TaskApi[?], ExecResult.Failing[Val]]]
+  private[mill] def transitiveFailingApi: Map[ResolvedTaskApi[?], ExecResult.Failing[Val]] =
+    transitiveFailing.asInstanceOf[Map[ResolvedTaskApi[?], ExecResult.Failing[Val]]]
 
   /**
    * The values returned by successful tasks in [[results]]

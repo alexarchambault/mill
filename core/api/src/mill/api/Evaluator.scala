@@ -4,12 +4,14 @@ import mill.api.daemon.internal.{CompileProblemReporter, TestReporter}
 import mill.api.*
 import mill.api.daemon.Watchable
 import mill.api.BuildCtx
-import mill.api.daemon.internal.{EvaluatorApi, TaskApi}
+import mill.api.ResolvedTask
+import mill.api.daemon.internal.{EvaluatorApi, UnresolvedTaskApi}
 import mill.api.internal.{Resolved, RootModule0}
 
 import scala.util.DynamicVariable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
+import scala.reflect.ClassTag
 
 /**
  * An API that allows you to resolve, plan, and execute Mill tasks.
@@ -70,32 +72,41 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       resolveToModuleTasks: Boolean = false
   ): mill.api.Result[List[Either[Module, Task.Named[?]]]]
 
-  def plan(tasks: Seq[Task[?]]): mill.api.Result[Plan]
+  def plan(tasks: Seq[UnresolvedTask[?]]): mill.api.Result[Plan]
 
-  def groupAroundImportantTasks[T](topoSortedTasks: mill.api.TopoSorted)(
+  def groupAroundImportantTasks[T](
+      topoSortedTasks: mill.api.TopoSorted[ResolvedTask[?]],
+      plan: Plan
+  )(
       important: PartialFunction[
-        Task[?],
+        ResolvedTask[?],
         T
       ]
-  ): MultiBiMap[T, Task[?]]
+  ): MultiBiMap[T, ResolvedTask[?]]
 
   /**
    * Collects all transitive dependencies (tasks) of the given tasks,
    * including the given tasks.
    */
-  def transitiveTasks(sourceTasks: Seq[Task[?]]): IndexedSeq[Task[?]]
+  def transitiveTasks(sourceNodes: Seq[ResolvedTask[_]])(
+      inputsFor: ResolvedTask[_] => Seq[ResolvedTask[_]]
+  ): IndexedSeq[ResolvedTask[_]]
 
   /**
    * Takes the given tasks, finds all the tasks they transitively depend
    * on, and sort them topologically. Fails if there are dependency cycles
    */
-  def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted
+  def topoSorted[T: ClassTag](transitiveTasks: IndexedSeq[T], inputs: T => Seq[T]): TopoSorted[T]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): mill.api.Result[Evaluator.Result[T]] =
-    execute[T](tasks.map(_.asInstanceOf[Task[T]]))
+  private[mill] def executeApi[T](
+      tasks: Seq[UnresolvedTaskApi[T]]
+  ): mill.api.Result[Evaluator.Result[T]] =
+    execute[T](
+      tasks.map(_.asInstanceOf[UnresolvedTask[T]])
+    )
 
   def execute[T](
-      tasks: Seq[Task[T]],
+      tasks: Seq[UnresolvedTask[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -111,7 +122,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): mill.api.Result[Evaluator.Result[Any]]
 
   private[mill] def executeApi[T](
-      tasks: Seq[TaskApi[T]],
+      tasks: Seq[UnresolvedTaskApi[T]],
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -120,7 +131,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
   ): mill.api.Result[EvaluatorApi.Result[T]] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
-        tasks.map(_.asInstanceOf[Task[T]]),
+        tasks.map(_.asInstanceOf[UnresolvedTask[T]]),
         reporter,
         testReporter,
         logger,
@@ -165,7 +176,7 @@ object Evaluator {
   final case class Result[T](
       watchable: Seq[Watchable],
       values: mill.api.Result[Seq[T]],
-      selectedTasks: Seq[Task[?]],
+      selectedTasks: Seq[ResolvedTask[?]],
       executionResults: ExecutionResults
   ) extends EvaluatorApi.Result[T]
 

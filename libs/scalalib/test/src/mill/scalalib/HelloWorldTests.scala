@@ -231,7 +231,7 @@ object HelloWorldTests extends TestSuite {
         val Left(ExecResult.Failure("Compilation failed")) =
           eval.apply(HelloWorld.core.compile): @unchecked
 
-        val paths = ExecutionPaths.resolve(eval.outPath, HelloWorld.core.compile)
+        val paths = ExecutionPaths.resolve(eval.outPath, HelloWorld.core.compile.resolved())
 
         assert(
           os.walk(paths.dest / "classes").isEmpty,

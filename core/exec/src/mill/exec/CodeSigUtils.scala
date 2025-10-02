@@ -1,13 +1,13 @@
 package mill.exec
 
 import mill.api.{BuildInfo, MillException}
-import mill.api.{Task, Segment}
+import mill.api.{ResolvedNamedTask, Segment, Task}
 
 import scala.reflect.NameTransformer.encode
 import java.lang.reflect.Method
 
 private[mill] object CodeSigUtils {
-  def precomputeMethodNamesPerClass(transitiveNamed: Seq[Task.Named[?]])
+  def precomputeMethodNamesPerClass(transitiveNamed: Seq[ResolvedNamedTask[?]])
       : (Map[Class[?], IndexedSeq[Class[?]]], Map[Class[?], Map[String, Method]]) = {
 
     def resolveTransitiveParents(c: Class[?]): Iterable[Class[?]] = {
@@ -27,7 +27,7 @@ private[mill] object CodeSigUtils {
     }
 
     val classToTransitiveClasses: Map[Class[?], IndexedSeq[Class[?]]] = transitiveNamed
-      .map(_.ctx.enclosingCls)
+      .map(_.task.ctx.enclosingCls)
       .distinct
       .map(cls => cls -> resolveTransitiveParents(cls).toVector)
       .toMap

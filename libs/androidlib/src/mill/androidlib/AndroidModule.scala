@@ -491,7 +491,10 @@ trait AndroidModule extends JavaModule { outer =>
    * The Java compiled classes of [[androidResources]]
    */
   def androidCompiledRClasses: T[CompilationResult] = Task(persistent = true) {
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
+    val jOpts = JavaCompilerOptions(
+      (javacOptions() ++ mandatoryJavacOptions())
+        .map(_.replace("{{compile-dest}}", (Task.dest / "classes").toString))
+    )
     jvmWorker()
       .internalWorker()
       .compileJava(
@@ -678,7 +681,10 @@ trait AndroidModule extends JavaModule { outer =>
 
     val rJar = Task.dest / "R.jar"
 
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
+    val jOpts = JavaCompilerOptions(
+      (javacOptions() ++ mandatoryJavacOptions())
+        .map(_.replace("{{compile-dest}}", (Task.dest / "classes").toString))
+    )
     val classesDest = jvmWorker()
       .internalWorker()
       .compileJava(

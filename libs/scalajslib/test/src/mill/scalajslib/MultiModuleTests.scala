@@ -39,7 +39,7 @@ object MultiModuleTests extends TestSuite {
       UnitTester(MultiModule, sourcePath).scoped { evaluator =>
         val task = if (optimize) MultiModule.client.fullLinkJS else MultiModule.client.fastLinkJS
         val Right(result) = evaluator(task): @unchecked
-        val paths = ExecutionPaths.resolve(evaluator.outPath, task)
+        val paths = ExecutionPaths.resolve(evaluator.outPath, task.resolved())
         val log = os.read(paths.log)
 
         val runOutput = ScalaJsUtils.runJS(result.value.dest.path / "main.js")
@@ -73,7 +73,7 @@ object MultiModuleTests extends TestSuite {
 
         val Right(result) = evaluator(command): @unchecked
 
-        val paths = ExecutionPaths.resolve(evaluator.outPath, command)
+        val paths = ExecutionPaths.resolve(evaluator.outPath, command.resolved())
         val log = os.read(paths.log)
         assert(
           result.evalCount > 0,

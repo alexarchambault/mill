@@ -26,21 +26,24 @@ object UnresolvedPath {
   /** A path relative to the `out` folder, in form of `out/${segments}.dest/$subPath`. */
   case class DestPath private (
       subPath: String,
-      segments: Seq[String]
+      segments: Seq[String],
+      crossValues: Map[String, String]
   ) extends UnresolvedPath {
     override def resolve(outPath: os.Path): os.Path = {
       ExecutionPaths.resolve(
         outPath,
-        Segments(segments.map(Segment.Label(_)))
+        Segments(segments.map(Segment.Label(_))),
+        crossValues
       ).dest / os.SubPath(subPath)
     }
   }
   object DestPath {
     def apply(
         subPath: os.SubPath,
-        segments: Segments
+        segments: Segments,
+        crossValues: Map[String, String]
     ): DestPath = {
-      DestPath(subPath.toString(), segments.parts)
+      DestPath(subPath.toString(), segments.parts, crossValues)
     }
 
     implicit def upickleRW: ReadWriter[DestPath] = macroRW

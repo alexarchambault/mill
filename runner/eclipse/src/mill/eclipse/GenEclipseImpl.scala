@@ -117,14 +117,16 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
     for ((path, dto) <- aggregatedJavaModules) {
       val evaluator = dto.evaluatorApi
       val moduleTask = dto.module.genEclipseInternal().genEclipseModuleInformation()
+      val crossValues = Map.empty[String, String] // ???
 
-      val resolvedModule = evaluator.executeApi(Seq(moduleTask)).get.executionResults match {
-        case r if r.transitiveFailingApi.nonEmpty =>
-          throw GenEclipseException(
-            s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
-          )
-        case r => r.values.head.value.asInstanceOf[ResolvedModule]
-      }
+      val resolvedModule =
+        evaluator.executeApi(Seq(moduleTask.unresolved(crossValues))).get.executionResults match {
+          case r if r.transitiveFailingApi.nonEmpty =>
+            throw GenEclipseException(
+              s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
+            )
+          case r => r.values.head.value.asInstanceOf[ResolvedModule]
+        }
 
       val sourceSetModuleTasks = mutable.Set.empty[TaskApi[ResolvedModule]]
       dto.sourceSetModules.foreach(module =>
@@ -132,7 +134,9 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
       )
 
       val sourceSetResolvedModules = {
-        evaluator.executeApi(sourceSetModuleTasks.toSeq).get.executionResults match {
+        evaluator.executeApi(sourceSetModuleTasks.toSeq.map(
+          _.unresolved(crossValues)
+        )).get.executionResults match {
           case r if r.transitiveFailingApi.nonEmpty =>
             throw GenEclipseException(
               s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"

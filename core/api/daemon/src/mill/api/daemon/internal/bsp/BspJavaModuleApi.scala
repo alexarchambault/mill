@@ -29,7 +29,8 @@ trait BspJavaModuleApi extends ModuleApi {
   private[mill] def bspBuildTargetResources: TaskApi[Seq[java.nio.file.Path]]
 
   private[mill] def bspBuildTargetJavacOptions(
-      clientWantsSemanticDb: Boolean
+      clientWantsSemanticDb: Boolean,
+      crossValues: Map[String, String]
   )
       : TaskApi[EvaluatorApi => (
           classesPath: Path,
@@ -39,7 +40,8 @@ trait BspJavaModuleApi extends ModuleApi {
 
   private[mill] def bspBuildTargetScalacOptions(
       enableJvmCompileClasspathProvider: Boolean,
-      clientWantsSemanticDb: Boolean
+      clientWantsSemanticDb: Boolean,
+      crossValues: Map[String, String]
   ): TaskApi[(Seq[String], EvaluatorApi => Seq[String], EvaluatorApi => java.nio.file.Path)]
 
   private[mill] def bspBuildTargetScalaMainClasses

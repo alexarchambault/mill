@@ -1,17 +1,17 @@
 package mill.exec
 
 import mill.constants.OutFiles
-import mill.api.Task
 import mill.internal.SpanningForest
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters.EnumerationHasAsScala
 
 private object ExecutionLogs {
-  def logDependencyTree(
-      interGroupDeps: Map[Task[?], Seq[Task[?]]],
-      indexToTerminal: Array[Task[?]],
-      outPath: os.Path
+  def logDependencyTree[T](
+      interGroupDeps: Map[T, Seq[T]],
+      indexToTerminal: Array[T],
+      outPath: os.Path,
+      render: T => String
   ): Unit = {
     val ( /*vertexToIndex*/ _, edgeIndices) =
       SpanningForest.graphMapToIndices(indexToTerminal, interGroupDeps)
@@ -20,15 +20,17 @@ private object ExecutionLogs {
       outPath / OutFiles.millDependencyTree,
       edgeIndices,
       indexToTerminal.indices.toSet,
-      indexToTerminal(_).toString
+      t => render(indexToTerminal(t))
     )
   }
-  def logInvalidationTree(
-      interGroupDeps: Map[Task[?], Seq[Task[?]]],
-      indexToTerminal: Array[Task[?]],
+  def logInvalidationTree[T](
+      interGroupDeps: Map[T, Seq[T]],
+      indexToTerminal: Array[T],
       outPath: os.Path,
-      uncached: ConcurrentHashMap[Task[?], Unit],
-      changedValueHash: ConcurrentHashMap[Task[?], Unit]
+      uncached: ConcurrentHashMap[T, Unit],
+      changedValueHash: ConcurrentHashMap[T, Unit],
+      render: T => String,
+      drop: T => Boolean
   ): Unit = {
     val reverseInterGroupDeps = SpanningForest.reverseEdges(interGroupDeps)
 
@@ -55,13 +57,13 @@ private object ExecutionLogs {
             // from the invalidation tree, because most of them are un-interesting and the
             // user really only cares about (a) inputs that cause downstream tasks to invalidate
             // or (b) non-input tasks that were invalidated alone (e.g. due to a codesig change)
-            !uncachedTask.isInstanceOf[Task.Input[?]] || edgeSourceIndices(uncachedIndex)
+            !drop(uncachedTask) || edgeSourceIndices(uncachedIndex)
           ) {
             uncachedIndex
           }
         }
         .toSet,
-      indexToTerminal(_).toString
+      t => render(indexToTerminal(t))
     )
   }
 }

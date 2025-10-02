@@ -119,7 +119,9 @@ trait AndroidAppModule extends AndroidModule { outer =>
   def androidLintArgs: T[Seq[String]] = Task { Seq.empty[String] }
 
   @internal
-  override def bspCompileClasspath = Task.Anon { (ev: EvaluatorApi) =>
+  override def bspCompileClasspath(
+      crossValues: Map[String, String]
+  ) = Task.Anon { (ev: EvaluatorApi) =>
     compileClasspath().map(
       _.path
     ).map(UnresolvedPath.ResolvedPath(_)).map(_.resolve(os.Path(ev.outPathJava))).map(sanitizeUri)

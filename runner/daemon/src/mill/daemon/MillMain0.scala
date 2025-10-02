@@ -290,6 +290,7 @@ object MillMain0 {
                                 reporter = reporter,
                                 skipSelectiveExecution = skipSelectiveExecution,
                                 enableTicker = enableTicker
+                                // crossValues = config.cross
                               ).evaluate()
                             }
                           }

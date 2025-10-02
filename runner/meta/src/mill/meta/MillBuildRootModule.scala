@@ -290,7 +290,10 @@ trait MillBuildRootModule()(using
     }
 
     // copied from `ScalaModule`
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
+    val jOpts = JavaCompilerOptions(
+      (javacOptions() ++ mandatoryJavacOptions())
+        .map(_.replace("{{compile-dest}}", (Task.dest / "classes").toString))
+    )
     jvmWorker()
       .internalWorker()
       .compileMixed(

@@ -307,7 +307,10 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
         |For details, see: https://github.com/sbt/zinc/issues/1010""".stripMargin
     )
 
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
+    val jOpts = JavaCompilerOptions(
+      (javacOptions() ++ mandatoryJavacOptions())
+        .map(_.replace("{{compile-dest}}", (Task.dest / "classes").toString))
+    )
 
     val bspMode = Task.env.get("MILL_BSP_MODE").contains("true")
     val cp =

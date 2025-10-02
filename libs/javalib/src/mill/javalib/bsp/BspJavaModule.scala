@@ -25,7 +25,8 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
     }
 
   override private[mill] def bspBuildTargetJavacOptions(
-      clientWantsSemanticDb: Boolean
+      clientWantsSemanticDb: Boolean,
+      crossValues: Map[String, String]
   ): Task[EvaluatorApi => (
       classesPath: Path,
       javacOptions: Seq[String],
@@ -33,9 +34,9 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
   )] = {
     Task.Anon { (ev: EvaluatorApi) =>
       (
-        jm.compileClassesPath.resolve(os.Path(ev.outPathJava)).toNIO,
+        jm.compileClassesPath(crossValues).resolve(os.Path(ev.outPathJava)).toNIO,
         jm.javacOptions() ++ jm.mandatoryJavacOptions(),
-        jm.bspCompileClasspath.apply().apply(ev)
+        jm.bspCompileClasspath(crossValues).apply().apply(ev)
       )
     }
   }
@@ -94,7 +95,8 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
 
   override private[mill] def bspBuildTargetScalacOptions(
       enableJvmCompileClasspathProvider: Boolean,
-      clientWantsSemanticDb: Boolean
+      clientWantsSemanticDb: Boolean,
+      crossValues: Map[String, String]
   ): Task[(Seq[String], EvaluatorApi => Seq[String], EvaluatorApi => java.nio.file.Path)] = {
 
     val compileClasspathTask: Task[EvaluatorApi => Seq[String]] =
@@ -104,11 +106,11 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
           (_: EvaluatorApi) => Seq.empty[String]
         }
       } else {
-        jm.bspCompileClasspath
+        jm.bspCompileClasspath(crossValues)
       }
 
     val classesPathTask = Task.Anon((e: EvaluatorApi) =>
-      jm.compileClassesPath
+      jm.compileClassesPath(crossValues)
         .resolve(os.Path(e.outPathJava))
         .toNIO
     )

@@ -272,9 +272,8 @@ trait JavaModule
         Version.isAtLeast(semanticDbJavaVersion(), "0.8.10")(using Version.IgnoreQualifierOrdering)
       val buildTool = s" -build-tool:${if (isNewEnough) "mill" else "sbt"}"
       val verbose = if (Task.log.debugEnabled) " -verbose" else ""
-      val paths = ExecutionPaths.resolve(Task.ctx().outFolder, compile)
       Seq(
-        s"-Xplugin:semanticdb -sourceroot:${Task.ctx().workspace} -targetroot:${paths.dest / "classes"}${buildTool}${verbose}"
+        s"-Xplugin:semanticdb -sourceroot:${Task.ctx().workspace} -targetroot:{{compile-dest}}${buildTool}${verbose}"
       )
     } else
       Seq.empty[String]
@@ -762,12 +761,14 @@ trait JavaModule
    * Keep in sync with [[transitiveCompileClasspath]]
    */
   @internal
-  private[mill] def bspTransitiveCompileClasspath: Task[Seq[UnresolvedPath]] = Task.Anon {
+  private[mill] def bspTransitiveCompileClasspath(
+      crossValues: Map[String, String]
+  ): Task[Seq[UnresolvedPath]] = Task.Anon {
     Task.traverse(transitiveModuleCompileModuleDeps)(m =>
       Task.Anon {
         val localCompileClasspath =
           m.localCompileClasspath().map(p => UnresolvedPath.ResolvedPath(p.path))
-        val compileClassesPath = m.compileClassesPath
+        val compileClassesPath = m.compileClassesPath(crossValues)
         localCompileClasspath :+ compileClassesPath
       }
     )()
@@ -865,10 +866,11 @@ trait JavaModule
       os.makeDir.all(compileGenSources)
     }
 
-    val jOpts = JavaCompilerOptions(Seq(
-      "-s",
-      compileGenSources.toString
-    ) ++ javacOptions() ++ mandatoryJavacOptions())
+    val jOpts = JavaCompilerOptions(
+      Seq("-s", compileGenSources.toString) ++
+        (javacOptions() ++ mandatoryJavacOptions())
+          .map(_.replace("{{compile-dest}}", (Task.dest / "classes").toString))
+    )
 
     val bspMode = Task.env.get("MILL_BSP_MODE").contains("true")
     val cp =
@@ -905,14 +907,15 @@ trait JavaModule
   @internal
   private[mill] def resolveRelativeToOut(
       task: Task.Named[?],
+      crossValues: Map[String, String],
       mkPath: os.SubPath => os.SubPath = identity
   ): UnresolvedPath.DestPath =
-    UnresolvedPath.DestPath(mkPath(os.sub), task.ctx.segments)
+    UnresolvedPath.DestPath(mkPath(os.sub), task.ctx.segments, crossValues)
 
   /** The path where the compiled classes produced by [[compile]] are stored. */
   @internal
-  private[mill] def compileClassesPath: UnresolvedPath.DestPath =
-    resolveRelativeToOut(compile, _ / "classes")
+  private[mill] def compileClassesPath(crossValues: Map[String, String]): UnresolvedPath.DestPath =
+    resolveRelativeToOut(compile, crossValues, _ / "classes")
 
   /**
    * The part of the [[localClasspath]] which is available "after compilation".
@@ -929,11 +932,13 @@ trait JavaModule
    * Keep in sync with [[localRunClasspath]]
    */
   @internal
-  private[mill] def bspLocalRunClasspath: Task[Seq[UnresolvedPath]] =
+  private[mill] def bspLocalRunClasspath(
+      crossValues: Map[String, String]
+  ): Task[Seq[UnresolvedPath]] =
     Task.Anon {
       Seq.from(super.localRunClasspath() ++ resources())
         .map(p => UnresolvedPath.ResolvedPath(p.path)) ++
-        Seq(compileClassesPath)
+        Seq(compileClassesPath(crossValues))
     }
 
   /**
@@ -956,10 +961,12 @@ trait JavaModule
    * Keep in sync with [[localClasspath]]
    */
   @internal
-  private[mill] def bspLocalClasspath: Task[Seq[UnresolvedPath]] =
+  private[mill] def bspLocalClasspath(
+      crossValues: Map[String, String]
+  ): Task[Seq[UnresolvedPath]] =
     Task.Anon {
       localCompileClasspath().map(p => UnresolvedPath.ResolvedPath(p.path)) ++
-        bspLocalRunClasspath()
+        bspLocalRunClasspath(crossValues)()
     }
 
   /**
@@ -984,11 +991,13 @@ trait JavaModule
    * Keep in sync with [[compileClasspath]]
    */
   @internal
-  override private[mill] def bspCompileClasspath
+  override private[mill] def bspCompileClasspath(
+      crossValues: Map[String, String]
+  )
       : Task[EvaluatorApi => Seq[String]] = Task.Anon {
     (ev: EvaluatorApi) =>
       (resolvedMvnDeps().map(p => UnresolvedPath.ResolvedPath(p.path)) ++
-        bspTransitiveCompileClasspath() ++
+        bspTransitiveCompileClasspath(crossValues)() ++
         localCompileClasspath().map(p => UnresolvedPath.ResolvedPath(p.path))).map(_.resolve(
         os.Path(ev.outPathJava)
       )).map(sanitizeUri)
