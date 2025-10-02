@@ -3,7 +3,7 @@ package mill.api.daemon.internal
 import mill.api.daemon.internal.bsp.BspJavaModuleApi
 import mill.api.daemon.internal.eclipse.GenEclipseInternalApi
 import mill.api.daemon.internal.idea.{GenIdeaInternalApi, GenIdeaModuleApi}
-import mill.api.daemon.internal.{EvaluatorApi, ModuleApi, TaskApi, UnresolvedPathApi}
+import mill.api.daemon.internal.{EvaluatorApi, ModuleApi, TaskApi}
 
 trait JavaModuleApi extends ModuleApi with GenIdeaModuleApi {
 
@@ -18,16 +18,9 @@ trait JavaModuleApi extends ModuleApi with GenIdeaModuleApi {
 
   // BSP Tasks that sometimes need to be customized
 
-  private[mill] def bspBuildTargetCompile(
-      needsToMergeResourcesIntoCompileDest: Boolean
-  ): TaskApi[java.nio.file.Path]
+  private[mill] def bspBuildTargetCompile: TaskApi[java.nio.file.Path]
 
-  private[mill] def bspCompileClassesPath(needsToMergeResourcesIntoCompileDest: Boolean)
-      : TaskApi[UnresolvedPathApi[?]]
-
-  private[mill] def bspCompileClasspath(
-      needsToMergeResourcesIntoCompileDest: Boolean
-  ): TaskApi[EvaluatorApi => Seq[String]]
+  private[mill] def bspCompileClasspath: TaskApi[EvaluatorApi => Seq[String]]
 
   /**
    * Internal access to some BSP helper tasks

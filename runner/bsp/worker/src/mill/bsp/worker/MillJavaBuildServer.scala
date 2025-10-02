@@ -23,7 +23,6 @@ private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServe
         // We ignore all non-JavaModule
         case m: JavaModuleApi =>
           m.bspJavaModule().bspBuildTargetJavacOptions(
-            sessionInfo.clientType.mergeResourcesIntoClasses,
             sessionInfo.clientWantsSemanticDb
           )
       },
