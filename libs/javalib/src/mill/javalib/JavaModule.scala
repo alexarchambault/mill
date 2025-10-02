@@ -19,13 +19,13 @@ import mill.api.daemon.internal.bsp.{
 import mill.api.daemon.internal.eclipse.GenEclipseInternalApi
 import mill.javalib.*
 import mill.api.daemon.internal.idea.GenIdeaInternalApi
-import mill.api.{DefaultTaskModule, ModuleRef, PathRef, Segment, Task, TaskCtx}
+import mill.api.{DefaultTaskModule, ExecutionPaths, ModuleRef, PathRef, Segment, Task, TaskCtx}
 import mill.javalib.api.CompilationResult
 import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileJava}
 import mill.javalib.bsp.{BspJavaModule, BspModule}
 import mill.javalib.internal.ModuleUtils
 import mill.javalib.publish.Artifact
-import mill.util.{JarManifest, Jvm}
+import mill.util.{JarManifest, Jvm, Version}
 import os.Path
 
 import scala.util.chaining.scalaUtilChainingOps
@@ -266,7 +266,22 @@ trait JavaModule
   /**
    * Additional options for the java compiler derived from other module settings.
    */
-  override def mandatoryJavacOptions: T[Seq[String]] = Task { Seq.empty[String] }
+  override def mandatoryJavacOptions: T[Seq[String]] =
+    if (JavaModule.bspMode)
+      Task {
+        val isNewEnough =
+          Version.isAtLeast(semanticDbJavaVersion(), "0.8.10")(using
+            Version.IgnoreQualifierOrdering
+          )
+        val buildTool = s" -build-tool:${if (isNewEnough) "mill" else "sbt"}"
+        val verbose = if (Task.log.debugEnabled) " -verbose" else ""
+        val paths = ExecutionPaths.resolve(Task.ctx().outFolder, compile)
+        Seq(
+          s"-Xplugin:semanticdb -sourceroot:${Task.ctx().workspace} -targetroot:${paths.dest / "classes"}${buildTool}${verbose}"
+        )
+      }
+    else
+      Task(Seq.empty[String])
 
   /**
    *  The direct dependencies of this module.
@@ -846,35 +861,53 @@ trait JavaModule
    *
    * Keep in sync with [[bspCompileClassesPath]]
    */
-  def compile: T[mill.javalib.api.CompilationResult] = Task(persistent = true) {
-    // Prepare an empty `compileGeneratedSources` folder for java annotation processors
-    // to write generated sources into, that can then be picked up by IDEs like IntelliJ
-    val compileGenSources = compileGeneratedSources()
-    mill.api.BuildCtx.withFilesystemCheckerDisabled {
-      os.remove.all(compileGenSources)
-      os.makeDir.all(compileGenSources)
-    }
+  def compile: T[mill.javalib.api.CompilationResult] = {
+    val compileClasspathTask =
+      if (JavaModule.bspMode)
+        Task.Anon {
+          compileClasspath() ++ resolvedSemanticDbJavaPluginMvnDeps()
+        }
+      else
+        compileClasspath
+    Task(persistent = true) {
+      // Prepare an empty `compileGeneratedSources` folder for java annotation processors
+      // to write generated sources into, that can then be picked up by IDEs like IntelliJ
+      val compileGenSources = compileGeneratedSources()
+      mill.api.BuildCtx.withFilesystemCheckerDisabled {
+        os.remove.all(compileGenSources)
+        os.makeDir.all(compileGenSources)
+      }
 
-    val jOpts = JavaCompilerOptions(Seq(
-      "-s",
-      compileGenSources.toString
-    ) ++ javacOptions() ++ mandatoryJavacOptions())
+      val jOpts = JavaCompilerOptions(Seq(
+        "-s",
+        compileGenSources.toString
+      ) ++ javacOptions() ++ mandatoryJavacOptions())
 
-    jvmWorker()
-      .internalWorker()
-      .compileJava(
-        ZincCompileJava(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = allSourceFiles().map(_.path),
-          compileClasspath = compileClasspath().map(_.path),
-          javacOptions = jOpts.compiler,
-          incrementalCompilation = zincIncrementalCompilation()
-        ),
-        javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
-        reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+      val cp = compileClasspathTask().map(_.path)
+
+      val res = jvmWorker()
+        .internalWorker()
+        .compileJava(
+          ZincCompileJava(
+            upstreamCompileOutput = upstreamCompileOutput(),
+            sources = allSourceFiles().map(_.path),
+            compileClasspath = cp,
+            javacOptions = jOpts.compiler,
+            incrementalCompilation = zincIncrementalCompilation()
+          ),
+          javaHome = javaHome().map(_.path),
+          javaRuntimeOptions = jOpts.runtime,
+          reporter = Task.reporter.apply(hashCode),
+          reportCachedProblems = zincReportCachedProblems()
+        )
+      SemanticDbJavaModule.updateSemanticdbFiles(
+        Task.dest / "classes",
+        Task.ctx().workspace,
+        SemanticDbJavaModule.workerClasspath().map(_.path),
+        allSourceFiles().map(_.path)
       )
+      res
+    }
   }
 
   /** Resolves paths relative to the `out` folder. */
@@ -1655,6 +1688,8 @@ object JavaModule {
   private lazy val removeInternalVersionRegex =
     (":" + Regex.quote(JavaModule.internalVersion) + "(\\w*$|\\n)").r
 
+  private[mill] lazy val bspMode: Boolean =
+    java.lang.Boolean.getBoolean("mill.bsp-mode")
 }
 
 /**

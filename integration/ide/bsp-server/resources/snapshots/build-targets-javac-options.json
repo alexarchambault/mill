@@ -4,7 +4,9 @@
       "target": {
         "uri": "file:///workspace/app"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/app/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/ch/qos/logback/logback-core/1.5.15/logback-core-1.5.15.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar",
@@ -18,7 +20,9 @@
       "target": {
         "uri": "file:///workspace/app/test"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/app/test/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/ch/qos/logback/logback-core/1.5.15/logback-core-1.5.15.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar",
@@ -34,7 +38,9 @@
       "target": {
         "uri": "file:///workspace/delayed"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/delayed/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/delayed/compile-resources"
@@ -45,7 +51,9 @@
       "target": {
         "uri": "file:///workspace/diag"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/diag/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/diag/compile-resources"
@@ -56,7 +64,9 @@
       "target": {
         "uri": "file:///workspace/diag/many"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/diag/many/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/diag/many/compile-resources"
@@ -67,7 +77,9 @@
       "target": {
         "uri": "file:///workspace/errored/compilation-error"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/errored/compilation-error/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/errored/compilation-error/compile-resources"
@@ -78,7 +90,9 @@
       "target": {
         "uri": "file:///workspace/errored/exception"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/errored/exception/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/errored/exception/compile-resources"
@@ -89,7 +103,9 @@
       "target": {
         "uri": "file:///workspace/hello-java"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/hello-java/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///workspace/hello-java/compile-resources"
       ],
@@ -99,7 +115,9 @@
       "target": {
         "uri": "file:///workspace/hello-java/test"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/hello-java/test/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/com/github/sbt/junit-interface/0.13.2/junit-interface-0.13.2.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
@@ -115,7 +133,9 @@
       "target": {
         "uri": "file:///workspace/hello-kotlin"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/hello-kotlin/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/<kotlin-version>/kotlin-stdlib-<kotlin-version>.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/jetbrains/annotations/<annotations-version>/annotations-<annotations-version>.jar",
@@ -127,7 +147,9 @@
       "target": {
         "uri": "file:///workspace/hello-scala"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/hello-scala/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/hello-scala/compile-resources"
@@ -138,7 +160,9 @@
       "target": {
         "uri": "file:///workspace/hello-scala/test"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/hello-scala/test/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/com/lihaoyi/utest_2.13/0.8.5/utest_2.13-0.8.5.jar",
@@ -155,7 +179,9 @@
       "target": {
         "uri": "file:///workspace/lib"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/lib/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar",
@@ -256,7 +282,9 @@
       "target": {
         "uri": "file:///workspace/sourcesNeedCompile"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:semanticdb -sourceroot:/workspace -targetroot:/workspace/out/mill-bsp-out/sourcesNeedCompile/compile.dest/classes -build-tool:mill"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/sourcesNeedCompile/compile-resources"

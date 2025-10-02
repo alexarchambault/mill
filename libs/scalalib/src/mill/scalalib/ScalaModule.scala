@@ -10,7 +10,7 @@ import mainargs.Flag
 import mill.api.daemon.internal.bsp.{BspBuildTarget, BspModuleApi, ScalaBuildTarget}
 import mill.api.daemon.internal.{ScalaModuleApi, ScalaPlatform, internal}
 import mill.javalib.dependency.versions.{ValidVersion, Version}
-import mill.javalib.{CompileFor, SemanticDbJavaModule}
+import mill.javalib.SemanticDbJavaModule
 import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileMixed, ZincScaladocJar}
 
 // this import requires scala-reflect library to be on the classpath
@@ -172,17 +172,38 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
    * Mandatory command-line options to pass to the Scala compiler
    * that shouldn't be removed by overriding `scalacOptions`
    */
-  protected def mandatoryScalacOptions: T[Seq[String]] = Task { Seq.empty[String] }
+  protected def mandatoryScalacOptions: T[Seq[String]] =
+    if (JavaModule.bspMode)
+      Task {
+        val additionalScalacOptions =
+          if (JvmWorkerUtil.isScala3(scalaVersion()))
+            Seq("-Xsemanticdb", s"-sourceroot:${BuildCtx.workspaceRoot}")
+          else
+            Seq("-Yrangepos", s"-P:semanticdb:sourceroot:${BuildCtx.workspaceRoot}")
+
+        (semanticDbEnablePluginScalacOptions() ++ additionalScalacOptions)
+          .filterNot(_ == "-Xfatal-warnings")
+      }
+    else
+      Task(Seq.empty[String])
 
   /**
    * Scalac options to activate the compiler plugins.
    */
-  private def enablePluginScalacOptions: T[Seq[String]] = Task {
+  private def enablePluginScalacOptions: T[Seq[String]] = {
+    val pluginMvnDepsTask =
+      if (JavaModule.bspMode)
+        Task.Anon { scalacPluginMvnDeps() ++ semanticDbPluginMvnDeps() }
+      else
+        scalacPluginMvnDeps
+    Task {
+      val plugins = pluginMvnDepsTask()
 
-    val resolvedJars = defaultResolver().classpath(
-      scalacPluginMvnDeps().map(_.exclude("*" -> "*"))
-    )
-    resolvedJars.iterator.map(jar => s"-Xplugin:${jar.path}").toSeq
+      val resolvedJars = defaultResolver().classpath(
+        plugins.map(_.exclude("*" -> "*"))
+      )
+      resolvedJars.iterator.map(jar => s"-Xplugin:${jar.path}").toSeq
+    }
   }
 
   /**
@@ -228,8 +249,16 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
    * additional jars here if you have some copiler plugin that isn't present
    * on maven central
    */
-  def scalacPluginClasspath: T[Seq[PathRef]] = Task {
-    defaultResolver().classpath(scalacPluginMvnDeps())
+  def scalacPluginClasspath: T[Seq[PathRef]] = {
+    val pluginMvnDepsTask =
+      if (JavaModule.bspMode)
+        Task.Anon { scalacPluginMvnDeps() ++ semanticDbPluginMvnDeps() }
+      else
+        scalacPluginMvnDeps
+    Task {
+      val plugins = pluginMvnDepsTask()
+      defaultResolver().classpath(plugins)
+    }
   }
 
   /**
@@ -269,38 +298,54 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
     )
   }
 
-  // Keep in sync with [[bspCompileClassesPath]]
-  override def compile: T[CompilationResult] = Task(persistent = true) {
-    val sv = scalaVersion()
-    if (sv == "2.12.4") Task.log.warn(
-      """Attention: Zinc is known to not work properly for Scala version 2.12.4.
-        |You may want to select another version. Upgrading to a more recent Scala version is recommended.
-        |For details, see: https://github.com/sbt/zinc/issues/1010""".stripMargin
-    )
-
-    val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
-
-    jvmWorker()
-      .internalWorker()
-      .compileMixed(
-        ZincCompileMixed(
-          upstreamCompileOutput = upstreamCompileOutput(),
-          sources = allSourceFiles().map(_.path),
-          compileClasspath = compileClasspath().map(_.path),
-          javacOptions = jOpts.compiler,
-          scalaVersion = sv,
-          scalaOrganization = scalaOrganization(),
-          scalacOptions = allScalacOptions(),
-          compilerClasspath = scalaCompilerClasspath(),
-          scalacPluginClasspath = scalacPluginClasspath(),
-          incrementalCompilation = zincIncrementalCompilation(),
-          auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
-        ),
-        javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
-        reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+  // Keep in sync with [[compileClassesPath]]
+  override def compile: T[CompilationResult] = {
+    val compileClasspathTask =
+      if (JavaModule.bspMode)
+        Task.Anon { compileClasspath() ++ resolvedSemanticDbJavaPluginMvnDeps() }
+      else
+        compileClasspath
+    Task(persistent = true) {
+      val sv = scalaVersion()
+      if (sv == "2.12.4") Task.log.warn(
+        """Attention: Zinc is known to not work properly for Scala version 2.12.4.
+          |You may want to select another version. Upgrading to a more recent Scala version is recommended.
+          |For details, see: https://github.com/sbt/zinc/issues/1010""".stripMargin
       )
+
+      val jOpts = JavaCompilerOptions(javacOptions() ++ mandatoryJavacOptions())
+
+      val cp = compileClasspathTask().map(_.path)
+
+      val res = jvmWorker()
+        .internalWorker()
+        .compileMixed(
+          ZincCompileMixed(
+            upstreamCompileOutput = upstreamCompileOutput(),
+            sources = allSourceFiles().map(_.path),
+            compileClasspath = cp,
+            javacOptions = jOpts.compiler,
+            scalaVersion = sv,
+            scalaOrganization = scalaOrganization(),
+            scalacOptions = allScalacOptions(),
+            compilerClasspath = scalaCompilerClasspath(),
+            scalacPluginClasspath = scalacPluginClasspath(),
+            incrementalCompilation = zincIncrementalCompilation(),
+            auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
+          ),
+          javaHome = javaHome().map(_.path),
+          javaRuntimeOptions = jOpts.runtime,
+          reporter = Task.reporter.apply(hashCode),
+          reportCachedProblems = zincReportCachedProblems()
+        )
+      SemanticDbJavaModule.updateSemanticdbFiles(
+        Task.dest / "classes",
+        Task.ctx().workspace,
+        SemanticDbJavaModule.workerClasspath().map(_.path),
+        allSourceFiles().map(_.path)
+      )
+      res
+    }
   }
 
   override def docSources: T[Seq[PathRef]] = Task {
@@ -539,13 +584,19 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
       if (all.value) Seq(ammonite)
       else Seq()
 
+    val pluginMvnDepsTask =
+      if (JavaModule.bspMode)
+        Task.Anon { scalacPluginMvnDeps() ++ semanticDbPluginMvnDeps() }
+      else
+        scalacPluginMvnDeps
+
     Task.Command {
+      val plugins = pluginMvnDepsTask()
+
       (
         super.prepareOffline(all)() ++
           // resolve the compile bridge jar
-          defaultResolver().classpath(
-            scalacPluginMvnDeps()
-          ) ++
+          defaultResolver().classpath(plugins) ++
           defaultResolver().classpath(
             scalaDocPluginMvnDeps()
           ) ++
@@ -600,64 +651,21 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
 
   override def semanticDbDataDetailed: T[SemanticDbJavaModule.SemanticDbData] =
     Task(persistent = true) {
-      val sv = scalaVersion()
+      Task.log.debug(s"effective scalac options: ${allScalacOptions()}")
+      Task.log.debug(s"effective javac options: ${javacOptions() ++ mandatoryJavacOptions()}")
 
-      val additionalScalacOptions = if (JvmWorkerUtil.isScala3(sv)) {
-        Seq("-Xsemanticdb", s"-sourceroot:${BuildCtx.workspaceRoot}")
-      } else {
-        Seq("-Yrangepos", s"-P:semanticdb:sourceroot:${BuildCtx.workspaceRoot}")
+      val compilationResult = compile()
+      val semanticDbFiles = BuildCtx.withFilesystemCheckerDisabled {
+        SemanticDbJavaModule.copySemanticdbFiles(
+          compilationResult.classes.path,
+          BuildCtx.workspaceRoot,
+          Task.dest / "data",
+          SemanticDbJavaModule.workerClasspath().map(_.path),
+          allSourceFiles().map(_.path)
+        )
       }
 
-      val scalacOptions = (
-        allScalacOptions() ++
-          semanticDbEnablePluginScalacOptions() ++
-          additionalScalacOptions
-      )
-        .filterNot(_ == "-Xfatal-warnings")
-
-      val javacOpts = SemanticDbJavaModule.javacOptionsTask(javacOptions(), semanticDbJavaVersion())
-
-      Task.log.debug(s"effective scalac options: ${scalacOptions}")
-      Task.log.debug(s"effective javac options: ${javacOpts}")
-
-      val jOpts = JavaCompilerOptions(javacOpts)
-
-      jvmWorker().internalWorker()
-        .compileMixed(
-          ZincCompileMixed(
-            upstreamCompileOutput = upstreamSemanticDbDatas().map(_.compilationResult),
-            sources = allSourceFiles().map(_.path),
-            compileClasspath =
-              (compileClasspathTask(
-                CompileFor.SemanticDb
-              )() ++ resolvedSemanticDbJavaPluginMvnDeps()).map(_.path),
-            javacOptions = jOpts.compiler,
-            scalaVersion = sv,
-            scalaOrganization = scalaOrganization(),
-            scalacOptions = scalacOptions,
-            compilerClasspath = scalaCompilerClasspath(),
-            scalacPluginClasspath = semanticDbPluginClasspath(),
-            incrementalCompilation = zincIncrementalCompilation(),
-            auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions()
-          ),
-          javaHome = javaHome().map(_.path),
-          javaRuntimeOptions = jOpts.runtime,
-          reporter = Task.reporter.apply(hashCode),
-          reportCachedProblems = zincReportCachedProblems()
-        )
-        .map { compilationResult =>
-          val semanticDbFiles = BuildCtx.withFilesystemCheckerDisabled {
-            SemanticDbJavaModule.copySemanticdbFiles(
-              compilationResult.classes.path,
-              BuildCtx.workspaceRoot,
-              Task.dest / "data",
-              SemanticDbJavaModule.workerClasspath().map(_.path),
-              allSourceFiles().map(_.path)
-            )
-          }
-
-          SemanticDbJavaModule.SemanticDbData(compilationResult, semanticDbFiles)
-        }
+      SemanticDbJavaModule.SemanticDbData(compilationResult, semanticDbFiles)
     }
 
   // binary compatibility forwarder
