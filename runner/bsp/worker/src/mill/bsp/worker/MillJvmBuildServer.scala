@@ -18,6 +18,7 @@ import mill.bsp.worker.Utils.sanitizeUri
 import java.util.concurrent.CompletableFuture
 
 import scala.jdk.CollectionConverters.*
+import mill.api.daemon.internal.ModuleRefApi
 
 private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer =>
 
@@ -46,8 +47,10 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
   )(using name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
-      tasks = { case m: (RunModuleApi & TestModuleApi & JavaModuleApi) =>
-        m.bspRunModule().bspJvmTestEnvironment.unresolved(Map.empty)
+      tasks = {
+        case ref @ ModuleRefApi(_: (RunModuleApi & TestModuleApi & JavaModuleApi), _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[RunModuleApi & TestModuleApi & JavaModuleApi]]
+          ref0.taskApi(_.bspRunModule().bspJvmTestEnvironment).unresolved(Map.empty)
       },
       requestDescription = "Getting JVM test environment of {}",
       originId = originId
@@ -92,8 +95,10 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
   )(using name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
       targetIds = _ => targetIds,
-      tasks = { case m: RunModuleApi =>
-        m.bspRunModule().bspJvmRunEnvironment.unresolved(Map.empty)
+      tasks = {
+        case ref @ ModuleRefApi(_: RunModuleApi, _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[RunModuleApi]]
+          ref0.taskApi(_.bspRunModule().bspJvmRunEnvironment).unresolved(Map.empty)
       },
       requestDescription = "Getting JVM run environment of {}",
       originId = originId
@@ -127,10 +132,11 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
     handlerTasks(
       targetIds = _ => params.getTargets.asScala,
       tasks = {
-        case m: JavaModuleApi =>
-          m.bspCompileClasspath(
-            crossValues = Map.empty
-          ).unresolved(Map.empty)
+        case ref @ ModuleRefApi(_: JavaModuleApi, _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[JavaModuleApi]]
+          ref0
+            .taskApi(_.bspCompileClasspath(Map.empty))
+            .unresolved(Map.empty)
       },
       requestDescription = "Getting JVM compile class path of {}",
       originId = ""

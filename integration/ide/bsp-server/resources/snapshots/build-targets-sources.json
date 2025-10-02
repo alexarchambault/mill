@@ -36,7 +36,7 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/App"
+        "uri": "file:///workspace/cross/App?cross.scalaVersion\u003d<scala-version>"
       },
       "sources": [
         {
@@ -53,7 +53,7 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala212-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala212-version>"
       },
       "sources": [
         {
@@ -77,7 +77,47 @@
           "generated": false
         },
         {
-          "uri": "file:///workspace/out/mill-bsp-out/cross/lib/<scala212-version>/compileGeneratedSources.dest",
+          "uri": "file:///workspace/cross/lib/src-<scala212-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.12+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-<scala212-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.12-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-<scala-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.13-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/out/mill-bsp-out/cross/lib/compileGeneratedSources.dest",
           "kind": 2,
           "generated": true
         }
@@ -85,7 +125,7 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala-version>"
       },
       "sources": [
         {
@@ -109,7 +149,47 @@
           "generated": false
         },
         {
-          "uri": "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compileGeneratedSources.dest",
+          "uri": "file:///workspace/cross/lib/src-<scala212-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.12+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-<scala-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.13+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-<scala-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/lib/src-2.13-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/out/mill-bsp-out/cross/lib/compileGeneratedSources.dest",
           "kind": 2,
           "generated": true
         }
@@ -117,7 +197,7 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala212-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala212-version>"
       },
       "sources": [
         {
@@ -141,7 +221,47 @@
           "generated": false
         },
         {
-          "uri": "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compileGeneratedSources.dest",
+          "uri": "file:///workspace/cross/util/src-<scala212-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.12+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-<scala212-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.12-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-<scala-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.13-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/out/mill-bsp-out/cross/util/compileGeneratedSources.dest",
           "kind": 2,
           "generated": true
         }
@@ -149,7 +269,7 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala-version>"
       },
       "sources": [
         {
@@ -173,7 +293,47 @@
           "generated": false
         },
         {
-          "uri": "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compileGeneratedSources.dest",
+          "uri": "file:///workspace/cross/util/src-<scala212-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.12+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-<scala-version>+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.13+",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-<scala-version>-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/cross/util/src-2.13-",
+          "kind": 2,
+          "generated": false
+        },
+        {
+          "uri": "file:///workspace/out/mill-bsp-out/cross/util/compileGeneratedSources.dest",
           "kind": 2,
           "generated": true
         }

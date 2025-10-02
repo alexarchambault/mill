@@ -2,66 +2,91 @@
   "items": [
     {
       "target": {
-        "uri": "file:///workspace/cross/App"
+        "uri": "file:///workspace/cross/App?cross.scalaVersion\u003d<scala-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources",
-        "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/lib/compile.dest/classes",
         "file:///workspace/cross/App/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/App/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/App/compile.dest/classes"
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala212-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala212-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/cross/util/compile-resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/lib/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/lib/compile.dest/classes"
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/lib/compile.dest/classes"
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala212-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala212-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/cross/util/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/util/compile.dest/classes"
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/cross/util/compile.dest/classes"
     },
     {
       "target": {
@@ -77,7 +102,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/delayed/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/delayed/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/delayed/compile.dest/classes"
     },
     {
       "target": {
@@ -94,7 +119,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/diag/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/diag/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/diag/compile.dest/classes"
     },
     {
       "target": {
@@ -111,7 +136,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/diag/many/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/diag/many/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/diag/many/compile.dest/classes"
     },
     {
       "target": {
@@ -127,7 +152,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/errored/compilation-error/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/errored/compilation-error/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/errored/compilation-error/compile.dest/classes"
     },
     {
       "target": {
@@ -143,7 +168,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/errored/exception/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/errored/exception/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/errored/exception/compile.dest/classes"
     },
     {
       "target": {
@@ -159,7 +184,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/hello-scala/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/hello-scala/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/hello-scala/compile.dest/classes"
     },
     {
       "target": {
@@ -181,13 +206,18 @@
         "file:///workspace/out/mill-bsp-out/hello-scala/compile.dest/classes",
         "file:///workspace/hello-scala/test/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/hello-scala/test/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/hello-scala/test/compile.dest/classes"
     },
     {
       "target": {
         "uri": "file:///workspace/legacy-cross/App"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/legacy-cross/util/compile-resources",
@@ -196,55 +226,75 @@
         "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compile.dest/classes",
         "file:///workspace/legacy-cross/App/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/App/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/App/compile.dest/classes"
     },
     {
       "target": {
         "uri": "file:///workspace/legacy-cross/lib/<scala212-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/legacy-cross/util/compile-resources",
         "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compile.dest/classes",
         "file:///workspace/legacy-cross/lib/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala212-version>/compile.dest/classes"
     },
     {
       "target": {
         "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/legacy-cross/util/compile-resources",
         "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes",
         "file:///workspace/legacy-cross/lib/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/lib/<scala-version>/compile.dest/classes"
     },
     {
       "target": {
         "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala212-version>/4.13.9/semanticdb-scalac_<scala212-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/legacy-cross/util/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala212-version>/compile.dest/classes"
     },
     {
       "target": {
         "uri": "file:///workspace/legacy-cross/util/<scala-version>"
       },
-      "options": [],
+      "options": [
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar",
+        "-Yrangepos",
+        "-P:semanticdb:sourceroot:/workspace",
+        "-Xplugin:/coursier-cache/https/repo1.maven.org/maven2/org/scalameta/semanticdb-scalac_<scala-version>/4.13.9/semanticdb-scalac_<scala-version>-4.13.9.jar"
+      ],
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/legacy-cross/util/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/legacy-cross/util/<scala-version>/compile.dest/classes"
     },
     {
       "target": {
@@ -260,7 +310,7 @@
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/sourcesNeedCompile/compile-resources"
       ],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/sourcesNeedCompile/compiledClassesAndSemanticDbFiles.dest"
+      "classDirectory": "file:///workspace/out/mill-bsp-out/sourcesNeedCompile/compile.dest/classes"
     }
   ]
 }

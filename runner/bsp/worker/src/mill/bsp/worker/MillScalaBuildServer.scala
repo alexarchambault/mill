@@ -18,6 +18,7 @@ import mill.bsp.worker.Utils.sanitizeUri
 
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters._
+import mill.api.daemon.internal.ModuleRefApi
 
 private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildServer =>
 
@@ -26,13 +27,16 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
-        case m: ScalaModuleApi =>
-          m.bspJavaModule()
-            .bspBuildTargetScalacOptions(
-              enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
-              clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb,
-              crossValues = Map.empty
-            )
+        case ref @ ModuleRefApi(m: ScalaModuleApi, _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[ScalaModuleApi]]
+          ref0
+            .taskApi { m =>
+              m.bspJavaModule().bspBuildTargetScalacOptions(
+                enableJvmCompileClasspathProvider = sessionInfo.enableJvmCompileClasspathProvider,
+                clientWantsSemanticDb = sessionInfo.clientWantsSemanticDb,
+                crossValues = Map.empty
+              )
+            }
             .unresolved(Map.empty)
       },
       requestDescription = "Getting scalac options of {}",
@@ -45,11 +49,14 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
             _,
             (allScalacOptions, compileClasspath, classesPathTask)
           ) =>
+        val classDir = sanitizeUri(classesPathTask(ev))
+        pprint.err.log(id.getUri)
+        pprint.err.log(classDir)
         new ScalacOptionsItem(
           id,
           allScalacOptions.asJava,
           compileClasspath(ev).asJava,
-          sanitizeUri(classesPathTask(ev))
+          classDir
         )
 
     } { values =>
@@ -60,8 +67,10 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
       : CompletableFuture[ScalaMainClassesResult] =
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
-      tasks = { case m: ScalaModuleApi =>
-        m.bspJavaModule().bspBuildTargetScalaMainClasses.unresolved(Map.empty)
+      tasks = {
+        case ref @ ModuleRefApi(_: ScalaModuleApi, _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[ScalaModuleApi]]
+          ref0.taskApi(_.bspJavaModule().bspBuildTargetScalaMainClasses).unresolved(Map.empty)
       },
       requestDescription = "Getting main classes of {}",
       originId = p.getOriginId
@@ -86,8 +95,9 @@ private trait MillScalaBuildServer extends ScalaBuildServer { this: MillBuildSer
     handlerTasks(
       targetIds = _ => p.getTargets.asScala.toSeq,
       tasks = {
-        case m: (ScalaModuleApi & TestModuleApi) =>
-          m.bspBuildTargetScalaTestClasses.unresolved(Map.empty)
+        case ref @ ModuleRefApi(_: (ScalaModuleApi & TestModuleApi), _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[ScalaModuleApi & TestModuleApi]]
+          ref0.taskApi(_.bspBuildTargetScalaTestClasses).unresolved(Map.empty)
       },
       requestDescription = "Getting test classes of {}",
       originId = p.getOriginId

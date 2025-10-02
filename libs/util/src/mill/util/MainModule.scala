@@ -298,10 +298,11 @@ trait MainModule extends RootModule0, MainModuleApi {
               _,
               Result.Success(Seq(_)),
               _,
+              _,
               _
             )) =>
           ()
-        case Result.Success(Evaluator.Result(_, Result.Failure(failStr), _, _)) =>
+        case Result.Success(Evaluator.Result(_, Result.Failure(failStr), _, _, _)) =>
           throw new Exception(failStr)
       }
     }
@@ -354,11 +355,11 @@ object MainModule {
         Separated,
         selectiveExecution = evaluator.selectiveExecution
       ).flatMap {
-        case Evaluator.Result(watched, Result.Failure(err), _, _) =>
+        case Evaluator.Result(watched, Result.Failure(err), _, _, _) =>
           watched.foreach(watch0)
           Result.Failure(err)
 
-        case Evaluator.Result(watched, Result.Success(_), selectedTasks, executionResults) =>
+        case Evaluator.Result(watched, Result.Success(_), selectedTasks, _, executionResults) =>
           val namesAndJson = for (t <- selectedTasks) yield {
             t.asNamed match {
               case Some(namedTask) =>

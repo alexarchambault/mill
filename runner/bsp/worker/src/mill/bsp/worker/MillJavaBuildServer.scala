@@ -12,6 +12,7 @@ import ch.epfl.scala.bsp4j.{
 }
 import mill.api.daemon.internal.JavaModuleApi
 import mill.bsp.worker.Utils.sanitizeUri
+import mill.api.daemon.internal.ModuleRefApi
 
 private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServer =>
 
@@ -21,12 +22,15 @@ private trait MillJavaBuildServer extends JavaBuildServer { this: MillBuildServe
       targetIds = _ => javacOptionsParams.getTargets.asScala,
       tasks = {
         // We ignore all non-JavaModule
-        case m: JavaModuleApi =>
-          m.bspJavaModule()
-            .bspBuildTargetJavacOptions(
-              sessionInfo.clientWantsSemanticDb,
-              crossValues = Map.empty
-            )
+        case ref @ ModuleRefApi(_: JavaModuleApi, _) =>
+          val ref0 = ref.asInstanceOf[ModuleRefApi[JavaModuleApi]]
+          ref0
+            .taskApi { m =>
+              m.bspJavaModule().bspBuildTargetJavacOptions(
+                sessionInfo.clientWantsSemanticDb,
+                crossValues = Map.empty
+              )
+            }
             .unresolved(Map.empty)
       },
       requestDescription = "Getting javac options of {}",

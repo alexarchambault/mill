@@ -15,7 +15,11 @@ import mill.api.daemon.internal.ExecutionResultsApi
 
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.scalaUtilChainingOps
+import mill.api.daemon.internal.ModuleRefApi
 import mill.api.daemon.internal.bsp.{BspBuildTarget, BspModuleApi}
+import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 private[mill] object Utils {
 
@@ -24,17 +28,30 @@ private[mill] object Utils {
 
   def sanitizeUri(uri: java.nio.file.Path): String = sanitizeUri(uri.toUri.toString)
 
+  def encodeQuery(query: Seq[(String, String)]): String =
+    if (query.isEmpty) ""
+    else
+      query
+        .map {
+          case (k, v) =>
+            URLEncoder.encode(k, StandardCharsets.UTF_8) +
+              "=" +
+              URLEncoder.encode(v, StandardCharsets.UTF_8)
+        }
+        .mkString("?", "&", "")
+
   // define the function that spawns compilation reporter for each module based on the
   // module's hash code TODO: find something more reliable than the hash code
   def getBspLoggedReporterPool(
       originId: String,
-      bspIdsByModule: Map[BspModuleApi, BuildTargetIdentifier],
+      bspIdsByModule: Map[ModuleRefApi[BspModuleApi], BuildTargetIdentifier],
       client: BuildClient
   ): Int => Option[BspCompileProblemReporter] = { (moduleHashCode: Int) =>
-    bspIdsByModule.find(_._1.hashCode == moduleHashCode).map {
-      case (module, targetId) =>
-        val buildTarget = module.bspBuildTarget
-        val taskId = new TaskId(module.hashCode.toString)
+    // FIXME Don't use moduleHashCode, but rather the render string of the module, including cross-values
+    bspIdsByModule.find(_._1().hashCode == moduleHashCode).map {
+      case (moduleRef, targetId) =>
+        val buildTarget = moduleRef().bspBuildTarget.addCrossValues(moduleRef.crossValues)
+        val taskId = new TaskId(moduleRef.hashCode.toString)
         new BspCompileProblemReporter(
           client,
           targetId,

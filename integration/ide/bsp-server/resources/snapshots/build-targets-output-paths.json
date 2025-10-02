@@ -14,31 +14,31 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/App"
+        "uri": "file:///workspace/cross/App?cross.scalaVersion\u003d<scala-version>"
       },
       "outputPaths": []
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala212-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala212-version>"
       },
       "outputPaths": []
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala-version>"
       },
       "outputPaths": []
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala212-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala212-version>"
       },
       "outputPaths": []
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala-version>"
       },
       "outputPaths": []
     },

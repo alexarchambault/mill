@@ -25,7 +25,8 @@ trait BspModule extends mill.api.Module with BspModuleApi {
     canCompile = false,
     canTest = false,
     canRun = false,
-    canDebug = false
+    canDebug = false,
+    crossValues = Map.empty
   )
 
   /**

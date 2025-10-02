@@ -1,14 +1,24 @@
 package mill.api
 
+import mill.api.daemon.internal.ModuleRefApi
+import mill.api.daemon.internal.ModuleApi
+import mill.api.daemon.internal.TaskApi
+
 /**
  * Used to refer to a module from another module without including the target
  * module as a child-module of the first.
  */
-final case class ModuleRef[+T <: mill.api.Module](
+final case class ModuleRef[+T <: ModuleApi](
     t: T,
     crossValues: Map[String, String] = Map.empty
-) extends mill.api.daemon.internal.ModuleRefApi[T] {
+) extends ModuleRefApi[T] {
   def apply(): T = t
+
+  override def equals(that: Any): Boolean =
+    that.isInstanceOf[ModuleRefApi[?]] &&
+      ModuleRefApi.equals(this, that.asInstanceOf[ModuleRefApi[?]])
+  override def hashCode(): Int =
+    ModuleRefApi.hashCode(this)
 
   def addCrossValues(extraValues: Seq[(String, String)]): ModuleRef[T] =
     // order is important - we don't override existing values

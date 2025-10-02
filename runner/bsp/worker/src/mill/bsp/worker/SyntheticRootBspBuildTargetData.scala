@@ -7,6 +7,7 @@ import mill.api.daemon.internal.bsp.BspModuleApi.Tag
 import scala.jdk.CollectionConverters._
 import ch.epfl.scala.bsp4j.BuildTarget
 import mill.api.daemon.internal.bsp.{BspBuildTarget, BspModuleApi}
+import mill.api.daemon.internal.ModuleRefApi
 
 /**
  * Synthesised [[BspBuildTarget]] to handle exclusions.
@@ -25,7 +26,8 @@ class SyntheticRootBspBuildTargetData(topLevelProjectRoot: os.Path) {
     canCompile = false,
     canTest = false,
     canRun = false,
-    canDebug = false
+    canDebug = false,
+    crossValues = Map.empty
   )
 
   val target: BuildTarget = makeBuildTarget(id, Seq.empty, bt, None)
@@ -37,13 +39,13 @@ class SyntheticRootBspBuildTargetData(topLevelProjectRoot: os.Path) {
 }
 object SyntheticRootBspBuildTargetData {
   def makeIfNeeded(
-      existingModules: Iterable[BspModuleApi],
+      existingModules: Iterable[ModuleRefApi[BspModuleApi]],
       workspaceDir: os.Path
   ): Option[SyntheticRootBspBuildTargetData] = {
     def containsWorkspaceDir(path: Option[os.Path]) = path.exists(workspaceDir.startsWith)
     if (
       existingModules.exists { m =>
-        containsWorkspaceDir(m.bspBuildTarget.baseDirectory.map(os.Path(_)))
+        containsWorkspaceDir(m().bspBuildTarget.baseDirectory.map(os.Path(_)))
       }
     ) None
     else Some(new SyntheticRootBspBuildTargetData(workspaceDir))

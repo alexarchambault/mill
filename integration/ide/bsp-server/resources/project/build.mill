@@ -1,6 +1,7 @@
 package build
 
 import mill._
+import mill.api.ref
 
 // testing a simple Java module
 object `hello-java` extends scalalib.JavaModule {
@@ -137,16 +138,19 @@ object cross extends Module {
   val scala212 = Option(System.getenv("TEST_SCALA_2_12_VERSION")).getOrElse(???)
   val scala213 = Option(System.getenv("TEST_SCALA_2_13_VERSION")).getOrElse(???)
 
-  object util extends Cross[Util](scala212, scala213)
-  trait Util extends Cross.Module[String] with scalalib.CrossScalaModule
+  def scalaVersion = Task.CrossValue(Seq(scala212, scala213))
 
-  object lib extends Cross[Lib](scala212, scala213)
-  trait Lib extends Cross.Module[String] with scalalib.CrossScalaModule {
-    def moduleDeps = Seq(util())
+  object util extends scalalib.ScalaModule {
+    def scalaVersion = cross.scalaVersion
+  }
+
+  object lib extends scalalib.ScalaModule {
+    def moduleDeps = Seq(util)
+    def scalaVersion = cross.scalaVersion
   }
 
   object App extends scalalib.ScalaModule {
+    def moduleDeps = Seq(lib.ref.addCrossValues(Seq("cross.scalaVersion" -> scala213)))
     def scalaVersion = scala213
-    def moduleDeps = Seq(lib(scala213))
   }
 }

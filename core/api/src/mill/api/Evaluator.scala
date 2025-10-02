@@ -12,6 +12,7 @@ import scala.util.DynamicVariable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
+import scala.collection.immutable.ListMap
 
 /**
  * An API that allows you to resolve, plan, and execute Mill tasks.
@@ -193,6 +194,7 @@ object Evaluator {
       watchable: Seq[Watchable],
       values: mill.api.Result[Seq[T]],
       selectedTasks: Seq[ResolvedTask[?]],
+      tasksMap: ListMap[UnresolvedTask[?], Seq[ResolvedTask[?]]],
       executionResults: ExecutionResults
   ) extends EvaluatorApi.Result[T]
 

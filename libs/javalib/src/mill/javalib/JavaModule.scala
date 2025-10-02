@@ -1592,6 +1592,8 @@ trait JavaModule
    * the behavior of Maven, Gradle, and SBT
    */
   override def repositoriesTask: Task[Seq[Repository]] = repositoriesTaskStable
+
+  def bspCrossValueTasks = Seq(compile)
 }
 
 object JavaModule {

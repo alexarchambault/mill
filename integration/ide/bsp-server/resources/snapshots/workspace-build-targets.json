@@ -13,11 +13,7 @@
       "languageIds": [
         "java"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/lib"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -42,14 +38,7 @@
       "languageIds": [
         "java"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/lib"
-        },
-        {
-          "uri": "file:///workspace/app"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": true,
@@ -64,7 +53,7 @@
     },
     {
       "id": {
-        "uri": "file:///workspace/cross/App"
+        "uri": "file:///workspace/cross/App?cross.scalaVersion\u003d<scala-version>"
       },
       "displayName": "cross.App",
       "baseDirectory": "file:///workspace/cross/App",
@@ -76,14 +65,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/cross/util/<scala-version>"
-        },
-        {
-          "uri": "file:///workspace/cross/lib/<scala-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -111,9 +93,9 @@
     },
     {
       "id": {
-        "uri": "file:///workspace/cross/lib/<scala212-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala212-version>"
       },
-      "displayName": "cross.lib[<scala212-version>]",
+      "displayName": "cross.lib",
       "baseDirectory": "file:///workspace/cross/lib",
       "tags": [
         "library",
@@ -123,11 +105,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/cross/util/<scala212-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -154,9 +132,9 @@
     },
     {
       "id": {
-        "uri": "file:///workspace/cross/lib/<scala-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala-version>"
       },
-      "displayName": "cross.lib[<scala-version>]",
+      "displayName": "cross.lib",
       "baseDirectory": "file:///workspace/cross/lib",
       "tags": [
         "library",
@@ -166,11 +144,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/cross/util/<scala-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -198,9 +172,9 @@
     },
     {
       "id": {
-        "uri": "file:///workspace/cross/util/<scala212-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala212-version>"
       },
-      "displayName": "cross.util[<scala212-version>]",
+      "displayName": "cross.util",
       "baseDirectory": "file:///workspace/cross/util",
       "tags": [
         "library",
@@ -237,9 +211,9 @@
     },
     {
       "id": {
-        "uri": "file:///workspace/cross/util/<scala-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala-version>"
       },
-      "displayName": "cross.util[<scala-version>]",
+      "displayName": "cross.util",
       "baseDirectory": "file:///workspace/cross/util",
       "tags": [
         "library",
@@ -513,11 +487,7 @@
       "languageIds": [
         "java"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/hello-java"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": true,
@@ -610,11 +580,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/hello-scala"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": true,
@@ -654,14 +620,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/legacy-cross/util/<scala-version>"
-        },
-        {
-          "uri": "file:///workspace/legacy-cross/lib/<scala-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -701,11 +660,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/legacy-cross/util/<scala212-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,
@@ -744,11 +699,7 @@
         "java",
         "scala"
       ],
-      "dependencies": [
-        {
-          "uri": "file:///workspace/legacy-cross/util/<scala-version>"
-        }
-      ],
+      "dependencies": [],
       "capabilities": {
         "canCompile": true,
         "canTest": false,

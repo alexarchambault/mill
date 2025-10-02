@@ -58,19 +58,19 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/App"
+        "uri": "file:///workspace/cross/App?cross.scalaVersion\u003d<scala-version>"
       },
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources",
         "file:///workspace/cross/util/resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/cross.scalaVersion/<scala-version>/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources",
         "file:///workspace/cross/lib/resources",
-        "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/lib/cross.scalaVersion/<scala-version>/compile.dest/classes",
         "file:///workspace/cross/App/compile-resources",
         "file:///workspace/cross/App/resources",
-        "file:///workspace/out/mill-bsp-out/cross/App/compile.dest/classes"
+        "file:///workspace/out/mill-bsp-out/cross/App/cross.scalaVersion/<scala-version>/compile.dest/classes"
       ],
       "jvmOptions": [],
       "workingDirectory": "/workspace",
@@ -81,16 +81,16 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala212-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala212-version>"
       },
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/cross/util/compile-resources",
         "file:///workspace/cross/util/resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/cross.scalaVersion/<scala212-version>/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources",
         "file:///workspace/cross/lib/resources",
-        "file:///workspace/out/mill-bsp-out/cross/lib/<scala212-version>/compile.dest/classes"
+        "file:///workspace/out/mill-bsp-out/cross/lib/cross.scalaVersion/<scala212-version>/compile.dest/classes"
       ],
       "jvmOptions": [],
       "workingDirectory": "/workspace",
@@ -101,16 +101,16 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/lib/<scala-version>"
+        "uri": "file:///workspace/cross/lib?cross.scalaVersion\u003d<scala-version>"
       },
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources",
         "file:///workspace/cross/util/resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes",
+        "file:///workspace/out/mill-bsp-out/cross/util/cross.scalaVersion/<scala-version>/compile.dest/classes",
         "file:///workspace/cross/lib/compile-resources",
         "file:///workspace/cross/lib/resources",
-        "file:///workspace/out/mill-bsp-out/cross/lib/<scala-version>/compile.dest/classes"
+        "file:///workspace/out/mill-bsp-out/cross/lib/cross.scalaVersion/<scala-version>/compile.dest/classes"
       ],
       "jvmOptions": [],
       "workingDirectory": "/workspace",
@@ -121,13 +121,13 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala212-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala212-version>"
       },
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala212-version>/scala-library-<scala212-version>.jar",
         "file:///workspace/cross/util/compile-resources",
         "file:///workspace/cross/util/resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala212-version>/compile.dest/classes"
+        "file:///workspace/out/mill-bsp-out/cross/util/cross.scalaVersion/<scala212-version>/compile.dest/classes"
       ],
       "jvmOptions": [],
       "workingDirectory": "/workspace",
@@ -138,13 +138,13 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/cross/util/<scala-version>"
+        "uri": "file:///workspace/cross/util?cross.scalaVersion\u003d<scala-version>"
       },
       "classpath": [
         "file:///coursier-cache/https/repo1.maven.org/maven2/org/scala-lang/scala-library/<scala-version>/scala-library-<scala-version>.jar",
         "file:///workspace/cross/util/compile-resources",
         "file:///workspace/cross/util/resources",
-        "file:///workspace/out/mill-bsp-out/cross/util/<scala-version>/compile.dest/classes"
+        "file:///workspace/out/mill-bsp-out/cross/util/cross.scalaVersion/<scala-version>/compile.dest/classes"
       ],
       "jvmOptions": [],
       "workingDirectory": "/workspace",

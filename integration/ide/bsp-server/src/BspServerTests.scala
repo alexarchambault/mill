@@ -282,58 +282,80 @@ object BspServerTests extends UtestIntegrationTestSuite {
         val scala212Version = sys.props.getOrElse("TEST_SCALA_2_12_VERSION", ???)
         val scala213Version = sys.props.getOrElse("TEST_SCALA_2_13_VERSION", ???)
         val expectedScalaSemDbs = Map(
-          os.sub / "hello-scala" -> Seq(
+          "hello-scala" -> Seq(
             os.sub / "hello-scala/src/Hello.scala.semanticdb"
           ),
-          os.sub / "hello-scala/test" -> Seq(
+          "hello-scala/test" -> Seq(
             os.sub / "hello-scala/test/src/HelloTest.scala.semanticdb"
           ),
-          os.sub / "mill-build" -> Seq(
+          "mill-build" -> Seq(
             os.sub / "build.mill.semanticdb"
           ),
-          os.sub / "mill-build/mill-build" -> Seq(
+          "mill-build/mill-build" -> Seq(
             os.sub / "mill-build/build.mill.semanticdb"
           ),
-          os.sub / "diag" -> Seq(
+          "diag" -> Seq(
             os.sub / "diag/src/DiagCheck.scala.semanticdb"
           ),
-          os.sub / "errored/exception" -> Nil,
-          os.sub / "errored/compilation-error" -> Nil,
-          os.sub / "delayed" -> Nil,
-          os.sub / "diag/many" -> Nil,
-          os.sub / "sourcesNeedCompile" -> Nil,
-          os.sub / "cross/util" / scala213Version -> Nil,
-          os.sub / "cross/util" / scala212Version -> Nil,
-          os.sub / "cross/lib" / scala213Version -> Nil,
-          os.sub / "cross/lib" / scala212Version -> Nil,
-          os.sub / "cross/App" -> Nil,
-          os.sub / "legacy-cross/util" / scala213Version -> Nil,
-          os.sub / "legacy-cross/util" / scala212Version -> Nil,
-          os.sub / "legacy-cross/lib" / scala213Version -> Nil,
-          os.sub / "legacy-cross/lib" / scala212Version -> Nil,
-          os.sub / "legacy-cross/App" -> Nil
+          "errored/exception" -> Nil,
+          "errored/compilation-error" -> Nil,
+          "delayed" -> Nil,
+          "diag/many" -> Nil,
+          "sourcesNeedCompile" -> Nil,
+          "cross/util?cross.scalaVersion=2.13.16" -> Nil,
+          "cross/lib?cross.scalaVersion=2.13.16" -> Nil,
+          "cross/util?cross.scalaVersion=2.12.20" -> Nil,
+          "cross/lib?cross.scalaVersion=2.12.20" -> Nil,
+          "cross/App?cross.scalaVersion=2.13.16" -> Nil, // FIXME query shouldn't be added here
+          s"legacy-cross/util/$scala213Version" -> Nil,
+          s"legacy-cross/util/$scala212Version" -> Nil,
+          s"legacy-cross/lib/$scala213Version" -> Nil,
+          s"legacy-cross/lib/$scala212Version" -> Nil,
+          "legacy-cross/App" -> Nil
         )
 
         {
+          val content = scalacOptionsResult
+            .getItems
+            .asScala
+            .map { item =>
+              (item.getTarget.getUri, item.getClassDirectory)
+            }
+          pprint.err.log(scalacOptionsResult)
+          pprint.err.log(content)
+
           // check that semanticdbs are generated for Scala modules
           val semDbs = scalacOptionsResult
             .getItems
             .asScala
             .map { item =>
-              val shortId = os.Path(Paths.get(new URI(item.getTarget.getUri)))
+              val uri = new URI(item.getTarget.getUri)
+              val (uri0, queryOpt) =
+                if (uri.getQuery == null) (uri, None)
+                else {
+                  val updated = new URI(
+                    uri.getScheme,
+                    uri.getAuthority,
+                    uri.getPath,
+                    null,
+                    uri.getFragment
+                  )
+                  (updated, Some("?" + uri.getQuery))
+                }
+              val shortId = os.Path(Paths.get(uri0))
                 .relativeTo(workspacePath)
                 .asSubPath
               val semDbs = findSemanticdbs(
                 os.Path(Paths.get(new URI(item.getClassDirectory)))
               )
-              shortId -> semDbs
+              (shortId.toString + queryOpt.getOrElse("")) -> semDbs
             }
             .toMap
           if (expectedScalaSemDbs != semDbs) {
             pprint.err.log(expectedScalaSemDbs)
             pprint.err.log(semDbs)
           }
-          assert(expectedScalaSemDbs == semDbs)
+          assert(expectedScalaSemDbs.toVector.sorted == semDbs.toVector.sorted)
         }
 
         {
@@ -345,24 +367,38 @@ object BspServerTests extends UtestIntegrationTestSuite {
             .getItems
             .asScala
             .map { item =>
-              val shortId = os.Path(Paths.get(new URI(item.getTarget.getUri)))
+              val uri = new URI(item.getTarget.getUri)
+              val (uri0, queryOpt) =
+                if (uri.getQuery == null) (uri, None)
+                else {
+                  val updated = new URI(
+                    uri.getScheme,
+                    uri.getAuthority,
+                    uri.getPath,
+                    null,
+                    uri.getFragment
+                  )
+                  (updated, Some("?" + uri.getQuery))
+                }
+              val shortId = os.Path(Paths.get(uri0))
                 .relativeTo(workspacePath)
                 .asSubPath
+                .toString
               val semDbs = findSemanticdbs(
                 os.Path(Paths.get(new URI(item.getClassDirectory)))
               )
-              shortId -> semDbs
+              shortId + queryOpt.getOrElse("") -> semDbs
             }
             .toMap
           val expectedJavaSemDbs = expectedScalaSemDbs ++ Seq(
-            os.sub / "app" -> Seq(
+            "app" -> Seq(
               os.sub / "app/src/App.java.semanticdb"
             ),
-            os.sub / "app/test" -> Nil,
-            os.sub / "hello-kotlin" -> Nil,
-            os.sub / "lib" -> Nil,
-            os.sub / "hello-java" -> Nil,
-            os.sub / "hello-java/test" -> Seq(
+            "app/test" -> Nil,
+            "hello-kotlin" -> Nil,
+            "lib" -> Nil,
+            "hello-java" -> Nil,
+            "hello-java/test" -> Seq(
               os.sub / "hello-java/test/src/HelloJavaTest.java.semanticdb"
             )
           )

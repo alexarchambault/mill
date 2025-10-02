@@ -286,6 +286,7 @@ final class EvaluatorImpl private[mill] (
             watched,
             mill.api.Result.Success(evaluated.values.flatten.map(_._1.asInstanceOf[T])),
             evaluated.goals.valuesIterator.flatten.toSeq,
+            evaluated.goals,
             evaluated
           )
         case n =>
@@ -293,6 +294,7 @@ final class EvaluatorImpl private[mill] (
             watched,
             mill.api.Result.Failure(s"$n tasks failed\n$errorStr"),
             evaluated.goals.valuesIterator.flatten.toSeq,
+            evaluated.goals,
             evaluated
           )
       }

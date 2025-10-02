@@ -8,5 +8,9 @@ case class BspBuildTarget(
     canCompile: Boolean,
     canTest: Boolean,
     canRun: Boolean,
-    canDebug: Boolean
-)
+    canDebug: Boolean,
+    crossValues: Map[String, String]
+) {
+  def addCrossValues(values: Iterable[(String, String)]): BspBuildTarget =
+    copy(crossValues = crossValues ++ values)
+}
