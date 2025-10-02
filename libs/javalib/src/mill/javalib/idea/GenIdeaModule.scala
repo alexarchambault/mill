@@ -9,6 +9,7 @@ import mill.api.daemon.internal.internal
 import mill.api.{ModuleCtx, PathRef}
 import mill.javalib.{BoundDep, Dep, JavaModule}
 import mill.api.JsonFormatters.given
+import mill.api.ModuleRef
 trait GenIdeaModule extends mill.api.Module with GenIdeaInternalApi {
   private[mill] val jarCollector: PartialFunction[PathRef, Path] = {
     case p if p.path.ext == "jar" => p.path.toNIO
@@ -31,7 +32,10 @@ trait GenIdeaModule extends mill.api.Module with GenIdeaInternalApi {
 
   private[mill] def extDependencies = Task {
     javaModule.resolvedMvnDeps() ++
-      Task.traverse(javaModule.transitiveModuleDeps)(_.unmanagedClasspath)().flatten
+      Task.traverse(javaModule.transitiveModuleDeps) {
+        case m: JavaModule => m.unmanagedClasspath
+        case r: ModuleRef[JavaModule] => r.task(_.unmanagedClasspath)
+      }().flatten
   }
 
   private[mill] def extCompileMvnDeps = Task {

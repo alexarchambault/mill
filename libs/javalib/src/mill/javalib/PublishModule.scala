@@ -8,6 +8,7 @@ import mill.util.{FileSetContents, JarManifest, Secret, Tasks}
 import mill.javalib.publish.{Artifact, SonatypePublisher}
 import os.Path
 import mill.javalib.internal.PublishModule.{GpgArgs, checkSonatypeCreds}
+import mill.api.ModuleRef
 
 /**
  * Configuration necessary for publishing a Scala module to Maven Central or similar
@@ -15,7 +16,8 @@ import mill.javalib.internal.PublishModule.{GpgArgs, checkSonatypeCreds}
 trait PublishModule extends JavaModule { outer =>
   import mill.javalib.publish.*
 
-  override def moduleDeps: Seq[PublishModule] = super.moduleDeps.map {
+  override def moduleDeps: Seq[PublishModule | ModuleRef[PublishModule]] = super.moduleDeps.map {
+    case ref @ ModuleRef(m: PublishModule, _) => ref.copy(t = m)
     case m: PublishModule => m
     case other =>
       throw new Exception(
@@ -110,6 +112,8 @@ trait PublishModule extends JavaModule { outer =>
 
         val modulePomDeps = Task.sequence(moduleDepsChecked.collect {
           case m: PublishModule => m.artifactMetadata
+          case r @ ModuleRef(_: PublishModule, _) =>
+            r.asInstanceOf[ModuleRef[PublishModule]].task(_.artifactMetadata)
         })()
         val compileModulePomDeps = Task.sequence(compileModuleDepsChecked.collect {
           case m: PublishModule => m.artifactMetadata
@@ -141,6 +145,8 @@ trait PublishModule extends JavaModule { outer =>
 
     val modulePomDeps = Task.sequence(moduleDepsChecked.collect {
       case m: PublishModule => m.artifactMetadata
+      case r @ ModuleRef(_: PublishModule, _) =>
+        r.asInstanceOf[ModuleRef[PublishModule]].task(_.artifactMetadata)
     })()
     val compileModulePomDeps = Task.sequence(compileModuleDepsChecked.collect {
       case m: PublishModule => m.artifactMetadata
@@ -383,10 +389,11 @@ trait PublishModule extends JavaModule { outer =>
   ): Task[Seq[Path]] = {
     if (transitive) {
       val publishTransitiveModuleDeps = (transitiveModuleDeps ++ transitiveRunModuleDeps).collect {
-        case p: PublishModule => p
+        case p: PublishModule => ModuleRef(p)
+        case r @ ModuleRef(_: PublishModule, _) => r.asInstanceOf[ModuleRef[PublishModule]]
       }
       Task.traverse(publishTransitiveModuleDeps.distinct) { publishMod =>
-        publishMod.publishLocalTask(localIvyRepo, sources, doc, transitive = false)
+        publishMod.task(_.publishLocalTask(localIvyRepo, sources, doc, transitive = false))
       }.map(_.flatten)
     } else {
       Task.Anon {

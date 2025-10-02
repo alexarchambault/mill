@@ -30,7 +30,10 @@ trait GenEclipseModule extends mill.api.Module with GenEclipseInternalApi {
   // Get Maven dependencies including transitive ones
   private[mill] def extDependencies = Task {
     javaModule.resolvedMvnDeps() ++
-      Task.traverse(javaModule.transitiveModuleDeps)(_.unmanagedClasspath)().flatten
+      Task.traverse(javaModule.transitiveModuleDeps) {
+        case m: JavaModule => m.unmanagedClasspath
+        case r: ModuleRef[JavaModule] => r.task(_.unmanagedClasspath)
+      }().flatten
   }
 
   // Get all compile Maven dependencies
@@ -63,7 +66,12 @@ trait GenEclipseModule extends mill.api.Module with GenEclipseInternalApi {
     val allSources = javaModule.allSources().map(_.path.toNIO)
 
     // Get all the module dependencies that will be translated to Eclipse JDT project dependencies
-    val moduleDeps = javaModule.moduleDepsChecked.map(_.moduleDirJava)
+    val moduleDeps = javaModule.moduleDepsChecked
+      .map {
+        case m: JavaModule => m
+        case r: ModuleRef[JavaModule] => r()
+      }
+      .map(_.moduleDirJava)
 
     // This can contain both JAR archives or folder of classes, etc. Eclipse does not care ^^
     val unmanagedClasspath = javaModule.unmanagedClasspath().map(_.javaPath)

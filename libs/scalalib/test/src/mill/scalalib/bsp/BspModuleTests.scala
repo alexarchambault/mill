@@ -1,6 +1,6 @@
 package mill.scalalib.bsp
 
-import mill.api.{Cross, Discover}
+import mill.api.{Cross, Discover, ModuleRef}
 import mill.T
 import mill.scalalib.{DepSyntax, JavaModule, ScalaModule}
 import mill.testkit.UnitTester
@@ -31,7 +31,7 @@ object BspModuleTests extends TestSuite {
     trait ModCross extends ScalaModule with Cross.Module[Int] {
       override def scalaVersion: T[String] = testScalaVersion
       // each depends on all others with lower index
-      override def moduleDeps: Seq[JavaModule] =
+      override def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
         configs
           .filter(c => c < crossValue)
           .map(i => Mod(i))

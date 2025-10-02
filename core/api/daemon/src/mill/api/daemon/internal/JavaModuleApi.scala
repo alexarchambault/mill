@@ -7,11 +7,11 @@ import mill.api.daemon.internal.{EvaluatorApi, ModuleApi, TaskApi}
 
 trait JavaModuleApi extends ModuleApi with GenIdeaModuleApi {
 
-  def recursiveModuleDeps: Seq[JavaModuleApi]
+  def recursiveModuleDeps: Seq[JavaModuleApi | ModuleRefApi[JavaModuleApi]]
 
-  def compileModuleDepsChecked: Seq[JavaModuleApi]
+  def compileModuleDepsChecked: Seq[JavaModuleApi | ModuleRefApi[JavaModuleApi]]
 
-  def transitiveModuleCompileModuleDeps: Seq[JavaModuleApi]
+  def transitiveModuleCompileModuleDeps: Seq[JavaModuleApi | ModuleRefApi[JavaModuleApi]]
 
   def javacOptions: TaskApi[Seq[String]]
   def mandatoryJavacOptions: TaskApi[Seq[String]]

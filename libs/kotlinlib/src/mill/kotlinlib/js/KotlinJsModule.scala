@@ -3,13 +3,14 @@ package mill.kotlinlib.js
 import coursier.core.VariantSelector.VariantMatcher
 import coursier.params.ResolutionParams
 import mainargs.arg
+import mill.api.ModuleRef
 import mill.api.PathRef
 import mill.api.Result
 import mill.api.Task.Command
 import mill.api.Task
 import mill.kotlinlib.worker.api.{KotlinWorker, KotlinWorkerTarget}
 import mill.kotlinlib.{Dep, DepSyntax, KotlinModule, KotlinWorkerManager}
-import mill.javalib.Lib
+import mill.javalib.{JavaModule, Lib}
 import mill.javalib.api.CompilationResult
 import mill.util.Jvm
 import mill.{Args, T}
@@ -76,9 +77,20 @@ trait KotlinJsModule extends KotlinModule { outer =>
         Task.Anon {
           js.localCompileClasspath() ++ Seq(js.klib())
         }
-      case m => Task.Anon {
+      case r @ ModuleRef(js: KotlinJsModule, _) if js != kotlinJsFriendModule.orNull =>
+        val r0 = r.asInstanceOf[ModuleRef[KotlinJsModule]]
+        Task.Anon {
+          r0.task(_.localCompileClasspath)() ++ Seq(r0.task(_.klib)())
+        }
+      case m: JavaModule =>
+        Task.Anon {
           // this is the super-implementation
           m.localCompileClasspath() ++ Seq(m.compile().classes)
+        }
+      case r: ModuleRef[JavaModule] =>
+        Task.Anon {
+          // this is the super-implementation
+          r.task(_.localCompileClasspath)() ++ Seq(r.task(_.compile)().classes)
         }
     }().flatten
   }

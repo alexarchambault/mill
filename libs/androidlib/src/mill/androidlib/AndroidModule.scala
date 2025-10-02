@@ -200,6 +200,9 @@ trait AndroidModule extends JavaModule { outer =>
     Task.traverse(transitiveModuleRunModuleDeps) {
       case m: AndroidModule =>
         Task.Anon(m.androidCompiledModuleResources())
+      case r @ ModuleRef(_: AndroidModule, _) =>
+        val r0 = r.asInstanceOf[ModuleRef[AndroidModule]]
+        Task.Anon(r0.task(_.androidCompiledModuleResources)())
       case _ =>
         Task.Anon(Seq.empty)
     }().flatten.distinct
@@ -520,6 +523,13 @@ trait AndroidModule extends JavaModule { outer =>
     Task.traverse(transitiveModuleDeps) {
       case m: AndroidModule =>
         Task.Anon(m.androidLibRClasspath())
+      case r: ModuleRef[?] =>
+        r() match {
+          case _: AndroidModule =>
+            Task.Anon(r.asInstanceOf[ModuleRef[AndroidModule]].task(_.androidLibRClasspath)())
+          case _ =>
+            Task.Anon(Seq.empty[PathRef])
+        }
       case _ =>
         Task.Anon(Seq.empty[PathRef])
     }().flatten

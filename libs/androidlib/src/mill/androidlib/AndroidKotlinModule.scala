@@ -2,7 +2,7 @@ package mill.androidlib
 
 import mill.*
 import mill.api.{ModuleRef, PathRef, Result}
-import mill.javalib.{CoursierModule, Dep}
+import mill.javalib.{CoursierModule, Dep, JavaModule}
 import mill.kotlinlib.{Dep, DepSyntax, KotlinModule}
 import mill.{T, Task}
 import mill.androidlib.databinding.{
@@ -186,11 +186,16 @@ trait AndroidKotlinModule extends KotlinModule with AndroidModule { outer =>
    * handle the compiled output as a friend path so top level declarations are visible.
    */
   def kotlincFriendPaths: T[Option[String]] = Task {
-    val compiledCodePaths = Task.traverse(transitiveModuleCompileModuleDeps)(m =>
-      Task.Anon {
-        Seq(m.compile().classes.path)
-      }
-    )().flatten
+    val compiledCodePaths = Task.traverse(transitiveModuleCompileModuleDeps) {
+      case m: JavaModule =>
+        Task.Anon {
+          Seq(m.compile().classes.path)
+        }
+      case r: ModuleRef[JavaModule] =>
+        Task.Anon {
+          Seq(r.task(_.compile)().classes.path)
+        }
+    }().flatten
 
     val friendlyPathFlag: Option[String] =
       compiledCodePaths.headOption.map(_ => s"-Xfriend-paths=${compiledCodePaths.mkString(",")}")

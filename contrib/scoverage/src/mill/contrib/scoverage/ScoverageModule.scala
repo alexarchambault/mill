@@ -4,7 +4,7 @@ import coursier.Repository
 import mill._
 import mill.api.{PathRef}
 import mill.api.BuildCtx
-import mill.api.{Result}
+import mill.api.{ModuleRef, Result}
 import mill.contrib.scoverage.api.ScoverageReportWorkerApi2.ReportType
 import mill.util.BuildInfo
 import mill.javalib.api.JvmWorkerUtil
@@ -150,8 +150,9 @@ trait ScoverageModule extends ScalaModule { outer: ScalaModule =>
     override def compileResources: T[Seq[PathRef]] = outer.compileResources
     override def generatedSources: T[Seq[PathRef]] = Task { outer.generatedSources() }
     override def allSources: T[Seq[PathRef]] = Task { outer.allSources() }
-    override def moduleDeps: Seq[JavaModule] = outer.moduleDeps
-    override def compileModuleDeps: Seq[JavaModule] = outer.compileModuleDeps
+    override def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = outer.moduleDeps
+    override def compileModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+      outer.compileModuleDeps
     override def sources: T[Seq[PathRef]] = Task { outer.sources() }
     override def resources: T[Seq[PathRef]] = Task { outer.resources() }
     override def scalaVersion = Task { outer.scalaVersion() }

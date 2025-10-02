@@ -18,9 +18,14 @@ trait SemanticDbJavaModule extends CoursierModule with SemanticDbJavaModuleApi
   def jvmWorker: ModuleRef[JvmWorkerModule]
 
   def upstreamSemanticDbDatas: Task[Seq[SemanticDbJavaModule.SemanticDbData]] =
-    Task.sequence(transitiveModuleCompileModuleDeps.map(_.semanticDbDataDetailed))
+    Task.sequence(transitiveModuleCompileModuleDeps.map {
+      case m: SemanticDbJavaModule =>
+        m.semanticDbDataDetailed
+      case r: ModuleRef[SemanticDbJavaModule] =>
+        r.task(_.semanticDbDataDetailed)
+    })
 
-  def transitiveModuleCompileModuleDeps: Seq[SemanticDbJavaModule]
+  def transitiveModuleCompileModuleDeps: Seq[SemanticDbJavaModule | ModuleRef[SemanticDbJavaModule]]
   def zincReportCachedProblems: T[Boolean]
   def zincIncrementalCompilation: T[Boolean]
   def allSourceFiles: T[Seq[PathRef]]
@@ -36,7 +41,7 @@ trait SemanticDbJavaModule extends CoursierModule with SemanticDbJavaModuleApi
   def javacOptions: T[Seq[String]]
   def mandatoryJavacOptions: T[Seq[String]]
   private[mill] def compileClasspathTask(compileFor: CompileFor): Task[Seq[PathRef]]
-  def moduleDeps: Seq[JavaModule]
+  def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]]
 
   def semanticDbVersion: T[String] = Task.Input {
     val builtin = SemanticDbJavaModuleApi.buildTimeSemanticDbVersion

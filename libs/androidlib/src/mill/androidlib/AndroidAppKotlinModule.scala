@@ -81,7 +81,7 @@ trait AndroidAppKotlinModule extends AndroidKotlinModule, AndroidAppModule { out
       Versions.screenshotValidationJunitEngineVersion
     }
 
-    override def moduleDeps: Seq[JavaModule] = Seq(outer)
+    override def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = Seq(outer)
 
     override final def kotlinVersion = outer.kotlinVersion()
 

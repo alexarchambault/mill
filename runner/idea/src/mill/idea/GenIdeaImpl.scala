@@ -22,6 +22,7 @@ import mill.api.daemon.internal.{
 import mill.api.daemon.internal.idea.{Element, IdeaConfigFile, JavaFacet, ResolvedModule}
 import mill.util.BuildInfo
 import os.SubPath
+import mill.api.daemon.internal.ModuleRefApi
 
 class GenIdeaImpl(
     private val evaluators: Seq[EvaluatorApi]
@@ -435,7 +436,15 @@ class GenIdeaImpl(
 
       val depNames = {
         val allTransitive = resolvedModule.module.transitiveModuleCompileModuleDeps
+          .map {
+            case m: JavaModuleApi => m
+            case r: ModuleRefApi[JavaModuleApi] => r() // FIXME
+          }
         val recursive = resolvedModule.module.recursiveModuleDeps
+          .map {
+            case m: JavaModuleApi => m
+            case r: ModuleRefApi[JavaModuleApi] => r() // FIXME
+          }
         val provided = allTransitive.filterNot(recursive.contains)
 
         Seq

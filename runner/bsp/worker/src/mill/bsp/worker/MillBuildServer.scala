@@ -308,6 +308,10 @@ private class MillBuildServer(
       val depsIds = m match {
         case jm: JavaModuleApi =>
           (jm.recursiveModuleDeps ++ jm.compileModuleDepsChecked)
+            .map {
+              case r: ModuleRefApi[?] => r() // FIXME
+              case other => other
+            }
             .distinct
             .collect { case bm: BspModuleApi => state.bspIdByModule(bm) }
         case _ => Seq()

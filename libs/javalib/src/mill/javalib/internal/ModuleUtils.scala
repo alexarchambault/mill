@@ -18,7 +18,7 @@ object ModuleUtils {
    * @throws mill.api.MillException if there were cycles in the dependencies
    */
   // FIXME: Remove or consolidate with copy in JvmWorkerImpl
-  def recursive[T](name: String, start: T, deps: T => Seq[T]): Seq[T] = {
+  def recursive[T](name: String, start: T, deps: T => Seq[T], render: T => String): Seq[T] = {
 
     @tailrec def rec(
         seenModules: List[T],
@@ -32,8 +32,9 @@ object ModuleUtils {
             case (trace, cand :: remaining) =>
               if (trace.contains(cand)) {
                 // cycle!
-                val rendered =
-                  (cand :: (cand :: trace.takeWhile(_ != cand)).reverse).mkString(" -> ")
+                val rendered = (cand :: (cand :: trace.takeWhile(_ != cand)).reverse)
+                  .map(render)
+                  .mkString(" -> ")
                 val msg = s"${name}: cycle detected: ${rendered}"
                 println(msg)
                 throw new mill.api.MillException(msg)

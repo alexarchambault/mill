@@ -6,6 +6,7 @@ import mill.javalib.revapi.RevapiModule.optional
 import mill.javalib.api.Versions
 import mill.javalib.publish.Artifact
 import mill.util.Jvm
+import mill.api.ModuleRef
 
 /**
  * Adds support for [[https://revapi.org/revapi-site/main/index.html Revapi checker]] to enable API analysis and change tracking.
@@ -82,7 +83,10 @@ trait RevapiModule extends PublishModule {
   /** API archive and supplement files (dependencies) to compare */
   def revapiNewFiles: T[Seq[PathRef]] = Task {
     Seq(jar()) ++
-      Task.traverse(recursiveModuleDeps)(_.jar)() ++
+      Task.traverse(recursiveModuleDeps) {
+        case m: JavaModule => m.jar
+        case r: ModuleRef[JavaModule] => r.task(_.jar)
+      }() ++
       millResolver().classpath(
         Seq(coursierDependencyTask()),
         artifactTypes = Some(revapiArtifactTypes())

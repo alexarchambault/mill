@@ -1,0 +1,63 @@
+diff --git a/contrib/package.mill b/contrib/package.mill
+index 1d6b888783a..fc2ebb4bc29 100644
+--- a/contrib/package.mill
++++ b/contrib/package.mill
+@@ -8,7 +8,7 @@ import mill.scalalib._
+ import mill.javalib.api.JvmWorkerUtil
+ import mill.scalalib.publish._
+ import mill.util.Jvm
+-import mill.api.SelectMode
++import mill.api.{ModuleRef, SelectMode}
+ import mill.contrib.buildinfo.BuildInfo
+ import mill.T
+ import mill.api.Cross
+@@ -47,14 +47,16 @@ object `package` extends mill.Module {
+     def mvnDeps = Seq(Deps.sbtTestInterface)
+     def compileMvnDeps = Seq(Deps.testng)
+     def runMvnDeps = Seq(Deps.testng)
+-    def testModuleDeps: Seq[JavaModule] = super.testModuleDeps ++ Seq(build.libs.javalib)
++    def testModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
++      super.testModuleDeps ++ Seq(build.libs.javalib)
+     def docJar: T[PathRef] = super[JavaModule].docJar
+     def compileModuleDeps = super.moduleDeps ++ Seq(build.libs.javalib)
+   }
+ 
+   object twirllib extends ContribModule {
+     def compileModuleDeps = Seq(build.libs.javalib)
+-    def testModuleDeps: Seq[JavaModule] = super.testModuleDeps ++ Seq(build.libs.scalalib)
++    def testModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
++      super.testModuleDeps ++ Seq(build.libs.scalalib)
+   }
+ 
+   object playlib extends ContribModule {
+@@ -75,7 +77,8 @@ object `package` extends mill.Module {
+         )
+     }
+ 
+-    def testModuleDeps: Seq[JavaModule] = super.testModuleDeps ++ Seq(build.libs.scalalib)
++    def testModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
++      super.testModuleDeps ++ Seq(build.libs.scalalib)
+ 
+     object api extends MillPublishJavaModule
+ 
+diff --git a/mill-build/src/millbuild/MillJavaModule.scala b/mill-build/src/millbuild/MillJavaModule.scala
+index f82f0d10ec5..7673ac6b484 100644
+--- a/mill-build/src/millbuild/MillJavaModule.scala
++++ b/mill-build/src/millbuild/MillJavaModule.scala
+@@ -3,6 +3,7 @@ package millbuild
+ import build_.package_ as build
+ import coursier.MavenRepository
+ import coursier.VersionConstraint
++import mill.api.ModuleRef
+ import mill.PathRef
+ import mill.T
+ import mill.Task
+@@ -60,7 +61,7 @@ trait MillJavaModule extends JavaModule {
+ 
+   def testMvnDeps: T[Seq[Dep]] = Seq(Deps.TestDeps.utest)
+   def testForkEnv: T[Map[String, String]] = forkEnv() ++ localTestOverridesEnv()
+-  def testModuleDeps: Seq[JavaModule] =
++  def testModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+     if (this == build.core.api) Seq(build.core.api)
+     else Seq(this, build.core.api.test)
+ 

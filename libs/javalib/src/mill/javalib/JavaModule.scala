@@ -74,7 +74,7 @@ trait JavaModule
     hierarchyChecks()
 
     override def resources = super[JavaModule].resources
-    override def moduleDeps: Seq[JavaModule] = Seq(outer)
+    override def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = Seq(ModuleRef(outer))
     override def repositoriesTask: Task[Seq[Repository]] = Task.Anon {
       outer.repositoriesTask()
     }
@@ -286,19 +286,19 @@ trait JavaModule
    *  which uses a cached result which is also checked to be free of cycle.
    *  @see [[moduleDepsChecked]]
    */
-  def moduleDeps: Seq[JavaModule] = Seq()
+  def moduleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = Seq()
 
   /**
    *  The compile-only direct dependencies of this module. These are *not*
    *  transitive, and only take effect in the module that they are declared in.
    */
-  def compileModuleDeps: Seq[JavaModule] = Seq()
+  def compileModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = Seq()
 
   /**
    * The runtime-only direct dependencies of this module. These *are* transitive,
    * and so get propagated to downstream modules automatically
    */
-  def runModuleDeps: Seq[JavaModule] = Seq()
+  def runModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = Seq()
 
   /**
    *  Bill of Material (BOM) dependencies of this module.
@@ -313,14 +313,14 @@ trait JavaModule
    * Same as [[moduleDeps]] but checked to not contain cycles.
    * Prefer this over using [[moduleDeps]] directly.
    */
-  final def moduleDepsChecked: Seq[JavaModule] = {
+  final def moduleDepsChecked: Seq[JavaModule | ModuleRef[JavaModule]] = {
     // trigger initialization to check for cycles
     recModuleDeps
     moduleDeps
   }
 
   /** Same as [[compileModuleDeps]] but checked to not contain cycles. */
-  final def compileModuleDepsChecked: Seq[JavaModule] = {
+  final def compileModuleDepsChecked: Seq[JavaModule | ModuleRef[JavaModule]] = {
     // trigger initialization to check for cycles
     recCompileModuleDeps
     compileModuleDeps
@@ -330,7 +330,7 @@ trait JavaModule
    * Same as [[moduleDeps]] but checked to not contain cycles.
    * Prefer this over using [[moduleDeps]] directly.
    */
-  final def runModuleDepsChecked: Seq[JavaModule] = {
+  final def runModuleDepsChecked: Seq[JavaModule | ModuleRef[JavaModule]] = {
     // trigger initialization to check for cycles
     recRunModuleDeps
     runModuleDeps
@@ -347,27 +347,59 @@ trait JavaModule
   }
 
   /** Should only be called from [[moduleDepsChecked]] */
-  private lazy val recModuleDeps: Seq[JavaModule] =
-    ModuleUtils.recursive[JavaModule](
+  private lazy val recModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+    ModuleUtils.recursive[JavaModule | ModuleRef[JavaModule]](
       (moduleSegments ++ Seq(Segment.Label("moduleDeps"))).render,
       this,
-      _.moduleDeps
+      {
+        case m: JavaModule => m.moduleDeps
+        case r: ModuleRef[JavaModule] =>
+          r().moduleDeps.map {
+            case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+            case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+          }
+      },
+      {
+        case m: JavaModule => m.toString
+        case r: ModuleRef[JavaModule] => r.displayName
+      }
     )
 
   /** Should only be called from [[compileModuleDeps]] */
-  private lazy val recCompileModuleDeps: Seq[JavaModule] =
-    ModuleUtils.recursive[JavaModule](
+  private lazy val recCompileModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+    ModuleUtils.recursive[JavaModule | ModuleRef[JavaModule]](
       (moduleSegments ++ Seq(Segment.Label("compileModuleDeps"))).render,
       this,
-      _.compileModuleDeps
+      {
+        case m: JavaModule => m.compileModuleDeps
+        case r: ModuleRef[JavaModule] => r().compileModuleDeps.map {
+            case m: JavaModule => r.moduleRef(_ => ModuleRef(m))
+            case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+          }
+      },
+      {
+        case m: JavaModule => m.toString
+        case r: ModuleRef[JavaModule] => r.displayName
+      }
     )
 
   /** Should only be called from [[runModuleDepsChecked]] */
-  private lazy val recRunModuleDeps: Seq[JavaModule] =
-    ModuleUtils.recursive[JavaModule](
+  private lazy val recRunModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+    ModuleUtils.recursive[JavaModule | ModuleRef[JavaModule]](
       (moduleSegments ++ Seq(Segment.Label("runModuleDeps"))).render,
       this,
-      m => m.runModuleDeps ++ m.moduleDeps
+      {
+        case m: JavaModule => m.runModuleDeps ++ m.moduleDeps
+        case r: ModuleRef[JavaModule] =>
+          (r().runModuleDeps ++ r().moduleDeps).map {
+            case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+            case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+          }
+      },
+      {
+        case m: JavaModule => m.toString
+        case r: ModuleRef[JavaModule] => r.displayName
+      }
     )
 
   /** Should only be called from [[bomModuleDepsChecked]] */
@@ -375,26 +407,29 @@ trait JavaModule
     ModuleUtils.recursive[BomModule](
       (moduleSegments ++ Seq(Segment.Label("bomModuleDeps"))).render,
       null,
-      mod => if (mod == null) bomModuleDeps else mod.bomModuleDeps
+      mod => if (mod == null) bomModuleDeps else mod.bomModuleDeps,
+      _.toString
     )
 
   /** The direct and indirect dependencies of this module */
-  def recursiveModuleDeps: Seq[JavaModule] = { recModuleDeps }
+  def recursiveModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = { recModuleDeps }
 
   /** The direct and indirect runtime module dependencies of this module */
-  def recursiveRunModuleDeps: Seq[JavaModule] = { recRunModuleDeps }
+  def recursiveRunModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = { recRunModuleDeps }
 
   /**
    * Like `recursiveModuleDeps` but also include the module itself,
    * basically the modules whose classpath are needed at runtime
    */
-  def transitiveModuleDeps: Seq[JavaModule] = recursiveModuleDeps ++ Seq(this)
+  def transitiveModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+    recursiveModuleDeps ++ Seq(ModuleRef(this))
 
   /**
    * Like `recursiveModuleDeps` but also include the module itself,
    * basically the modules whose classpath are needed at runtime
    */
-  def transitiveRunModuleDeps: Seq[JavaModule] = recursiveRunModuleDeps ++ Seq(this)
+  def transitiveRunModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] =
+    recursiveRunModuleDeps ++ Seq(this)
 
   /**
    * All direct and indirect module dependencies of this module, including
@@ -404,8 +439,17 @@ trait JavaModule
    * Note that `compileModuleDeps` are defined to be non-transitive, so we only
    * look at the direct `compileModuleDeps` when assembling this list
    */
-  def transitiveModuleCompileModuleDeps: Seq[JavaModule] = {
-    (moduleDepsChecked ++ compileModuleDepsChecked).flatMap(_.transitiveModuleDeps).distinct
+  def transitiveModuleCompileModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = {
+    (moduleDepsChecked ++ compileModuleDepsChecked)
+      .flatMap {
+        case m: JavaModule => m.transitiveModuleDeps
+        case r: ModuleRef[JavaModule] =>
+          r().transitiveModuleDeps.map {
+            case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+            case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+          }
+      }
+      .distinct
   }
 
   /**
@@ -415,19 +459,48 @@ trait JavaModule
    *
    * Note that `runModuleDeps` are defined to be transitive
    */
-  def transitiveModuleRunModuleDeps: Seq[JavaModule] = {
-    (runModuleDepsChecked ++ moduleDepsChecked).flatMap(_.transitiveRunModuleDeps).distinct
+  def transitiveModuleRunModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = {
+    (runModuleDepsChecked ++ moduleDepsChecked)
+      .flatMap {
+        case m: JavaModule => m.transitiveRunModuleDeps
+        case r: ModuleRef[JavaModule] =>
+          r().transitiveRunModuleDeps.map {
+            case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+            case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+          }
+      }
+      .distinct
   }
 
   private def formatModuleDeps(recursive: Boolean, includeHeader: Boolean): Task[String] =
     Task.Anon {
       val normalDeps = if (recursive) recursiveModuleDeps else moduleDepsChecked
       val compileDeps =
-        if (recursive) compileModuleDepsChecked.flatMap(_.transitiveModuleDeps).distinct
+        if (recursive)
+          compileModuleDepsChecked
+            .flatMap {
+              case m: JavaModule => m.transitiveModuleDeps
+              case r: ModuleRef[JavaModule] => r().transitiveModuleDeps.map {
+                  case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+                  case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+                }
+            }
+            .distinct
         else compileModuleDepsChecked
       val runtimeDeps =
-        if (recursive) runModuleDepsChecked.flatMap(_.transitiveRunModuleDeps).distinct
-        else runModuleDepsChecked
+        if (recursive)
+          runModuleDepsChecked
+            .flatMap {
+              case m: JavaModule => m.transitiveRunModuleDeps
+              case r: ModuleRef[JavaModule] =>
+                r().transitiveRunModuleDeps.map {
+                  case m0: JavaModule => r.moduleRef(_ => ModuleRef(m0))
+                  case r0: ModuleRef[JavaModule] => r.moduleRef(_ => r0)
+                }
+            }
+            .distinct
+        else
+          runModuleDepsChecked
       val deps = (normalDeps ++ compileDeps ++ runModuleDeps).distinct
 
       val header = Option.when(includeHeader)(
@@ -440,7 +513,11 @@ trait JavaModule
           Option.when(!isNormal && runtimeDeps.contains(dep))("runtime")
         ).flatten
         val suffix = if (markers.isEmpty) "" else markers.mkString(" (", ",", ")")
-        "  " + dep.moduleSegments.render + suffix
+        val modSegments = dep match {
+          case m: JavaModule => m.moduleSegments
+          case r: ModuleRef[JavaModule] => r().moduleSegments // FIXME
+        }
+        "  " + modSegments.render + suffix
       }
       (header ++ lines).mkString("\n")
     }
@@ -504,10 +581,21 @@ trait JavaModule
 
   private[mill] def coursierProject0: Task[cs.Project] = {
 
-    val moduleDepsChecked0 = Task.sequence(moduleDepsChecked.map(_.coursierDependencyTask))
+    val moduleDepsChecked0 = Task.sequence(moduleDepsChecked.map {
+      case m: JavaModule => m.coursierDependencyTask
+      case r: ModuleRef[JavaModule] => r.task(_.coursierDependencyTask)
+    })
     val compileModuleDepsChecked0 =
-      Task.sequence(compileModuleDepsChecked.map(_.coursierDependencyTask))
-    val runModuleDepsChecked0 = Task.sequence(runModuleDepsChecked.map(_.coursierDependencyTask))
+      Task.sequence(compileModuleDepsChecked.map {
+        case m: JavaModule => m.coursierDependencyTask
+        case r: ModuleRef[JavaModule] => r.task(_.coursierDependencyTask)
+      })
+    val runModuleDepsChecked0 = Task.sequence(
+      runModuleDepsChecked.map {
+        case m: JavaModule => m.coursierDependencyTask
+        case r: ModuleRef[JavaModule] => r.task(_.coursierDependencyTask)
+      }
+    )
 
     Task.Anon {
 
@@ -667,8 +755,14 @@ trait JavaModule
       (compileModuleDepsChecked ++ moduleDepsChecked ++ runModuleDepsChecked ++ bomModuleDepsChecked).distinct
     Task {
       val allTransitiveProjects =
-        Task.traverse(allModuleDeps)(_.transitiveCoursierProjects)().flatten
-      val allModuleDepsProjects = Task.traverse(allModuleDeps)(_.coursierProject)()
+        Task.traverse(allModuleDeps) {
+          case m: JavaModule => m.transitiveCoursierProjects
+          case r: ModuleRef[JavaModule] => r.task(_.transitiveCoursierProjects)
+        }().flatten
+      val allModuleDepsProjects = Task.traverse(allModuleDeps) {
+        case m: JavaModule => m.coursierProject
+        case r: ModuleRef[JavaModule] => r.task(_.coursierProject)
+      }()
       (allModuleDepsProjects ++ allTransitiveProjects).distinctBy(_.module.name.value)
     }
   }
@@ -720,21 +814,30 @@ trait JavaModule
    * The upstream compilation output of all this module's upstream modules
    */
   def upstreamCompileOutput: T[Seq[CompilationResult]] = Task {
-    Task.traverse(transitiveModuleCompileModuleDeps)(_.compile)()
+    Task.traverse(transitiveModuleCompileModuleDeps) {
+      case m: JavaModule => m.compile
+      case r: ModuleRef[JavaModule] => r.task(_.compile)
+    }()
   }
 
   /**
    * The transitive version of `localClasspath`
    */
   def transitiveLocalClasspath: T[Seq[PathRef]] = Task {
-    Task.traverse(transitiveModuleRunModuleDeps)(_.localClasspath)().flatten
+    Task.traverse(transitiveModuleRunModuleDeps) {
+      case m: JavaModule => m.localClasspath
+      case r: ModuleRef[JavaModule] => r.task(_.localClasspath)
+    }().flatten
   }
 
   /**
    * Almost the same as [[transitiveLocalClasspath]], but using the [[jar]]s instead of [[localClasspath]].
    */
   def transitiveJars: T[Seq[PathRef]] = Task {
-    Task.traverse(transitiveModuleCompileModuleDeps)(_.jar)()
+    Task.traverse(transitiveModuleCompileModuleDeps) {
+      case m: JavaModule => m.jar
+      case r: ModuleRef[JavaModule] => r.task(_.jar)
+    }()
   }
 
   /**
@@ -749,9 +852,14 @@ trait JavaModule
    */
   private[mill] def transitiveCompileClasspathTask(compileFor: CompileFor): Task[Seq[PathRef]] =
     Task.Anon {
-      Task.traverse(transitiveModuleCompileModuleDeps)(m =>
-        Task.Anon { m.localCompileClasspath() ++ Seq(m.compileFor(compileFor)().classes) }
-      )().flatten
+      Task.traverse(transitiveModuleCompileModuleDeps) {
+        case m: JavaModule =>
+          Task.Anon { m.localCompileClasspath() ++ Seq(m.compileFor(compileFor)().classes) }
+        case r: ModuleRef[JavaModule] =>
+          Task.Anon {
+            r.task(_.localCompileClasspath)() ++ Seq(r.task(_.compileFor(compileFor))().classes)
+          }
+      }().flatten
     }
 
   /**
@@ -764,14 +872,22 @@ trait JavaModule
   private[mill] def bspTransitiveCompileClasspath(
       crossValues: Map[String, String]
   ): Task[Seq[UnresolvedPath]] = Task.Anon {
-    Task.traverse(transitiveModuleCompileModuleDeps)(m =>
-      Task.Anon {
-        val localCompileClasspath =
-          m.localCompileClasspath().map(p => UnresolvedPath.ResolvedPath(p.path))
-        val compileClassesPath = m.compileClassesPath(crossValues)
-        localCompileClasspath :+ compileClassesPath
-      }
-    )()
+    Task.traverse(transitiveModuleCompileModuleDeps) {
+      case m: JavaModule =>
+        Task.Anon {
+          val localCompileClasspath =
+            m.localCompileClasspath().map(p => UnresolvedPath.ResolvedPath(p.path))
+          val compileClassesPath = m.compileClassesPath(crossValues)
+          localCompileClasspath :+ compileClassesPath
+        }
+      case r: ModuleRef[JavaModule] =>
+        Task.Anon {
+          val localCompileClasspath =
+            r.task(_.localCompileClasspath)().map(p => UnresolvedPath.ResolvedPath(p.path))
+          val compileClassesPath = r().compileClassesPath(crossValues)
+          localCompileClasspath :+ compileClassesPath
+        }
+    }()
       .flatten
   }
 
@@ -1463,7 +1579,10 @@ trait JavaModule
    * recomputed over and over during the recursive traversal
    */
   private lazy val repositoriesTaskStable = Task.Anon {
-    val transitive = Task.traverse(recursiveModuleDeps)(_.repositoriesTask)()
+    val transitive = Task.traverse(recursiveModuleDeps) {
+      case m: JavaModule => m.repositoriesTask
+      case r: ModuleRef[JavaModule] => r.task(_.repositoriesTask)
+    }()
     val sup = repositoriesTask0()
     (sup ++ transitive.flatten).distinct
   }

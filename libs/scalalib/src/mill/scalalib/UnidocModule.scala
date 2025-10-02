@@ -3,6 +3,7 @@ import mill.*
 import mill.api.BuildCtx
 import mill.javalib.api.JvmWorkerUtil
 import mill.javalib.api.internal.ZincScaladocJar
+import mill.api.ModuleRef
 
 /**
  * Mix this in to any [[ScalaModule]] to provide a [[unidocSite]] task that
@@ -20,7 +21,12 @@ trait UnidocModule extends ScalaModule {
   def unidocCompileClasspath: T[Seq[PathRef]] = Task {
     Seq(
       compile().classes
-    ) ++ Task.traverse(transitiveModuleCompileModuleDeps)(_.compileClasspath)().flatten
+    ) ++ Task.traverse(transitiveModuleCompileModuleDeps) {
+      case m: JavaModule =>
+        m.compileClasspath
+      case r: ModuleRef[JavaModule] =>
+        r.task(_.compileClasspath)
+    }().flatten
   }
 
   /**
@@ -28,18 +34,24 @@ trait UnidocModule extends ScalaModule {
    *
    * By default, all transitive module dependencies are included.
    */
-  def unidocModuleDeps: Seq[JavaModule] = transitiveModuleDeps
+  def unidocModuleDeps: Seq[JavaModule | ModuleRef[JavaModule]] = transitiveModuleDeps
 
   def unidocSourceFiles: T[Seq[PathRef]] = Task {
     if (JvmWorkerUtil.isScala3(scalaVersion())) {
       // On Scala 3 scaladoc only accepts .tasty files and .jar files
-      Task.traverse(unidocModuleDeps)(_.compile)().map(_.classes)
+      Task.traverse(unidocModuleDeps) {
+        case m: JavaModule => m.compile
+        case r: ModuleRef[JavaModule] => r.task(_.compile)
+      }().map(_.classes)
         .filter(pr => os.exists(pr.path))
         .flatMap(pr => os.walk(pr.path))
         .filter(path => path.ext == "tasty" || path.ext == "jar")
         .map(PathRef(_))
     } else
-      Task.traverse(unidocModuleDeps)(_.allSourceFiles)().flatten
+      Task.traverse(unidocModuleDeps) {
+        case m: JavaModule => m.allSourceFiles
+        case r: ModuleRef[JavaModule] => r.task(_.allSourceFiles)
+      }().flatten
   }
 
   /** The title of the scaladoc site. */

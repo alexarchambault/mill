@@ -83,12 +83,13 @@ trait RepackageModule extends mill.api.Module {
   /** The upstream Module dependencies as JARs, to be embedded in the [[repackagedJar]]. */
   def repackageUpstreamLocalJars: T[Seq[PathRef]] = this match {
     case m: JavaModule => Task {
-        Task.traverse(m.transitiveModuleRunModuleDeps)(m =>
-          // We need to renamed potential duplicated jar names (`out.jar`)
-          // Instead of doing it in-place, we do it in the context of each module,
-          // to avoid re-doing it for all jars when something changes
-          m.springBootAssemblyModule.artifactJar
-        )()
+        // We need to renamed potential duplicated jar names (`out.jar`)
+        // Instead of doing it in-place, we do it in the context of each module,
+        // to avoid re-doing it for all jars when something changes
+        Task.traverse(m.transitiveModuleRunModuleDeps) {
+          case m: JavaModule => m.springBootAssemblyModule.artifactJar
+          case r: ModuleRef[JavaModule] => r.task(_.springBootAssemblyModule.artifactJar)
+        }()
       }
     case _ => Task {
         Task.fail("You need to override repackageUpstreamLocalJars or inherit `JavaModule`")
