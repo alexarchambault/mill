@@ -742,10 +742,12 @@ private class MillBuildServer(
               reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
             )
             val cleanedPaths =
-              cleanResult.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
+              cleanResult.results.iterator.flatten.next().get.value.asInstanceOf[Seq[
+                java.nio.file.Path
+              ]]
             if (cleanResult.transitiveFailingApi.size > 0) (
               msg + s" Target ${compileTaskName} could not be cleaned. See message from mill: \n" +
-                cleanResult.goals
+                cleanResult.goalsApi.valuesIterator.flatten
                   .flatMap { goal =>
                     cleanResult.transitiveTaskResultsApi(goal).map {
                       case (task0, ex: ExecResult.Exception) => s"${task0.displayName}: $ex"
@@ -841,11 +843,26 @@ private class MillBuildServer(
             reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
           )
           val resultsById = targetIdTasks.zip(results.results).flatMap {
-            case ((id, m, _), res) =>
-              res
-                .asSuccess
-                .map(_.value.value.asInstanceOf[W])
-                .map((id, m, _))
+            case ((id, m, inputTask), resList) =>
+              resList match {
+                case Seq() =>
+                  logger.warn(s"Got no result for task ${inputTask.displayName}")
+                  Nil
+                case Seq(res, others @ _*) =>
+                  if (others.nonEmpty) {
+                    val allTasks = results.goalsApi.get(inputTask).toSeq.flatten
+                    val maybeInternalError =
+                      if (allTasks.length != resList.length) ", internal error"
+                      else ""
+                    logger.warn(
+                      s"Got too many results for task ${inputTask.displayName} (${allTasks.map(_.displayName).mkString(", ")}$maybeInternalError)"
+                    )
+                  }
+                  res
+                    .asSuccess
+                    .map(_.value.value.asInstanceOf[W])
+                    .map((id, m, _))
+              }
           }
 
           def logError(id: BuildTargetIdentifier, errorMsg: String): Unit = {

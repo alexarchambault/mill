@@ -284,15 +284,15 @@ final class EvaluatorImpl private[mill] (
         case 0 =>
           Evaluator.Result(
             watched,
-            mill.api.Result.Success(evaluated.values.map(_._1.asInstanceOf[T])),
-            evaluated.goals,
+            mill.api.Result.Success(evaluated.values.flatten.map(_._1.asInstanceOf[T])),
+            evaluated.goals.valuesIterator.flatten.toSeq,
             evaluated
           )
         case n =>
           Evaluator.Result(
             watched,
             mill.api.Result.Failure(s"$n tasks failed\n$errorStr"),
-            evaluated.goals,
+            evaluated.goals.valuesIterator.flatten.toSeq,
             evaluated
           )
       }

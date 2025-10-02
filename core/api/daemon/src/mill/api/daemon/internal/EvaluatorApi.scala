@@ -2,6 +2,7 @@ package mill.api.daemon.internal
 
 import mill.api.daemon.*
 import scala.collection.mutable
+import scala.collection.immutable.ListMap
 
 trait EvaluatorApi extends AutoCloseable {
   def evaluate(
@@ -28,6 +29,9 @@ trait EvaluatorApi extends AutoCloseable {
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
   private[mill] def outPathJava: java.nio.file.Path
+
+  private[mill] def resolvedTasks(task: UnresolvedTaskApi[?])
+      : mill.api.daemon.Result[Seq[ResolvedTaskApi[?]]]
 }
 object EvaluatorApi {
   trait Result[T] {
@@ -40,8 +44,8 @@ object EvaluatorApi {
 }
 
 trait ExecutionResultsApi {
-  def goals: Seq[ResolvedTaskApi[?]]
-  def results: Seq[ExecResult[Val]]
+  def goalsApi: ListMap[UnresolvedTaskApi[?], Seq[ResolvedTaskApi[?]]]
+  def results: Seq[Seq[ExecResult[Val]]]
   private[mill] def transitiveResultsApi: Map[ResolvedTaskApi[?], ExecResult[Val]]
   private[mill] def transitiveTaskResultsApi(task: ResolvedTaskApi[?])
       : Seq[(ResolvedTaskApi[?], ExecResult[Val])]
@@ -50,7 +54,16 @@ trait ExecutionResultsApi {
   private[mill] def transitivePrefixesApi: Map[ResolvedTaskApi[?], Seq[String]] = Map()
   def uncached: Seq[ResolvedTaskApi[?]]
 
-  def values: Seq[Val]
+  def values: Seq[Seq[Val]]
+
+  lazy val resultsMap: ListMap[UnresolvedTaskApi[?], Seq[(ResolvedTaskApi[?], ExecResult[Val])]] =
+    goalsApi
+      .zip(results)
+      .map {
+        case ((inputTask, resolvedTasks), results0) =>
+          (inputTask, resolvedTasks.zip(results0))
+      }
+      .to(ListMap)
 }
 object ExecutionResultsApi {
   private[mill] def formatFailing(evaluated: ExecutionResultsApi): String = {

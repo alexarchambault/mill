@@ -125,7 +125,7 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
             throw GenEclipseException(
               s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
             )
-          case r => r.values.head.value.asInstanceOf[ResolvedModule]
+          case r => r.values.iterator.flatten.next().value.asInstanceOf[ResolvedModule]
         }
 
       val sourceSetModuleTasks = mutable.Set.empty[TaskApi[ResolvedModule]]
@@ -141,7 +141,7 @@ class GenEclipseImpl(private val evaluators: Seq[EvaluatorApi]) {
             throw GenEclipseException(
               s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
             )
-          case r => r.values.map(_.value).asInstanceOf[Seq[ResolvedModule]]
+          case r => r.values.flatten.map(_.value).asInstanceOf[Seq[ResolvedModule]]
         }
       }
 

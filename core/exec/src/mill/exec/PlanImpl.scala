@@ -7,6 +7,7 @@ import mill.api.TopoSorted
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import mill.api.daemon.Result
+import scala.collection.immutable.ListMap
 
 private[mill] object PlanImpl {
   private final case class TaskDetails(
@@ -124,7 +125,9 @@ private[mill] object PlanImpl {
       appliedCrossValues(task) = maybeAppliedTask
     }
 
-    val resolvedGoals = goals.toIndexedSeq.flatMap(appliedCrossValues(_).toSeq.flatten)
+    val resolvedGoalsMap: ListMap[UnresolvedTask[?], Seq[ResolvedTask[?]]] =
+      goals.toIndexedSeq.map(goal => goal -> appliedCrossValues(goal).toSeq.flatten).to(ListMap)
+    val resolvedGoals = resolvedGoalsMap.valuesIterator.flatten.toVector
     val ignored = goals.flatMap(appliedCrossValues(_).left.toSeq).flatten.distinct
     val transitive = PlanImpl.transitiveTasks(resolvedGoals)(inputs(_))
     val resolvedGoalSet = resolvedGoals.toSet
@@ -140,7 +143,7 @@ private[mill] object PlanImpl {
     val plan = new Plan(
       transitive,
       sortedGroups,
-      resolvedGoals,
+      resolvedGoalsMap,
       inputs.toMap,
       topoSorted,
       ignored

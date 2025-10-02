@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.mutable
 import scala.concurrent.*
 import scala.reflect.ClassTag
+import scala.collection.immutable.ListMap
 
 /**
  * Core logic of evaluating tasks, without any user-facing helper methods
@@ -336,8 +337,8 @@ private[mill] case class Execution(
 
           import scala.collection.JavaConverters._
           Execution.Results(
-            plan.goals,
-            plan.goals.toIndexedSeq.map(results(_).map(_._1)),
+            plan.goalsMap,
+            plan.goalsMap.iterator.map(_._2.map(results(_).map(_._1))).toSeq,
             finishedOptsMap.values.flatMap(_.toSeq.flatMap(_.newEvaluated)).toSeq,
             results.map { case (k, v) => (k, v.map(_._1)) },
             prefixes.asScala.toMap
@@ -377,8 +378,8 @@ private[mill] object Execution {
     out.result()
   }
   private[Execution] case class Results(
-      goals: Seq[ResolvedTask[?]],
-      results: Seq[ExecResult[Val]],
+      goals: ListMap[UnresolvedTask[?], Seq[ResolvedTask[?]]],
+      results: Seq[Seq[ExecResult[Val]]],
       uncached: Seq[ResolvedTask[?]],
       transitiveResults: Map[ResolvedTask[?], ExecResult[Val]],
       override val transitivePrefixes: Map[ResolvedTask[?], Seq[String]]

@@ -206,7 +206,7 @@ class UnitTester(
       case Right(evaluated) =>
         if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
         else {
-          val values = evaluated.results.map {
+          val values = evaluated.results.flatten.map {
             case s: ExecResult.Success[Val] => s.value.value
             case _ => sys.error("Cannot happen")
           }
@@ -235,7 +235,7 @@ class UnitTester(
 
     val res = evaluator.execute(Seq(task.unresolved(crossValues))).get.executionResults
 
-    val cleaned = res.results.map {
+    val cleaned = res.results.flatten.map {
       case ExecResult.Exception(ex, _) => ExecResult.Exception(ex, new OuterStack(Nil))
       case x => x.map(_.value)
     }

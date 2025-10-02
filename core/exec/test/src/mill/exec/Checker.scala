@@ -34,7 +34,7 @@ class Checker[T <: mill.testkit.TestRootModule](
       // FIXME We're discarding cross values here
       evaled.uncached.map(_.task).partition(expEvaled.contains)
 
-    val evaledValues = evaled.values.map(_.value)
+    val evaledValues = evaled.values.flatten.map(_.value)
     assert(
       evaledValues == Seq(expValue),
       matchingReturnedEvaled.toSet == expEvaled.toSet,
@@ -46,7 +46,7 @@ class Checker[T <: mill.testkit.TestRootModule](
       val evaled2 = execution.executeTasks(Seq(task.unresolved(crossValues))).get
       val expectedSecondRunEvaluated = Seq()
       assert(
-        evaled2.values.map(_.value) == evaled.values.map(_.value),
+        evaled2.values.flatten.map(_.value) == evaled.values.flatten.map(_.value),
         evaled2.uncached == expectedSecondRunEvaluated
       )
     }

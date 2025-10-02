@@ -179,7 +179,7 @@ class GenIdeaImpl(
                 throw GenIdeaException(
                   s"Failure during resolving modules: ${ExecutionResultsApi.formatFailing(r)}"
                 )
-              case r => r.values.map(_.value).asInstanceOf[Seq[ResolvedModule]]
+              case r => r.values.flatten.map(_.value).asInstanceOf[Seq[ResolvedModule]]
             }
         }
       }

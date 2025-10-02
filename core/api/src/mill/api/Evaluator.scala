@@ -74,6 +74,16 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   def plan(tasks: Seq[UnresolvedTask[?]]): mill.api.Result[Plan]
 
+  private[mill] override def resolvedTasks(task: UnresolvedTaskApi[?])
+      : mill.api.Result[Seq[ResolvedTask[?]]] = {
+    val task0 = task match {
+      case t: UnresolvedTask[?] => t
+      case _ => ???
+    }
+
+    plan(Seq(task0)).map(_.goals)
+  }
+
   def groupAroundImportantTasks[T](
       topoSortedTasks: mill.api.TopoSorted[ResolvedTask[?]],
       plan: Plan
