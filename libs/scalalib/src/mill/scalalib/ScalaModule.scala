@@ -298,7 +298,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
     )
   }
 
-  // Keep in sync with [[bspCompileClassesPath]]
+  // Keep in sync with [[compileClassesPath]]
   override def compile: T[CompilationResult] = Task(persistent = true) {
     val sv = scalaVersion()
     if (sv == "2.12.4") Task.log.warn(
@@ -316,7 +316,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
       else
         compileClasspath().map(_.path)
 
-    jvmWorker()
+    val res = jvmWorker()
       .internalWorker()
       .compileMixed(
         ZincCompileMixed(
@@ -337,6 +337,13 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
         reporter = Task.reporter.apply(hashCode),
         reportCachedProblems = zincReportCachedProblems()
       )
+    SemanticDbJavaModule.updateSemanticdbFiles(
+      Task.dest / "classes",
+      Task.ctx().workspace,
+      SemanticDbJavaModule.workerClasspath().map(_.path),
+      allSourceFiles().map(_.path)
+    )
+    res
   }
 
   override def docSources: T[Seq[PathRef]] = Task {

@@ -8,10 +8,4 @@ private[mill] enum BspClientType {
 
   /** Any other BSP client */
   case Other(displayName: String)
-
-  def mergeResourcesIntoClasses: Boolean =
-    this match {
-      case IntellijBSP => true
-      case Other(_) => false
-    }
 }

@@ -25,23 +25,17 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
     }
 
   override private[mill] def bspBuildTargetJavacOptions(
-      needsToMergeResourcesIntoCompileDest: Boolean,
       clientWantsSemanticDb: Boolean
   ): Task[EvaluatorApi => (
       classesPath: Path,
       javacOptions: Seq[String],
       classpath: Seq[String]
   )] = {
-    val classesPathTask = jm match {
-      case sem: SemanticDbJavaModule if clientWantsSemanticDb =>
-        sem.bspCompiledClassesAndSemanticDbFiles
-      case m => m.bspCompileClassesPath(needsToMergeResourcesIntoCompileDest)
-    }
     Task.Anon { (ev: EvaluatorApi) =>
       (
-        classesPathTask().resolve(os.Path(ev.outPathJava)).toNIO,
+        jm.compileClassesPath.resolve(os.Path(ev.outPathJava)).toNIO,
         jm.javacOptions() ++ jm.mandatoryJavacOptions(),
-        jm.bspCompileClasspath(needsToMergeResourcesIntoCompileDest).apply().apply(ev)
+        jm.bspCompileClasspath.apply().apply(ev)
       )
     }
   }
@@ -99,7 +93,6 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
   def scalacOptionsTask = Task.Anon(Seq.empty[String])
 
   override private[mill] def bspBuildTargetScalacOptions(
-      needsToMergeResourcesIntoCompileDest: Boolean,
       enableJvmCompileClasspathProvider: Boolean,
       clientWantsSemanticDb: Boolean
   ): Task[(Seq[String], EvaluatorApi => Seq[String], EvaluatorApi => java.nio.file.Path)] = {
@@ -111,21 +104,14 @@ trait BspJavaModule extends mill.api.Module with BspJavaModuleApi {
           (_: EvaluatorApi) => Seq.empty[String]
         }
       } else {
-        jm.bspCompileClasspath(needsToMergeResourcesIntoCompileDest)
+        jm.bspCompileClasspath
       }
 
-    val classesPathTask =
-      if (clientWantsSemanticDb) {
-        Task.Anon((e: EvaluatorApi) =>
-          jm.bspCompiledClassesAndSemanticDbFiles().resolve(os.Path(e.outPathJava)).toNIO
-        )
-      } else {
-        Task.Anon((e: EvaluatorApi) =>
-          jm.bspCompileClassesPath(
-            needsToMergeResourcesIntoCompileDest
-          )().resolve(os.Path(e.outPathJava)).toNIO
-        )
-      }
+    val classesPathTask = Task.Anon((e: EvaluatorApi) =>
+      jm.compileClassesPath
+        .resolve(os.Path(e.outPathJava))
+        .toNIO
+    )
 
     Task.Anon {
       (scalacOptionsTask(), compileClasspathTask(), classesPathTask())
