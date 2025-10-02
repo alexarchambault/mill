@@ -19,13 +19,13 @@ import mill.api.daemon.internal.bsp.{
 import mill.api.daemon.internal.eclipse.GenEclipseInternalApi
 import mill.javalib.*
 import mill.api.daemon.internal.idea.GenIdeaInternalApi
-import mill.api.{DefaultTaskModule, ModuleRef, PathRef, Segment, Task, TaskCtx}
+import mill.api.{DefaultTaskModule, ExecutionPaths, ModuleRef, PathRef, Segment, Task, TaskCtx}
 import mill.javalib.api.CompilationResult
 import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileJava}
 import mill.javalib.bsp.{BspJavaModule, BspModule}
 import mill.javalib.internal.ModuleUtils
 import mill.javalib.publish.Artifact
-import mill.util.{JarManifest, Jvm}
+import mill.util.{JarManifest, Jvm, Version}
 import os.Path
 
 import scala.util.chaining.scalaUtilChainingOps
@@ -265,7 +265,20 @@ trait JavaModule
   /**
    * Additional options for the java compiler derived from other module settings.
    */
-  override def mandatoryJavacOptions: T[Seq[String]] = Task { Seq.empty[String] }
+  override def mandatoryJavacOptions: T[Seq[String]] = Task {
+    val bspMode = Task.env.get("MILL_BSP_MODE").contains("true")
+    if (bspMode) {
+      val isNewEnough =
+        Version.isAtLeast(semanticDbJavaVersion(), "0.8.10")(using Version.IgnoreQualifierOrdering)
+      val buildTool = s" -build-tool:${if (isNewEnough) "mill" else "sbt"}"
+      val verbose = if (Task.log.debugEnabled) " -verbose" else ""
+      val paths = ExecutionPaths.resolve(Task.ctx().outFolder, compile)
+      Seq(
+        s"-Xplugin:semanticdb -sourceroot:${Task.ctx().workspace} -targetroot:${paths.dest / "classes"}${buildTool}${verbose}"
+      )
+    } else
+      Seq.empty[String]
+  }
 
   /**
    *  The direct dependencies of this module.
@@ -859,13 +872,20 @@ trait JavaModule
       compileGenSources.toString
     ) ++ javacOptions() ++ mandatoryJavacOptions())
 
+    val bspMode = Task.env.get("MILL_BSP_MODE").contains("true")
+    val cp =
+      if (bspMode)
+        compileClasspath().map(_.path) ++ resolvedSemanticDbJavaPluginMvnDeps().map(_.path)
+      else
+        compileClasspath().map(_.path)
+
     jvmWorker()
       .internalWorker()
       .compileJava(
         ZincCompileJava(
           upstreamCompileOutput = upstreamCompileOutput(),
           sources = allSourceFiles().map(_.path),
-          compileClasspath = compileClasspath().map(_.path),
+          compileClasspath = cp,
           javacOptions = jOpts.compiler,
           incrementalCompilation = zincIncrementalCompilation()
         ),

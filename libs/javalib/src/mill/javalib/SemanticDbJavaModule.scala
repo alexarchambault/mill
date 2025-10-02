@@ -10,7 +10,6 @@ import mill.{T, Task}
 
 import scala.jdk.CollectionConverters.*
 import mill.api.daemon.internal.bsp.BspBuildTarget
-import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileJava}
 
 @experimental
 trait SemanticDbJavaModule extends CoursierModule with SemanticDbJavaModuleApi
@@ -115,47 +114,20 @@ trait SemanticDbJavaModule extends CoursierModule with SemanticDbJavaModuleApi
   }
 
   def semanticDbDataDetailed: T[SemanticDbJavaModule.SemanticDbData] = Task(persistent = true) {
-    val javacOpts = SemanticDbJavaModule.javacOptionsTask(
-      javacOptions() ++ mandatoryJavacOptions(),
-      semanticDbJavaVersion()
-    )
+    Task.log.debug(s"effective javac options: ${javacOptions() ++ mandatoryJavacOptions()}")
 
-    Task.log.debug(s"effective javac options: ${javacOpts}")
-
-    val jOpts = JavaCompilerOptions(javacOpts)
-
-    jvmWorker().internalWorker()
-      .compileJava(
-        ZincCompileJava(
-          upstreamCompileOutput = upstreamSemanticDbDatas().map(_.compilationResult),
-          sources = allSourceFiles().map(_.path),
-          compileClasspath =
-            (compileClasspathTask(
-              CompileFor.SemanticDb
-            )() ++ resolvedSemanticDbJavaPluginMvnDeps()).map(
-              _.path
-            ),
-          javacOptions = jOpts.compiler,
-          incrementalCompilation = zincIncrementalCompilation()
-        ),
-        javaHome = javaHome().map(_.path),
-        javaRuntimeOptions = jOpts.runtime,
-        reporter = Task.reporter.apply(hashCode),
-        reportCachedProblems = zincReportCachedProblems()
+    val compilationResult = compile()
+    val semanticDbFiles = BuildCtx.withFilesystemCheckerDisabled {
+      SemanticDbJavaModule.copySemanticdbFiles(
+        compilationResult.classes.path,
+        BuildCtx.workspaceRoot,
+        Task.dest / "data",
+        SemanticDbJavaModule.workerClasspath().map(_.path),
+        allSourceFiles().map(_.path)
       )
-      .map { compilationResult =>
-        val semanticDbFiles = BuildCtx.withFilesystemCheckerDisabled {
-          SemanticDbJavaModule.copySemanticdbFiles(
-            compilationResult.classes.path,
-            BuildCtx.workspaceRoot,
-            Task.dest / "data",
-            SemanticDbJavaModule.workerClasspath().map(_.path),
-            allSourceFiles().map(_.path)
-          )
-        }
+    }
 
-        SemanticDbJavaModule.SemanticDbData(compilationResult, semanticDbFiles)
-      }
+    SemanticDbJavaModule.SemanticDbData(compilationResult, semanticDbFiles)
   }
 
   def semanticDbData: T[PathRef] = Task {
@@ -222,18 +194,6 @@ object SemanticDbJavaModule extends ExternalModule with CoursierModule {
     defaultResolver().classpath(Seq(
       Dep.millProjectModule("mill-libs-javalib-scalameta-worker")
     ))
-  }
-
-  def javacOptionsTask(javacOptions: Seq[String], semanticDbJavaVersion: String)(using
-      ctx: mill.api.TaskCtx
-  ): Seq[String] = {
-    val isNewEnough =
-      Version.isAtLeast(semanticDbJavaVersion, "0.8.10")(using Version.IgnoreQualifierOrdering)
-    val buildTool = s" -build-tool:${if (isNewEnough) "mill" else "sbt"}"
-    val verbose = if (ctx.log.debugEnabled) " -verbose" else ""
-    javacOptions ++ Seq(
-      s"-Xplugin:semanticdb -sourceroot:${ctx.workspace} -targetroot:${ctx.dest / "classes"}${buildTool}${verbose}"
-    )
   }
 
   private val userCodeStartMarker = "//SOURCECODE_ORIGINAL_CODE_START_MARKER"

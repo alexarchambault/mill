@@ -356,7 +356,10 @@ object MillMain0 {
                               buildClient
                             )
                           },
-                          extraEnv = Seq("MILL_JVM_WORKER_REQUIRE_REPORTER" -> "true")
+                          extraEnv = Seq(
+                            "MILL_JVM_WORKER_REQUIRE_REPORTER" -> "true",
+                            "MILL_BSP_MODE" -> "true"
+                          )
                         )
 
                         for (err <- watchRes.error)
