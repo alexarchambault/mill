@@ -17,6 +17,8 @@ import mill.api.JsonFormatters.given
 import mill.javalib.api.internal.{JavaCompilerOptions, ZincCompileMixed}
 
 import scala.jdk.CollectionConverters.ListHasAsScala
+import mill.javalib.SemanticDbJavaModule
+import mill.api.TaskCtx
 
 /**
  * Mill module for pre-processing a Mill `build.mill` and related files and then
@@ -311,6 +313,16 @@ trait MillBuildRootModule()(using
         reportCachedProblems = zincReportCachedProblems()
       ).map {
         res =>
+
+          BuildCtx.withFilesystemCheckerDisabled {
+            SemanticDbJavaModule.updateSemanticdbFiles(
+              Task.dest / "classes",
+              Task.ctx().workspace,
+              SemanticDbJavaModule.workerClasspath().map(_.path),
+              allSourceFiles().map(_.path)
+            )
+          }
+
           // Perform the line-number updating in a copy of the classfiles, because
           // mangling the original class files messes up zinc incremental compilation
           val transformedClasses = Task.dest / "transformed-classes"
