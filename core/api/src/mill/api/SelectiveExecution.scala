@@ -19,8 +19,7 @@ private[mill] trait SelectiveExecution {
   def saveMetadata(metadata: SelectiveExecution.Metadata): Unit
 
   def computeChangedTasks(
-      tasks: Seq[String],
-      rootCrossValues: Map[String, String]
+      tasks: Seq[String]
   ): Result[ChangedTasks]
 
   def computeChangedTasks0(

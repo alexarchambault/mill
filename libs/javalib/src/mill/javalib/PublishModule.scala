@@ -750,7 +750,8 @@ object PublishModule extends ExternalModule with DefaultTaskModule {
       awaitTimeout: Int = 30 * 60 * 1000,
       stagingRelease: Boolean = true
   ): Task.Command[Unit] = Task.Command {
-    val withConcretePaths = Task.sequence(publishArtifacts.value)().map(_.withConcretePath)
+    val withConcretePaths =
+      Task.sequence(publishArtifacts.value.map(_.asSimpleTask))().map(_.withConcretePath)
 
     val gpgArgs0 =
       internal.PublishModule.pgpImportSecretIfProvidedAndMakeGpgArgs(

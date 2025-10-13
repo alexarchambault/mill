@@ -7,7 +7,7 @@ import mill.api.{Evaluator, SelectMode}
  * as command line parameters, and automatically resolves them to [[mill.api.Task.Named]]
  * instances for you to make use of in the body of the command.
  */
-case class Tasks[T](value: Seq[mill.api.Task.Named[T]])
+case class Tasks[T](value: Seq[mill.api.UnresolvedTask.Named[T]])
 
 object Tasks {
   def resolveMainDefault[T](tokens: String*): Tasks[T] = {

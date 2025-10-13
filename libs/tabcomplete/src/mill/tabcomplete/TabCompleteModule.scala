@@ -61,7 +61,7 @@ private object TabCompleteModule extends ExternalModule {
                     .rootModule
                     .moduleCtx
                     .discover
-                    .resolveEntrypoint(t.ctx.enclosingCls, t.ctx.segments.last.value)
+                    .resolveEntrypoint(t.task.ctx.enclosingCls, t.task.ctx.segments.last.value)
                 }
 
                 // If we find multiple entrypoints for the tasks selected, pick one arbitrarily
@@ -207,7 +207,7 @@ private object TabCompleteModule extends ExternalModule {
       case _: Resolved.Module =>
         mill.util.Inspect.scaladocForModule(resolved.cls)
       case _ =>
-        mill.util.Inspect.scaladocForTask(resolved.segments, resolved.cls)
+        mill.util.Inspect.scaladocForTask(resolved.segments.segments, resolved.cls)
     }
 
     oneLine(allDocs.mkString("\n"))

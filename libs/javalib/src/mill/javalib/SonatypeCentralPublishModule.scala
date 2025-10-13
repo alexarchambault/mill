@@ -124,7 +124,7 @@ object SonatypeCentralPublishModule extends ExternalModule with DefaultTaskModul
       bundleName: String = "",
       @unroll snapshotUri: String = PublishModule.sonatypeCentralSnapshotUri
   ): Command[Unit] = Task.Command {
-    val artifacts = Task.sequence(publishArtifacts.value)()
+    val artifacts = Task.sequence(publishArtifacts.value.map(_.asSimpleTask))()
 
     val finalBundleName = if (bundleName.isEmpty) None else Some(bundleName)
     val credentials = getSonatypeCredentials(username, password)()

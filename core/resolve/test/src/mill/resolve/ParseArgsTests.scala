@@ -99,8 +99,8 @@ object ParseArgsTests extends TestSuite {
           ParseArgs(input, if (multiSelect) SelectMode.Multi else SelectMode.Separated): @unchecked
 
         val selectors = selectors0.map {
-          case (Some(v1), Some(v2)) => (Some(v1.value), v2.value)
-          case (None, Some(v2)) => (None, v2.value)
+          case (Some(v1), Some(v2)) => (Some(v1.segments.value), v2.segments.value)
+          case (None, Some(v2)) => (None, v2.segments.value)
           case other @ (_, None) => throw Exception(s"Unexpected: $other")
         }
         assert(
@@ -238,8 +238,8 @@ object ParseArgsTests extends TestSuite {
         val actual = (ParseArgs(input, selectMode): @unchecked).map {
           case Result.Success((selectors0, args)) =>
             val selectors = selectors0.map {
-              case (Some(v1), Some(v2)) => (Some(v1.value), v2.value)
-              case (None, Some(v2)) => (None, v2.value)
+              case (Some(v1), Some(v2)) => (Some(v1.segments.value), v2.segments.value)
+              case (None, Some(v2)) => (None, v2.segments.value)
               case other @ (_, None) => throw Exception(s"Unexpected: $other")
             }
             (selectors, args)

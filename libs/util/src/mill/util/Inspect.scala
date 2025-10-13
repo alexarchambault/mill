@@ -243,7 +243,7 @@ private[mill] object Inspect {
         val output0 = for (moduleOrTask <- modulesOrTasks) yield {
           val tree = moduleOrTask match {
             case Left(module) => pprintModule(module, evaluator)
-            case Right(task) => pprintTask(task, evaluator)
+            case Right(task) => pprintTask(task.task, evaluator)
           }
           val defaults = pprint.PPrinter()
           val renderer = new Renderer(

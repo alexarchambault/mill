@@ -9,25 +9,33 @@ final case class ExecutionPaths private[mill] (dest: os.Path, meta: os.Path, log
  */
 object ExecutionPaths {
 
-  def resolve(
-      outPath: os.Path,
-      segments: Segments,
-      crossValues: Map[String, String]
-  ): ExecutionPaths = {
-    val crossValuesPart = crossValues
-      .toSeq
-      .sortBy(_._1)
+  def taskPath(segments: Segments.WithCrossValues): os.SubPath = {
+    val crossValuesPart = segments.crossValues
       .flatMap {
         case (k, v) =>
           Seq(k, v)
       }
       .map(sanitizePathSegment)
-    val segmentStrings = segments.parts.map(sanitizePathSegment)
-    val taskPath = outPath / segmentStrings.init / crossValuesPart / segmentStrings.last
+    val segmentStrings = segments.segments.parts.map(sanitizePathSegment)
+    os.sub / segmentStrings.init / crossValuesPart / segmentStrings.last
+  }
+
+  def taskPath(
+      segments: Segments,
+      crossValues: Map[String, String]
+  ): os.SubPath =
+    taskPath(segments.withCrossValues(crossValues.toSeq))
+
+  def resolve(
+      outPath: os.Path,
+      segments: Segments,
+      crossValues: Map[String, String]
+  ): ExecutionPaths = {
+    val taskPath0 = outPath / taskPath(segments, crossValues)
     ExecutionPaths(
-      taskPath / os.up / s"${taskPath.last}.dest",
-      taskPath / os.up / s"${taskPath.last}.json",
-      taskPath / os.up / s"${taskPath.last}.log"
+      taskPath0 / os.up / s"${taskPath0.last}.dest",
+      taskPath0 / os.up / s"${taskPath0.last}.json",
+      taskPath0 / os.up / s"${taskPath0.last}.log"
     )
   }
 

@@ -102,7 +102,10 @@ object ScalafmtTests extends TestSuite {
       test("reformat") - checkReformat(ScalafmtTestModule.core.reformat(), false)
       test("reformatAll") - checkReformat(
         ScalafmtModule.reformatAll(
-          Tasks(Seq(ScalafmtTestModule.core.sources, ScalafmtTestModule.core.buildSources))
+          Tasks(Seq(
+            ScalafmtTestModule.core.sources.unresolved(Map()),
+            ScalafmtTestModule.core.buildSources.unresolved(Map())
+          ))
         ),
         true
       )

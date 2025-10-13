@@ -61,7 +61,7 @@ object ArtifactoryPublishModule extends ExternalModule {
       connectTimeout: Int = 5000
   ): Command[Unit] = Task.Command {
 
-    val artifacts = Task.sequence(publishArtifacts.value)().map {
+    val artifacts = Task.sequence(publishArtifacts.value.map(_.asSimpleTask))().map {
       case data @ PublishModule.PublishData(_, _) => data.withConcretePath
     }
     new ArtifactoryPublisher(

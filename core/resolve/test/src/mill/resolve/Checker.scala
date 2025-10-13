@@ -2,7 +2,7 @@ package mill.resolve
 
 import mill.api.Result
 import mill.api.internal.RootModule0
-import mill.api.{SelectMode, Task}
+import mill.api.{SelectMode, Task, UnresolvedTask}
 import utest.*
 
 class Checker[T <: RootModule0](module: T) {
@@ -35,7 +35,7 @@ class Checker[T <: RootModule0](module: T) {
 
   def checkSeq0(
       selectorStrings: Seq[String],
-      check: Result[List[Task.Named[?]]] => Boolean,
+      check: Result[List[UnresolvedTask.Named[?]]] => Boolean,
       checkMetadata: Result[List[String]] => Boolean = _ => true
   ) = {
 
@@ -58,7 +58,7 @@ class Checker[T <: RootModule0](module: T) {
   }
 
   def resolveMetadata(selectorStrings: Seq[String]) = {
-    Resolve.Segments.resolve(
+    Resolve.SegmentsWithCrossValues.resolve(
       module,
       selectorStrings,
       SelectMode.Separated,

@@ -95,7 +95,7 @@ object RuffModule extends ExternalModule with RuffModule with DefaultTaskModule 
         configArgs(),
         ruffOptions(),
         ruffArgs.value,
-        Task.sequence(sources.value)().flatten.map(_.path)
+        Task.sequence(sources.value.map(_.asSimpleTask))().flatten.map(_.path)
       ),
       // format: on
       workingDir = Task.dest
@@ -115,7 +115,7 @@ object RuffModule extends ExternalModule with RuffModule with DefaultTaskModule 
         configArgs(),
         ruffOptions(),
         ruffArgs.value,
-        Task.sequence(sources.value)().flatten.map(_.path)
+        Task.sequence(sources.value.map(_.asSimpleTask))().flatten.map(_.path)
       ),
       // format: on
       workingDir = Task.dest

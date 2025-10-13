@@ -56,14 +56,11 @@ object VisualizeModule extends ExternalModule {
 
     evaluator.resolveTasks(tasks, SelectMode.Multi).flatMap {
       rs =>
-        // FIXME Get those via the Seq[String]
-        val crossValues = Map.empty[String, String]
-        val rs0 = rs.map(_.unresolved(crossValues))
         planTasks match {
           case Some(allRs) =>
-            val allRs0 = allRs.map(_.unresolved(crossValues))
+            val allRs0 = allRs.map(_.unresolved(Map.empty /* FIXME */ ))
             callVisualizeModule(allRs0)
-          case None => callVisualizeModule(rs0)
+          case None => callVisualizeModule(rs.map(_.asTask))
         }
     }
   }

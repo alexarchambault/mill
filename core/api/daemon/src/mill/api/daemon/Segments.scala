@@ -14,9 +14,14 @@ final case class Segments private (value: Seq[Segment]) {
   def ++(other: Segment): Segments = Segments(value ++ Seq(other))
   def ++(other: Seq[Segment]): Segments = Segments(value ++ other)
   def ++(other: Segments): Segments = Segments(value ++ other.value)
+  def ++(other: Segments.WithCrossValues): Segments.WithCrossValues =
+    new Segments.WithCrossValues(this ++ other.segments, other.crossValues)
 
   def startsWith(prefix: Segments): Boolean =
     value.startsWith(prefix.value)
+
+  def withCrossValues(crossValues: Seq[(String, String)]): Segments.WithCrossValues =
+    Segments.WithCrossValues(value, crossValues)
 
   def last: Segment.Label = value.last match {
     case l: Segment.Label => l
@@ -51,4 +56,22 @@ object Segments {
   def apply(): Segments = new Segments(Vector())
   def apply(items: Seq[Segment]): Segments = new Segments(items.toVector)
   def labels(values: String*): Segments = Segments(values.map(Segment.Label(_)).toVector)
+
+  final case class WithCrossValues private[Segments] (
+      segments: Segments,
+      crossValues: Seq[(String, String)]
+  ) {
+    def addCrossValues(additionalCrossValues: Seq[(String, String)]): WithCrossValues =
+      copy(crossValues = (crossValues ++ additionalCrossValues).sorted)
+    def render: String =
+      segments.render + crossValues.map { case (k, v) => s",$k=$v" }.mkString
+  }
+
+  object WithCrossValues {
+    def apply(): WithCrossValues = new WithCrossValues(Segments(), Vector())
+    def apply(items: Seq[Segment], crossValues: Seq[(String, String)]): WithCrossValues =
+      new WithCrossValues(Segments(items), crossValues.sorted)
+    implicit def ordering: Ordering[WithCrossValues] =
+      Ordering.by(v => (v.segments.value, v.crossValues))
+  }
 }

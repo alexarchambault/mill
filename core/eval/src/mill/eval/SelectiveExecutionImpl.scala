@@ -83,8 +83,7 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   }
 
   def computeChangedTasks(
-      tasks: Seq[String],
-      rootCrossValues: Map[String, String]
+      tasks: Seq[String]
   ): Result[ChangedTasks] = {
     for {
       tasks <- evaluator.resolveTasks(
@@ -92,14 +91,8 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
         SelectMode.Separated,
         evaluator.allowPositionalCommandArgs
       )
-      computedMetadata <- SelectiveExecutionImpl.Metadata.compute(
-        evaluator,
-        tasks.map(_.unresolved(rootCrossValues))
-      )
-      res <- computeChangedTasks0(
-        tasks.map(_.unresolved(rootCrossValues)),
-        computedMetadata
-      )
+      computedMetadata <- SelectiveExecutionImpl.Metadata.compute(evaluator, tasks.map(_.asTask))
+      res <- computeChangedTasks0(tasks.map(_.asTask), computedMetadata)
         // If we did not have the metadata, presume everything was changed.
         .getOrElse(Result.Success(ChangedTasks.all(tasks.map(_.resolved()))))
     } yield res
@@ -144,26 +137,23 @@ private[mill] class SelectiveExecutionImpl(evaluator: Evaluator)
   def resolve0(tasks: Seq[String]): Result[Array[String]] = {
     for {
       resolved <- evaluator.resolveTasks(tasks, SelectMode.Separated)
-      rootCrossValues = Map.empty[String, String]
-      changedTasks <- this.computeChangedTasks(tasks, rootCrossValues)
+      changedTasks <- this.computeChangedTasks(tasks)
     } yield {
-      val resolvedSet = resolved.map(_.ctx.segments.render).toSet
-      val downstreamSet = changedTasks.downstreamTasks.map(_.task.ctx.segments.render).toSet
+      val resolvedSet = resolved.map(_.render).toSet
+      val downstreamSet = changedTasks.downstreamTasks.map(_.render).toSet
       resolvedSet.intersect(downstreamSet).toArray.sorted
     }
   }
 
   def resolveChanged(tasks: Seq[String]): Result[Seq[String]] = {
-    val rootCrossValues = Map.empty[String, String]
-    for (changedTasks <- this.computeChangedTasks(tasks, rootCrossValues)) yield {
+    for (changedTasks <- this.computeChangedTasks(tasks)) yield {
       changedTasks.changedRootTasks.map(_.task.ctx.segments.render).toSeq.sorted
     }
   }
 
   def resolveTree(tasks: Seq[String]): Result[ujson.Value] = {
-    val rootCrossValues = Map.empty[String, String]
     for {
-      changedTasks <- this.computeChangedTasks(tasks, rootCrossValues)
+      changedTasks <- this.computeChangedTasks(tasks)
       taskSet = changedTasks.downstreamTasks.map(_.asTask).toSet[ResolvedTask[?]]
       plan <- PlanImpl.planOrErr(changedTasks.downstreamTasks.map(_.asTask.asUnappliedTask))
     } yield {

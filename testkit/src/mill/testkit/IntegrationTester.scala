@@ -1,6 +1,6 @@
 package mill.testkit
 
-import mill.api.{Cached, Segments, SelectMode}
+import mill.api.{Cached, ExecutionPaths, Segments, SelectMode}
 import mill.constants.OutFiles
 import ujson.Value
 
@@ -200,8 +200,8 @@ object IntegrationTester {
 
         val (Seq(selector), _) = res.get
 
-        val segments = selector._2.getOrElse(Segments()).value.flatMap(_.pathSegments)
-        os.read(workspacePath / OutFiles.out / segments.init / s"${segments.last}.json")
+        val subPath = ExecutionPaths.taskPath(selector._2.getOrElse(Segments.WithCrossValues()))
+        os.read(workspacePath / OutFiles.out / subPath / os.up / s"${subPath.last}.json")
       }
 
       /**

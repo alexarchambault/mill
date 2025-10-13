@@ -14,6 +14,7 @@ import java.io.InputStream
 import java.io.PrintStream
 import java.util.concurrent.ThreadPoolExecutor
 import scala.annotation.targetName
+import mill.api.UnresolvedTask
 
 object UnitTester {
   case class Result[T](value: T, evalCount: Int)
@@ -146,10 +147,7 @@ class UnitTester(
     scriptModuleResolver = (_, _, _, _) => Nil
   )
 
-  def apply(
-      args: Seq[String],
-      crossValues: Map[String, String]
-  ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
+  def apply(args: String*): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
     Evaluator.withCurrentEvaluator(evaluator) {
       Resolve.Tasks.resolve(
         evaluator.rootModule,
@@ -160,12 +158,9 @@ class UnitTester(
     } match {
       case Result.Failure(err) => Left(ExecResult.Failure(err))
       case Result.Success(resolved) =>
-        apply(resolved, crossValues)
+        apply(resolved.map(_.asTask))
     }
   }
-
-  def apply(args: String*): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] =
-    apply(args, Map.empty)
 
   /**
    * Evaluates a task
@@ -175,7 +170,7 @@ class UnitTester(
    * if the task might correspond to zero or several actual tasks.
    */
   def apply[T](task: Task[T]): Either[ExecResult.Failing[T], UnitTester.Result[T]] =
-    apply(task, Map.empty).flatMap {
+    apply(task.unresolved(Map.empty)).flatMap {
       case UnitTester.Result(Seq(t), i) =>
         Right(UnitTester.Result(t, i))
       case UnitTester.Result(Nil, _) =>
@@ -192,10 +187,9 @@ class UnitTester(
    * one per cross value for example).
    */
   def apply[T](
-      task: Task[T],
-      crossValues: Map[String, String]
+      task: UnresolvedTask[T]
   ): Either[ExecResult.Failing[T], UnitTester.Result[Seq[T]]] = {
-    apply(Seq(task), crossValues) match {
+    apply(Seq(task)) match {
       case Left(f) => Left(f.as[T])
       case Right(UnitTester.Result(seq, i)) =>
         Right(UnitTester.Result(seq.map(_.asInstanceOf[T]), i))
@@ -204,11 +198,10 @@ class UnitTester(
 
   @targetName("applyTasks")
   def apply(
-      tasks: Seq[Task[?]],
-      crossValues: Map[String, String] = Map.empty
+      tasks: Seq[UnresolvedTask[?]]
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    evaluator.execute(tasks.map(_.unresolved(crossValues))).toEither.map(_.executionResults) match {
+    evaluator.execute(tasks).toEither.map(_.executionResults) match {
       case Left(err) => Left(ExecResult.Failure(err))
       case Right(evaluated) =>
         if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)

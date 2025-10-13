@@ -60,7 +60,7 @@ object PalantirFormatModule extends ExternalModule with PalantirFormatBaseModule
         Tasks.resolveMainDefault("__.sources")
   ): Command[Unit] = Task.Command {
 
-    val _sources = Task.sequence(sources.value)().iterator.flatten
+    val _sources = Task.sequence(sources.value.map(_.asSimpleTask))().iterator.flatten
 
     palantirAction(
       _sources,

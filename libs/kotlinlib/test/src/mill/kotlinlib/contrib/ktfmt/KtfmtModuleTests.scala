@@ -75,7 +75,7 @@ object KtfmtModuleTests extends TestSuite {
 
     test("ktfmt - explicit files") {
       checkState(
-        afterFormat(before, sources = Seq(module.sources)),
+        afterFormat(before, sources = Seq(module.sources.unresolved(Map.empty))),
         after / "style/kotlin"
       )
     }
@@ -108,7 +108,7 @@ object KtfmtModuleTests extends TestSuite {
       style: String = "kotlin",
       format: Boolean = true,
       removeUnusedImports: Boolean = true,
-      sources: Seq[mill.api.Task.Named[Seq[PathRef]]] = Seq.empty
+      sources: Seq[mill.api.UnresolvedTask.Named[Seq[PathRef]]] = Seq.empty
   ): Seq[os.Path] = {
 
     UnitTester(module, moduleRoot).scoped { eval =>
@@ -143,7 +143,7 @@ object KtfmtModuleTests extends TestSuite {
           format = format,
           removeUnusedImports = true
         ),
-        sources = Tasks(Seq(module.sources))
+        sources = Tasks(Seq(module.sources.unresolved(Map.empty)))
       )).fold(_.get, _.value)
       val Right(sources) = eval(module.sources): @unchecked
       sources.value.flatMap(ref => walkFiles(ref.path))

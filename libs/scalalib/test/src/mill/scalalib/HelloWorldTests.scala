@@ -47,12 +47,13 @@ object HelloWorldTests extends TestSuite {
 
   }
   object CrossHelloWorld extends TestRootModule {
-    object core extends Cross[HelloWorldCross](
-          scala2123Version,
-          scala212Version,
-          scala213Version
-        )
-    trait HelloWorldCross extends CrossScalaModule
+    object core extends ScalaModule {
+      def scalaVersion = Task.CrossValue(Seq(
+        scala2123Version,
+        scala212Version,
+        scala213Version
+      ))
+    }
     lazy val millDiscover = Discover[this.type]
   }
 
@@ -260,8 +261,10 @@ object HelloWorldTests extends TestSuite {
     test("artifactNameCross") - UnitTester(CrossHelloWorld, sourceRoot = resourcePath).scoped {
       eval =>
         val Right(result) =
-          eval.apply(CrossHelloWorld.core(scala213Version).artifactName): @unchecked
-        assert(result.value == "core")
+          eval.apply(
+            CrossHelloWorld.core.artifactName.unresolved(Map("scalaVersion" -> scala213Version))
+          ): @unchecked
+        assert(result.value == Seq("core"))
     }
 
     test("jar") {

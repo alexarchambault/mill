@@ -1,7 +1,7 @@
 package mill.resolve
 
 import mill.api.Result
-import mill.api.{Discover, ModuleRef, Task, DefaultTaskModule}
+import mill.api.{Discover, ModuleRef, Task, UnresolvedTask, DefaultTaskModule}
 import mill.testkit.TestRootModule
 import mill.api.DynamicModule
 import mill.api.TestGraphs.*
@@ -502,10 +502,11 @@ object ModuleTests extends TestSuite {
       val check = new Checker(duplicates)
 
       def segments(
-          found: Result[List[Task.Named[?]]],
-          expected: Result[List[Task.Named[?]]]
+          found: Result[List[UnresolvedTask.Named[?]]],
+          expected: Result[List[UnresolvedTask.Named[?]]]
       ) = {
-        found.map(_.map(_.ctx.segments)) == expected.map(_.map(_.ctx.segments))
+        found.map(_.map(_.task.ctx.segments)) == expected.map(_.map(_.task.ctx.segments)) &&
+        found.map(_.map(_.crossValues)) == expected.map(_.map(_.crossValues))
       }
 
       test("wildcard") {
@@ -517,7 +518,10 @@ object ModuleTests extends TestSuite {
           )
           test("commands") - check.checkSeq0(
             Seq("__.test2"),
-            segments(_, Result.Success(List(duplicates.wrapper.test2.test2()))),
+            segments(
+              _,
+              Result.Success(List(duplicates.wrapper.test2.test2().unresolved(Map.empty)))
+            ),
             _ == Result.Success(List("wrapper.test2", "wrapper.test2.test2"))
           )
         }
@@ -528,7 +532,7 @@ object ModuleTests extends TestSuite {
         )
         test("commands") - check.checkSeq0(
           Seq("__.test4"),
-          segments(_, Result.Success(List(duplicates.test4.test4()))),
+          segments(_, Result.Success(List(duplicates.test4.test4().unresolved(Map.empty)))),
           _ == Result.Success(List("test4", "test4.test4"))
         )
       }
@@ -541,7 +545,7 @@ object ModuleTests extends TestSuite {
         )
         test("commands") - check.checkSeq0(
           Seq("{test4,test4}"),
-          segments(_, Result.Success(List(duplicates.test4.test4()))),
+          segments(_, Result.Success(List(duplicates.test4.test4().unresolved(Map.empty)))),
           _ == Result.Success(List("test4"))
         )
       }
@@ -553,7 +557,7 @@ object ModuleTests extends TestSuite {
         )
         test("commands") - check.checkSeq0(
           Seq("test4", "+", "test4"),
-          segments(_, Result.Success(List(duplicates.test4.test4()))),
+          segments(_, Result.Success(List(duplicates.test4.test4().unresolved(Map.empty)))),
           _ == Result.Success(List("test4"))
         )
       }

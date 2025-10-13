@@ -44,7 +44,10 @@ trait MainModule extends RootModule0, MainModuleApi {
    */
   def resolve(evaluator: Evaluator, tasks: String*): Command[List[String]] =
     Task.Command(exclusive = true) {
-      val resolved = evaluator.resolveSegments(tasks, SelectMode.Multi)
+      val resolved: Result[List[Segments.WithCrossValues]] =
+        evaluator.resolveSegments(tasks, SelectMode.Multi)
+
+      pprint.err.log(resolved)
 
       resolved.map { resolvedSegmentsList =>
         val resolvedStrings = resolvedSegmentsList.map(_.render)
@@ -82,7 +85,8 @@ trait MainModule extends RootModule0, MainModuleApi {
     Task.Command(exclusive = true) {
       evaluator.resolveTasks(List(src, dest), SelectMode.Multi).flatMap {
         case Seq(src1, dest1) =>
-          val queue = collection.mutable.Queue[List[Task[?]]](List(src1))
+          // FIXME Discarding cross values here
+          val queue = collection.mutable.Queue[List[Task[?]]](List(src1.task))
           var found = Option.empty[List[Task[?]]]
           val seen = collection.mutable.Set.empty[Task[?]]
           while (queue.nonEmpty && found.isEmpty) {
@@ -162,13 +166,18 @@ trait MainModule extends RootModule0, MainModuleApi {
 
     val pathsToRemove =
       if (tasks.isEmpty)
-        Result.Success((os.list(rootDir).filterNot(keepPath), List(mill.api.Segments())))
+        Result.Success((
+          os.list(rootDir).filterNot(keepPath),
+          List(mill.api.Segments.WithCrossValues())
+        ))
       else
         evaluator.resolveSegments(tasks, SelectMode.Multi).map { ts =>
           val allPaths = ts.flatMap { segments =>
-            val evPaths = ExecutionPaths.resolve(rootDir, segments, Map.empty)
+            val evPaths =
+              ExecutionPaths.resolve(rootDir, segments.segments, segments.crossValues.toMap)
             val paths = Seq(evPaths.dest, evPaths.meta, evPaths.log)
-            val potentialModulePath = rootDir / segments.parts
+            val potentialModulePath =
+              rootDir / ExecutionPaths.taskPath(segments.segments, segments.crossValues.toMap)
             if (os.exists(potentialModulePath)) {
               // this is either because of some pre-Mill-0.10 files lying around
               // or most likely because the segments denote a module but not a task
@@ -374,8 +383,7 @@ object MainModule {
   ): Result[Array[Task.Named[?]]] = {
     for {
       rs <- evaluator.resolveTasks(tasks, SelectMode.Multi)
-      crossValues = Map.empty[String, String] // FIXME Get those from the Seq[String]
-      plan <- evaluator.plan(rs.map(_.unresolved(crossValues)))
+      plan <- evaluator.plan(rs.map(_.asTask))
     } yield {
       plan.sortedGroups.keys().map(_.task).collect { case r: Task.Named[_] => r }.toArray
     }

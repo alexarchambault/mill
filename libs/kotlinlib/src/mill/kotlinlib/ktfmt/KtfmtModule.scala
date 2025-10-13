@@ -54,7 +54,7 @@ trait KtfmtModule extends KtfmtBaseModule {
   ): Command[Unit] = Task.Command {
     val _sources: Seq[PathRef] = if (sources.value.isEmpty) {
       this.sources()
-    } else Task.sequence(sources.value)().flatten
+    } else Task.sequence(sources.value.map(_.asSimpleTask))().flatten
     KtfmtModule.ktfmtAction(
       ktfmtArgs.style,
       ktfmtArgs.format,
@@ -82,7 +82,7 @@ object KtfmtModule extends ExternalModule with KtfmtBaseModule with DefaultTaskM
       @mainargs.arg ktfmtArgs: KtfmtArgs,
       @mainargs.arg(positional = true) sources: Tasks[Seq[PathRef]]
   ): Command[Unit] = Task.Command {
-    val _sources = Task.sequence(sources.value)().iterator.flatten
+    val _sources = Task.sequence(sources.value.map(_.asSimpleTask))().iterator.flatten
     ktfmtAction(
       ktfmtArgs.style,
       ktfmtArgs.format,

@@ -81,7 +81,7 @@ object ScalafmtModule extends ExternalModule with ScalafmtModule with DefaultTas
   def reformatAll(@arg(positional = true) sources: Tasks[Seq[PathRef]] =
     Tasks.resolveMainDefault("__.sources")) =
     Task.Command {
-      val files = Task.sequence(sources.value)().flatMap(filesToFormat)
+      val files = Task.sequence(sources.value.map(_.asSimpleTask))().flatMap(filesToFormat)
       ScalafmtWorkerModule
         .worker()
         .reformat(
@@ -94,7 +94,7 @@ object ScalafmtModule extends ExternalModule with ScalafmtModule with DefaultTas
       @arg(positional = true) sources: Tasks[Seq[PathRef]] = Tasks.resolveMainDefault("__.sources")
   ): Command[Unit] =
     Task.Command {
-      val files = Task.sequence(sources.value)().flatMap(filesToFormat)
+      val files = Task.sequence(sources.value.map(_.asSimpleTask))().flatMap(filesToFormat)
       ScalafmtWorkerModule
         .worker()
         .checkFormat(

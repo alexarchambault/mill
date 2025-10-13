@@ -53,13 +53,18 @@ object ScalaRunTests extends TestSuite {
           val runResult = eval.outPath / "hello-mill"
 
           val Right(classes) =
-            eval.apply(HelloWorldTests.CrossHelloWorld.core(v).allLocalMainClasses): @unchecked
+            eval.apply(HelloWorldTests.CrossHelloWorld.core.allLocalMainClasses.unresolved(Map(
+              "core.scalaVersion" -> v
+            ))): @unchecked
           val found = classes.value
           val expected = Seq("Main", "Shim")
-          assert(found == expected)
+          assert(found == Seq(expected))
 
           val Right(result) = eval.apply(
-            HelloWorldTests.CrossHelloWorld.core(v).runMain("Shim", runResult.toString)
+            HelloWorldTests.CrossHelloWorld.core.runMain(
+              "Shim",
+              runResult.toString
+            ).unresolved(Map("core.scalaVersion" -> v))
           ): @unchecked
 
           assert(result.evalCount > 0)

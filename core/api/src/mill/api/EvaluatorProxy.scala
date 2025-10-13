@@ -28,7 +28,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean,
       resolveToModuleTasks: Boolean
-  ): mill.api.Result[List[Segments]] = {
+  ): mill.api.Result[List[Segments.WithCrossValues]] = {
     delegate.resolveSegments(
       scriptArgs,
       selectMode,
@@ -56,7 +56,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Task.Named[?]]] = {
+  ): mill.api.Result[List[UnresolvedTask.Named[?]]] = {
     delegate.resolveTasks(scriptArgs, selectMode, allowPositionalCommandArgs, resolveToModuleTasks)
   }
   def resolveModulesOrTasks(
@@ -64,7 +64,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Either[Module, Task.Named[?]]]] = {
+  ): mill.api.Result[List[Either[Module, UnresolvedTask.Named[?]]]] = {
     delegate.resolveModulesOrTasks(
       scriptArgs,
       selectMode,

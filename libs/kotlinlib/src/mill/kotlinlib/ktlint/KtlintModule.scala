@@ -74,7 +74,7 @@ object KtlintModule extends ExternalModule with KtlintModule with DefaultTaskMod
   ): Command[Unit] = Task.Command {
     ktlintAction(
       KtlintArgs(format = true, check = true),
-      Task.sequence(sources.value)().flatten,
+      Task.sequence(sources.value.map(_.asSimpleTask))().flatten,
       ktlintConfig(),
       ktlintOptions(),
       ktlintClasspath()
@@ -90,7 +90,7 @@ object KtlintModule extends ExternalModule with KtlintModule with DefaultTaskMod
   ): Command[Unit] = Task.Command {
     ktlintAction(
       KtlintArgs(format = false, check = true),
-      Task.sequence(sources.value)().flatten,
+      Task.sequence(sources.value.map(_.asSimpleTask))().flatten,
       ktlintConfig(),
       ktlintOptions(),
       ktlintClasspath()

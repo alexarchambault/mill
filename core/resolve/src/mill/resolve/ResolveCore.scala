@@ -114,7 +114,7 @@ private object ResolveCore {
             .map { r =>
               val rClasses = moduleClasses(Set(r))
               if (seenModules.intersect(rClasses).nonEmpty) {
-                Error(cyclicModuleErrorMsg(r.segments))
+                Error(cyclicModuleErrorMsg(r.segments.segments))
               } else {
                 resolve(
                   rootModule,
@@ -157,7 +157,7 @@ private object ResolveCore {
                     rootModule,
                     m.cls,
                     None,
-                    current.segments,
+                    current.segments.segments,
                     seenModules,
                     cache
                   )
@@ -169,7 +169,7 @@ private object ResolveCore {
                   rootModule,
                   m.cls,
                   None,
-                  current.segments,
+                  current.segments.segments,
                   cache = cache
                 )
 
@@ -181,7 +181,7 @@ private object ResolveCore {
                   rootModule,
                   m.cls,
                   None,
-                  current.segments,
+                  current.segments.segments,
                   seenModules,
                   cache
                 )
@@ -200,7 +200,7 @@ private object ResolveCore {
                   rootModule,
                   m.cls,
                   None,
-                  current.segments,
+                  current.segments.segments,
                   cache
                 ).map {
                   _.collect {
@@ -214,7 +214,7 @@ private object ResolveCore {
                   rootModule,
                   m.cls,
                   Some(singleLabel),
-                  current.segments,
+                  current.segments.segments,
                   cache = cache
                 )
             }
@@ -226,7 +226,7 @@ private object ResolveCore {
 
           case (Segment.Cross(cross), m: Resolved.Module) =>
             if (classOf[Cross[?]].isAssignableFrom(m.cls)) {
-              instantiateModule(rootModule, current.segments, cache).flatMap {
+              instantiateModule(rootModule, current.segments.segments, cache).flatMap {
                 case c: Cross[_] =>
                   catchWrapException(
                     if (cross == Seq("__")) for ((_, v) <- c.valuesToModules.toSeq) yield v
@@ -249,7 +249,7 @@ private object ResolveCore {
                 case mill.api.Result.Success(searchModules) =>
                   recurse(
                     searchModules
-                      .map(m => Resolved.Module(m.moduleSegments, m.getClass))
+                      .map(m => Resolved.Module(m.moduleSegments.withCrossValues(Nil), m.getClass))
                   )
               }
 
@@ -328,7 +328,7 @@ private object ResolveCore {
               rootModule,
               m.cls,
               nameOpt,
-              m.segments,
+              m.segments.segments,
               seenModules + cls,
               cache
             ))
@@ -388,7 +388,10 @@ private object ResolveCore {
       instantiateModule(rootModule, segments, cache).map {
         case cross: Cross[_] =>
           for (item <- cross.items) yield {
-            Resolved.Module(segments ++ Segment.Cross(item.crossSegments), item.cls)
+            Resolved.Module(
+              (segments ++ Segment.Cross(item.crossSegments)).withCrossValues(Nil),
+              item.cls
+            )
           }
 
         case _ => Nil
@@ -429,7 +432,7 @@ private object ResolveCore {
               .map(c =>
                 (
                   Resolved.Module(
-                    Segments.labels(c.moduleSegments.last.value),
+                    Segments.labels(c.moduleSegments.last.value).withCrossValues(Nil),
                     c.getClass
                   ),
                   Some((_: Module) => mill.api.Result.Success(c))
@@ -441,7 +444,8 @@ private object ResolveCore {
           .reflectNestedObjects02[Module](cls, namePred, cache.getMethods)
           .collect {
             case (name, memberCls, getter) =>
-              val resolved = Resolved.Module(Segments.labels(cache.decode(name)), memberCls)
+              val resolved =
+                Resolved.Module(Segments.labels(cache.decode(name)).withCrossValues(Nil), memberCls)
               val getter2 = Some((mod: Module) => catchWrapException(getter(mod)))
               (resolved, getter2)
           }
@@ -454,6 +458,7 @@ private object ResolveCore {
             val resolvedScript = cache.scriptModuleChildResolver(scriptKey, nameOpt)
             for (mod <- resolvedScript) yield {
               val newSegments = Segments.labels(mod.get.moduleSegments.last.value)
+                .withCrossValues(Nil /* FIXME Get those from somewhere? */)
               (Resolved.Module(newSegments, mod.get.getClass), Some((_: Module) => mod))
             }
           }
@@ -464,14 +469,14 @@ private object ResolveCore {
     val namedTasks = Reflect
       .reflect(cls, classOf[Task.Named[?]], namePred, noParams = true, cache.getMethods)
       .map { m =>
-        Resolved.NamedTask(Segments.labels(cache.decode(m.getName)), cls) ->
+        Resolved.NamedTask(Segments.labels(cache.decode(m.getName)).withCrossValues(Nil), cls) ->
           None
       }
 
     val commands = Reflect
       .reflect(cls, classOf[Task.Command[?]], namePred, noParams = false, cache.getMethods)
       .map(m => cache.decode(m.getName))
-      .map { name => Resolved.Command(Segments.labels(name), cls) -> None }
+      .map { name => Resolved.Command(Segments.labels(name).withCrossValues(Nil), cls) -> None }
 
     modulesOrErr.map(_ ++ namedTasks ++ commands)
   }
@@ -489,10 +494,10 @@ private object ResolveCore {
           rootModule,
           m.cls,
           None,
-          current.segments,
+          current.segments.segments,
           cache = cache
         ).toOption.get.map(
-          _.segments.value.last
+          _.segments.segments.value.last
         )
 
       case _ => Set[Segment]()

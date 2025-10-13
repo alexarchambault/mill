@@ -123,7 +123,10 @@ object PalantirFormatModuleTest extends TestSuite {
     }
 
     UnitTester(module, modulesRoot).scoped { eval =>
-      eval(PalantirFormatModule.formatAll(mainargs.Flag(check), Tasks(Seq(module.sources)))).fold(
+      eval(PalantirFormatModule.formatAll(
+        mainargs.Flag(check),
+        Tasks(Seq(module.sources.unresolved(Map.empty)))
+      )).fold(
         _.throwException,
         { _ =>
           val Right(sources) = eval(module.sources): @unchecked

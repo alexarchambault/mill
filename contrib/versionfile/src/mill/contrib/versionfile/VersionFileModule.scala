@@ -85,7 +85,7 @@ object VersionFileModule extends api.ExternalModule {
   /** Executes the given processes. */
   def exec(procs: mill.util.Tasks[Seq[os.proc]]) = Task.Command {
     for {
-      procs <- Task.sequence(procs.value)()
+      procs <- Task.sequence(procs.value.map(_.asSimpleTask))()
       proc <- procs
     } yield proc.call()
   }

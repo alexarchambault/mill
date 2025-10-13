@@ -73,9 +73,9 @@ final class EvaluatorImpl private[mill] (
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Segments]] = {
+  ): mill.api.Result[List[Segments.WithCrossValues]] = {
     os.checker.withValue(ResolveChecker(workspace)) {
-      Resolve.Segments.resolve(
+      Resolve.SegmentsWithCrossValues.resolve(
         rootModule,
         scriptArgs,
         selectMode,
@@ -112,7 +112,7 @@ final class EvaluatorImpl private[mill] (
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Task.Named[?]]] = {
+  ): mill.api.Result[List[UnresolvedTask.Named[?]]] = {
     os.checker.withValue(ResolveChecker(workspace)) {
       Evaluator.withCurrentEvaluator(this) {
         Resolve.Tasks.resolve(
@@ -131,7 +131,7 @@ final class EvaluatorImpl private[mill] (
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Either[Module, Task.Named[?]]]] = {
+  ): mill.api.Result[List[Either[Module, UnresolvedTask.Named[?]]]] = {
     os.checker.withValue(ResolveChecker(workspace)) {
       Evaluator.withCurrentEvaluator(this) {
         Resolve.Inspect.resolve(
@@ -329,12 +329,12 @@ final class EvaluatorImpl private[mill] (
       }
     }
 
-    // FIXME Get via scriptArgs?
-    val crossValues = Map.empty[String, String]
+    pprint.err.log(scriptArgs)
+    pprint.err.log(resolved)
 
     resolved.flatMap { tasks =>
       execute(
-        Seq.from(tasks.map(_.unresolved(crossValues))),
+        Seq.from(tasks.map(_.asTask)),
         reporter = reporter,
         selectiveExecution = selectiveExecution
       )

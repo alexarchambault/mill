@@ -459,10 +459,10 @@ object ExecutionTests extends TestSuite {
     }
     test("overloaded") {
       UnitTester(overloads, null).scoped { tester =>
-        val res = tester.apply(Seq(overloads.overloaded(1)))
+        val res = tester.apply(Seq(overloads.overloaded(1).unresolved(Map.empty)))
         assert(res == Right(UnitTester.Result(Vector(2), 1)))
 
-        val res2 = tester.apply(Seq(overloads.overloaded(1, 2)))
+        val res2 = tester.apply(Seq(overloads.overloaded(1, 2).unresolved(Map.empty)))
         assert(res2 == Right(UnitTester.Result(Vector(4), 1)))
 
         val res3 = tester.apply("overloaded", "-x", "1")

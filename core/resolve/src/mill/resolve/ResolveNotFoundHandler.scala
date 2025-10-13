@@ -8,7 +8,7 @@ import mill.api.{Segment, Segments}
  */
 private object ResolveNotFoundHandler {
   def apply(
-      selector: Segments,
+      selector: Segments.WithCrossValues,
       segments: Segments,
       found: Set[Resolved],
       next: Segment,
@@ -20,11 +20,11 @@ private object ResolveNotFoundHandler {
       next match {
         case Segment.Label(s) =>
           val possibleStrings = possibleNexts.collect { case Segment.Label(s) => s }
-          errorMsgLabel(s, possibleStrings, segments, selector, allPossibleNames)
+          errorMsgLabel(s, possibleStrings, segments, selector.segments, allPossibleNames)
 
         case Segment.Cross(keys) =>
           val possibleCrossKeys = possibleNexts.collect { case Segment.Cross(keys) => keys }
-          errorMsgCross(keys, possibleCrossKeys, segments, selector, allPossibleNames)
+          errorMsgCross(keys, possibleCrossKeys, segments, selector.segments, allPossibleNames)
       }
     } else {
       unableToResolve((segments ++ Seq(next)).render) +

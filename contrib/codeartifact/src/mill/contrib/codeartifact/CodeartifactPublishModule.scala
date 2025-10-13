@@ -46,7 +46,8 @@ object CodeartifactPublishModule extends ExternalModule {
       connectTimeout: Int = 5000
   ) =
     Task.Command {
-      val artifacts = Task.sequence(publishArtifacts.value)().map(_.withConcretePath)
+      val artifacts =
+        Task.sequence(publishArtifacts.value.map(_.asSimpleTask))().map(_.withConcretePath)
       new CodeartifactPublisher(
         codeartifactUri,
         codeartifactSnapshotUri,

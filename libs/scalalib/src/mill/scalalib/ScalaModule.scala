@@ -3,6 +3,7 @@ package scalalib
 
 import mill.util.JarManifest
 import mill.api.{BuildCtx, DummyInputStream, ModuleRef, PathRef, Result, Task}
+import mill.javalib.api.JvmWorkerUtil.matchingVersions
 import mill.util.BuildInfo
 import mill.util.Jvm
 import mill.javalib.api.{CompilationResult, JvmWorkerUtil, Versions}
@@ -40,6 +41,27 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
   }
   private[mill] override lazy val genIdeaInternalExt = {
     ModuleRef(new mill.scalalib.idea.GenIdeaModule.Wrap(this) {}.internalGenIdea)
+  }
+
+  private def scalaVersionSpecificExtraSourcesOpt =
+    scalaVersion match {
+      case scalaVersion0: Task.CrossValue[String] =>
+        def directories(sv: String): Seq[os.SubPath] =
+          matchingVersions(sv)
+            .map(sv0 => os.sub / s"src-$sv0") ++
+            JvmWorkerUtil.versionRanges(sv, scalaVersion0.allowedValues)
+              .map(suffix => os.sub / s"src-$suffix")
+        Some(Task.Sources(directories(scalaVersion0())*))
+      case _ =>
+        None
+    }
+
+  def sources = scalaVersionSpecificExtraSourcesOpt match {
+    case None => super.sources
+    case Some(scalaVersionSpecificExtraSources) =>
+      Task {
+        super.sources() ++ scalaVersionSpecificExtraSources()
+      }
   }
 
   /**

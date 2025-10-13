@@ -405,6 +405,9 @@ object Task {
     override def resolved(crossValues: Map[String, String] = Map.empty): ResolvedNamedTask[T] =
       ResolvedNamedTask(this, crossValues)
 
+    override def unresolved(crossValues: Map[String, String]): UnresolvedTask.Named[T] =
+      UnresolvedTask.Named(this, crossValues)
+
     private[mill] def as[U]: Named[U] = this.asInstanceOf[Named[U]]
   }
 

@@ -20,7 +20,10 @@ trait MyModule extends PublishModule {
   )
 }
 
-trait MyScalaModule extends MyModule, CrossScalaModule {
+def scalaVersion = Task.CrossValue(Seq("2.13.16", "3.3.3"))
+
+trait MyScalaModule extends MyModule, ScalaModule {
+  def scalaVersion = build.scalaVersion
   def mvnDeps = Seq(mvn"com.lihaoyi::scalatags:0.13.1")
   object test extends ScalaTests {
     def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.8.9")
@@ -28,11 +31,8 @@ trait MyScalaModule extends MyModule, CrossScalaModule {
   }
 }
 
-val scalaVersions = Seq("2.13.16", "3.3.3")
-
-object foo extends Cross[FooModule](scalaVersions)
-trait FooModule extends MyScalaModule {
-  def moduleDeps = Seq(bar(), qux)
+object foo extends MyScalaModule {
+  def moduleDeps = Seq(bar, qux)
 
   def generatedSources = Task {
     os.write(
@@ -48,8 +48,7 @@ trait FooModule extends MyScalaModule {
   }
 }
 
-object bar extends Cross[BarModule](scalaVersions)
-trait BarModule extends MyScalaModule {
+object bar extends MyScalaModule {
   def moduleDeps = Seq(qux)
 }
 
@@ -88,23 +87,19 @@ object qux extends JavaModule, MyModule
 /** Usage
 
 > ./mill resolve __.run
-bar[2.13.16].run
-bar[2.13.16].test.run
-bar[3.3.3].run
-bar[3.3.3].test.run
-foo[2.13.16].run
-foo[2.13.16].test.run
-foo[3.3.3].run
-foo[3.3.3].test.run
+bar.run
+bar.test.run
+foo.run
+foo.test.run
 qux.run
 
-> ./mill foo[2.13.16].run
+> ./mill foo.run,scalaVersion=2.13.16
 foo version 0.0.1
 Foo.value: <h1>hello</h1>
 Bar.value: <p>world Specific code for Scala 2.x</p>
 Qux.value: 31337
 
-> ./mill bar[3.3.3].test
+> ./mill bar.test,scalaVersion=3.3.3
 + bar.BarTests.test ... <p>world Specific code for Scala 3.x</p>
 
 > ./mill qux.run
@@ -125,10 +120,10 @@ Publishing Artifact(com.lihaoyi,foo_3,0.0.1) to ivy repo...
 Publishing Artifact(com.lihaoyi,bar_3,0.0.1) to ivy repo...
 Publishing Artifact(com.lihaoyi,qux,0.0.1) to ivy repo...
 
-> ./mill show foo[2.13.16].assembly # mac/linux
-".../out/foo/2.13.16/assembly.dest/out.jar"
+> ./mill show foo.assembly,scalaVersion=2.13.16 # mac/linux
+".../out/foo/scalaVersion/2.13.16/assembly.dest/out.jar"
 
-> ./out/foo/2.13.16/assembly.dest/out.jar # mac/linux
+> ./out/foo/scalaVersion/2.13.16/assembly.dest/out.jar # mac/linux
 foo version 0.0.1
 Foo.value: <h1>hello</h1>
 Bar.value: <p>world Specific code for Scala 2.x</p>

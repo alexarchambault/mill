@@ -42,7 +42,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Segments]]
+  ): mill.api.Result[List[Segments.WithCrossValues]]
 
   private[mill] def resolveRaw(
       scriptArgs: Seq[String],
@@ -64,13 +64,13 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Task.Named[?]]]
+  ): mill.api.Result[List[UnresolvedTask.Named[?]]]
   def resolveModulesOrTasks(
       scriptArgs: Seq[String],
       selectMode: SelectMode,
       allowPositionalCommandArgs: Boolean = false,
       resolveToModuleTasks: Boolean = false
-  ): mill.api.Result[List[Either[Module, Task.Named[?]]]]
+  ): mill.api.Result[List[Either[Module, UnresolvedTask.Named[?]]]]
 
   def plan(tasks: Seq[UnresolvedTask[?]]): mill.api.Result[Plan]
 
