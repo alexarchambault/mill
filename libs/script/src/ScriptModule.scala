@@ -66,5 +66,17 @@ object ScriptModule {
 
   trait ScalaModuleBase extends JavaModuleBase, mill.scalalib.ScalaModule {
     def scalaVersion = mill.util.BuildInfo.scalaVersion
+    /*
+[14211] [error] -- [E164] Declaration Error: ./libs/script/src/ScriptModule.scala:67:8
+[14211] [error] 67 |  trait ScalaModuleBase extends JavaModuleBase, mill.scalalib.ScalaModule {
+[14211] [error]    |        ^
+[14211] [error]    |error overriding method sources in trait JavaModuleBase of type => mill.api.Task.Simple[Seq[mill.api.PathRef]];
+[14211] [error]    |  method sources in trait ScalaModule of type => mill.api.Task.Simple[Seq[mill.api.PathRef]] trait ScalaModuleBase inherits conflicting members:
+[14211] [error]    |  method sources in trait JavaModuleBase of type => mill.api.Task.Simple[Seq[mill.api.PathRef]]  and
+[14211] [error]    |  method sources in trait ScalaModule of type => mill.api.Task.Simple[Seq[mill.api.PathRef]]
+[14211] [error]    |(Note: this can be resolved by declaring an override in trait ScalaModuleBase.)
+[14211] [error] one error found
+    */
+    override def sources = super.sources
   }
 }
