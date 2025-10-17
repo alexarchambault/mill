@@ -8,7 +8,7 @@ trait EvaluatorApi extends AutoCloseable {
       scriptArgs: Seq[String],
       selectMode: SelectMode,
       reporter: Int => Option[CompileProblemReporter] = _ => None,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): Result[EvaluatorApi.Result[Any]]
 
   private[mill] def executeApi[T](
@@ -17,7 +17,7 @@ trait EvaluatorApi extends AutoCloseable {
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
       serialCommandExec: Boolean = false,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): EvaluatorApi.Result[T]
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val)]

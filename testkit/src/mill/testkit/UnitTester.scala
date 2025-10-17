@@ -141,7 +141,6 @@ class UnitTester(
 
   val evaluator: Evaluator = new mill.eval.EvaluatorImpl(
     allowPositionalCommandArgs = false,
-    selectiveExecution = false,
     execution = execution,
     scriptModuleResolver = (_, _, _, _) => Nil
   )

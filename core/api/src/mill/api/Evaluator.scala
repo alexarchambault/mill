@@ -21,7 +21,6 @@ import scala.jdk.CollectionConverters.*
  */
 trait Evaluator extends AutoCloseable with EvaluatorApi {
   private[mill] def allowPositionalCommandArgs: Boolean
-  private[mill] def selectiveExecution: Boolean
   private[mill] def workspace: os.Path
   private[mill] def baseLogger: Logger
   private[mill] def outPath: os.Path
@@ -100,14 +99,14 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): Evaluator.Result[T]
 
   def evaluate(
       scriptArgs: Seq[String],
       selectMode: SelectMode = SelectMode.Separated,
       reporter: Int => Option[CompileProblemReporter] = _ => None,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): mill.api.Result[Evaluator.Result[Any]]
 
   private[mill] def executeApi[T](
@@ -116,7 +115,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
       serialCommandExec: Boolean = false,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): EvaluatorApi.Result[T] = {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
@@ -125,7 +124,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
         testReporter,
         logger,
         serialCommandExec,
-        selectiveExecution
+        allowSelectiveExecution
       )
     }
   }

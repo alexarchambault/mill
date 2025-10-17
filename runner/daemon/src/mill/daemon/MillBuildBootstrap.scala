@@ -56,10 +56,9 @@ class MillBuildBootstrap(
     allowPositionalCommandArgs: Boolean,
     systemExit: Server.StopServer,
     streams0: SystemStreams,
-    selectiveExecution: Boolean,
     offline: Boolean,
     reporter: EvaluatorApi => Int => Option[CompileProblemReporter],
-    skipSelectiveExecution: Boolean,
+    defaultSelectiveExecution: Boolean,
     enableTicker: Boolean
 ) { outer =>
   import MillBuildBootstrap.*
@@ -217,7 +216,7 @@ class MillBuildBootstrap(
                 allowPositionalCommandArgs,
                 systemExit,
                 streams0,
-                selectiveExecution,
+                defaultSelectiveExecution,
                 offline,
                 newWorkerCache,
                 nestedState.frames.headOption.map(_.codeSignatures).getOrElse(Map.empty),
@@ -286,7 +285,7 @@ class MillBuildBootstrap(
       buildFileApi,
       evaluator,
       Seq("millBuildRootModuleResult"),
-      selectiveExecution = false,
+      allowSelectiveExecution = false,
       reporter = reporter(evaluator)
     ) match {
       case (Result.Failure(error), evalWatches, moduleWatches) =>
@@ -382,7 +381,7 @@ class MillBuildBootstrap(
       buildFileApi,
       evaluator,
       tasksAndParams,
-      selectiveExecution,
+      allowSelectiveExecution = true,
       reporter = reporter(evaluator)
     )
     val evalState = RunnerState.Frame(
@@ -414,7 +413,7 @@ object MillBuildBootstrap {
       allowPositionalCommandArgs: Boolean,
       systemExit: Server.StopServer,
       streams0: SystemStreams,
-      selectiveExecution: Boolean,
+      defaultSelectiveExecution: Boolean,
       offline: Boolean,
       workerCache: Map[String, (Int, Val)],
       codeSignatures: Map[String, Int],
@@ -441,7 +440,7 @@ object MillBuildBootstrap {
     val scriptInitCls = cl.loadClass("mill.script.ScriptModuleInit$")
     lazy val evaluator: EvaluatorApi = evalImplCls.getConstructors.head.newInstance(
       allowPositionalCommandArgs,
-      selectiveExecution,
+      defaultSelectiveExecution,
       // Use the shorter convenience constructor not the primary one
       // TODO: Check if named tuples could make this call more typesafe
       execCls.getConstructors.minBy(_.getParameterCount).newInstance(
@@ -541,7 +540,7 @@ object MillBuildBootstrap {
       buildFileApi: BuildFileApi,
       evaluator: EvaluatorApi,
       tasksAndParams: Seq[String],
-      selectiveExecution: Boolean,
+      allowSelectiveExecution: Boolean,
       reporter: Int => Option[CompileProblemReporter]
   ): (Result[Seq[Any]], Seq[Watchable], Seq[Watchable]) = {
     import buildFileApi._
@@ -550,7 +549,7 @@ object MillBuildBootstrap {
       tasksAndParams,
       SelectMode.Separated,
       reporter = reporter,
-      selectiveExecution = selectiveExecution
+      allowSelectiveExecution = allowSelectiveExecution
     )
 
     evalTaskResult match {
