@@ -132,7 +132,7 @@ public class Util {
       }
       return String.join("\n", output);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Error reading " + buildFile, e);
     }
   }
 

@@ -52,14 +52,14 @@ private[mill] class BspEvaluators(
 
   lazy val bspModulesIdList: Seq[(BuildTargetIdentifier, (BspModuleApi, EvaluatorApi))] = {
     // Add script modules
-    val scriptModules = evaluators
-      .headOption.map { eval =>
-        val outDir = os.Path(eval.outPathJava)
-        discoverAndInstantiateScriptModules(workspaceDir, outDir, eval)
-      }
-      .getOrElse(Seq.empty)
+    // val scriptModules = evaluators
+    //   .headOption.map { eval =>
+    //     val outDir = os.Path(eval.outPathJava)
+    //     discoverAndInstantiateScriptModules(workspaceDir, outDir, eval)
+    //   }
+    //   .getOrElse(Seq.empty)
 
-    bspModulesIdList0 ++ scriptModules
+    bspModulesIdList0 // ++ scriptModules
   }
 
   private def discoverAndInstantiateScriptModules(
