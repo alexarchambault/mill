@@ -169,36 +169,35 @@ object SemanticDbJavaModule extends ExternalModule with CoursierModule {
       }
       val generatedSource = sourceroot / generatedSourceSubPath
       val generatedSourceLines = os.read.lines(generatedSource)
-      val source = generatedSourceLines
+      val sourceOpt = generatedSourceLines
         .collectFirst { case s"//SOURCECODE_ORIGINAL_FILE_PATH=$rest" => os.Path(rest.trim) }
-        .getOrElse {
-          sys.error(s"Cannot get original source from generated source $generatedSource")
+
+      sourceOpt.map { source =>
+        val firstLineIdx = generatedSourceLines.indexWhere(_.startsWith(userCodeStartMarker)) + 1
+
+        val res = mill.util.Jvm.withClassLoader(
+          workerClasspath,
+          parent = getClass.getClassLoader
+        ) { cl =>
+          val cls = cl.loadClass("mill.javalib.scalameta.worker.SemanticdbProcessor")
+          cls.getMethods.find(_.getName == "postProcess")
+            .get
+            .invoke(
+              null,
+              os.read(source),
+              source.relativeTo(sourceroot),
+              (lineIdx: Int) => Some(lineIdx - firstLineIdx).filter(_ >= 0),
+              generatedSourceSemdb
+            ).asInstanceOf[Array[Byte]]
         }
 
-      val firstLineIdx = generatedSourceLines.indexWhere(_.startsWith(userCodeStartMarker)) + 1
-
-      val res = mill.util.Jvm.withClassLoader(
-        workerClasspath,
-        parent = getClass.getClassLoader
-      ) { cl =>
-        val cls = cl.loadClass("mill.javalib.scalameta.worker.SemanticdbProcessor")
-        cls.getMethods.find(_.getName == "postProcess")
-          .get
-          .invoke(
-            null,
-            os.read(source),
-            source.relativeTo(sourceroot),
-            (lineIdx: Int) => Some(lineIdx - firstLineIdx).filter(_ >= 0),
-            generatedSourceSemdb
-          ).asInstanceOf[Array[Byte]]
+        val sourceSemdbSubPath = {
+          val sourceSubPath = source.relativeTo(sourceroot).asSubPath
+          sourceSubPath / os.up / s"${sourceSubPath.last}.semanticdb"
+        }
+        (res, sourceSemdbSubPath)
       }
-
-      val sourceSemdbSubPath = {
-        val sourceSubPath = source.relativeTo(sourceroot).asSubPath
-        sourceSubPath / os.up / s"${sourceSubPath.last}.semanticdb"
-      }
-      (res, sourceSemdbSubPath)
-    }
+    }.flatten
   }
 
   // The semanticdb-javac plugin has issues with the -sourceroot setting, so we correct this on the fly
@@ -221,7 +220,10 @@ object SemanticDbJavaModule extends ExternalModule with CoursierModule {
     // copy over all found semanticdb-files into the target directory
     // but with corrected directory layout
     if (os.exists(classesDir)) {
-      for (source <- os.walk(classesDir, preOrder = true) if os.isFile(source)) {
+      for {
+        source <- os.walk(classesDir, preOrder = true)
+        if os.isFile(source) && source.last.endsWith(".semanticdb")
+      } {
         val dest =
           if (source.startsWith(toClean)) targetDir / semanticPath / source.relativeTo(toClean)
           else targetDir / source.relativeTo(classesDir)
@@ -267,7 +269,10 @@ object SemanticDbJavaModule extends ExternalModule with CoursierModule {
     // copy over all found semanticdb-files into the target directory
     // but with corrected directory layout
     if (os.exists(classesDir)) {
-      for (source <- os.walk(classesDir, preOrder = true) if os.isFile(source)) {
+      for {
+        source <- os.walk(classesDir, preOrder = true)
+        if os.isFile(source) && source.last.endsWith(".semanticdb")
+      } {
         val moveToOpt =
           if (source.startsWith(toClean))
             Some(classesDir / semanticPath / source.subRelativeTo(toClean))
