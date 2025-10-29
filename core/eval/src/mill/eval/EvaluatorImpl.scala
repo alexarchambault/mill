@@ -24,6 +24,7 @@ import mill.resolve.Resolve
 final class EvaluatorImpl private[mill] (
     private[mill] val allowPositionalCommandArgs: Boolean,
     defaultSelectiveExecution: Boolean = false,
+    skipSelectiveExecution: Boolean = false,
     private val execution: Execution,
     scriptModuleResolver: (
         String,
@@ -46,6 +47,7 @@ final class EvaluatorImpl private[mill] (
   def withBaseLogger(newBaseLogger: Logger): Evaluator = new EvaluatorImpl(
     allowPositionalCommandArgs,
     defaultSelectiveExecution,
+    skipSelectiveExecution,
     execution.withBaseLogger(newBaseLogger),
     scriptModuleResolver
   )
@@ -180,10 +182,13 @@ final class EvaluatorImpl private[mill] (
           tasks.partitionMap { case n: Task.Named[?] => Left(n); case t => Right(t) }
         val newComputedMetadata = SelectiveExecutionImpl.Metadata.compute(this, named)
 
-        val selectiveExecutionStoredData = for {
-          _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
-          changedTasks <- this.selective.computeChangedTasks0(named, newComputedMetadata)
-        } yield changedTasks
+        val selectiveExecutionStoredData =
+          if (skipSelectiveExecution) None
+          else
+            for {
+              _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
+              changedTasks <- this.selective.computeChangedTasks0(named, newComputedMetadata)
+            } yield changedTasks
 
         selectiveExecutionStoredData match {
           case None =>

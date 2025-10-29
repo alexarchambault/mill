@@ -18,7 +18,7 @@ object Watching {
   case class Result[T](watched: Seq[Watchable], error: Option[String], result: T)
 
   trait Evaluate[T] {
-    def apply(previousState: Option[T]): Result[T]
+    def apply(skipSelectiveExecution: Boolean, previousState: Option[T]): Result[T]
   }
 
   /**
@@ -60,28 +60,30 @@ object Watching {
 
     watch match {
       case None =>
-        val Result(_, errorOpt, result) = evaluate(previousState = None)
+        val Result(_, errorOpt, result) =
+          evaluate(skipSelectiveExecution = true, previousState = None)
         handleError(errorOpt)
         (errorOpt.isEmpty, result)
 
       case Some(watchArgs) =>
         var prevState: Option[T] = None
+        var skipSelectiveExecution = true // Always skip selective execution for first run
 
         // Exits when the thread gets interruped.
         while (true) {
-          val Result(watchables, errorOpt, result) = evaluate(prevState)
+          val Result(watchables, errorOpt, result) = evaluate(skipSelectiveExecution, prevState)
           prevState = Some(result)
           handleError(errorOpt)
 
           try {
             watchArgs.setIdle(true)
-            watchAndWait(
+            skipSelectiveExecution = watchAndWait(
               watchables,
               watchArgs,
               () => Option.when(lookForEnterKey(streams.in))(()),
               "  (Enter to re-run, Ctrl-C to exit)",
               streams.err.println(_)
-            )
+            ).isDefined
           } finally {
             watchArgs.setIdle(false)
           }
