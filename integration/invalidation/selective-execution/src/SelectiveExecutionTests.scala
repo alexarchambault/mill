@@ -201,11 +201,11 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
               ("--watch", "{foo.fooCommand,bar.barCommand}"),
               check = true,
               stdout = os.ProcessOutput.Readlines { line =>
-                println("stdout " + line)
+                System.err.println("stdout " + line)
                 output0 = output0 :+ line
               },
               stderr = os.ProcessOutput.Readlines { line =>
-                println("stderr " + line)
+                System.err.println("stderr " + line)
               }
             )
           }
@@ -246,8 +246,14 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
             eval(
               ("--watch", "show", "{foo.fooCommand,bar.barCommand}"),
               check = true,
-              stderr = os.ProcessOutput.Readlines(line => output0 = output0 :+ line),
-              stdout = os.ProcessOutput.Readlines(line => output0 = output0 :+ line)
+              stdout = os.ProcessOutput.Readlines { line =>
+                System.err.println("stdout " + line)
+                output0 = output0 :+ line
+              },
+              stderr = os.ProcessOutput.Readlines { line =>
+                System.err.println("stderr " + line)
+                output0 = output0 :+ line
+              }
             )
           }
 
@@ -279,8 +285,13 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
             eval(
               ("--watch", "{foo.fooCommand,bar.barCommand}"),
               check = true,
-              stdout = os.ProcessOutput.Readlines { line => output0 = output0 :+ line },
-              stderr = os.ProcessOutput.Readlines { line => System.err.println(line) }
+              stdout = os.ProcessOutput.Readlines { line =>
+                System.err.println("stdout " + line)
+                output0 = output0 :+ line
+              },
+              stderr = os.ProcessOutput.Readlines { line =>
+                System.err.println("stderr " + line)
+              }
             )
           }
 
