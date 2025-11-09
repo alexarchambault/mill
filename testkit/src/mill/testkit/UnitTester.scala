@@ -3,8 +3,8 @@ package mill.testkit
 import mill.Task
 import mill.api.{BuildCtx, DummyInputStream, ExecResult, Result, SystemStreams, Val}
 import mill.api.ExecResult.OuterStack
-import mill.constants.OutFiles.millChromeProfile
-import mill.constants.OutFiles.millProfile
+import mill.constants.{OutFiles, OutFolderMode}
+import mill.constants.OutFiles.{millChromeProfile, millProfile}
 import mill.api.Evaluator
 import mill.api.SelectMode
 import mill.internal.JsonArrayLogger
@@ -29,7 +29,8 @@ object UnitTester {
       debugEnabled: Boolean = false,
       env: Map[String, String] = Evaluator.defaultEnv,
       resetSourcePath: Boolean = true,
-      offline: Boolean = false
+      offline: Boolean = false,
+      isBsp: Boolean = false
   ) = new UnitTester(
     module = module,
     sourceRoot = Option(sourceRoot),
@@ -41,7 +42,8 @@ object UnitTester {
     debugEnabled = debugEnabled,
     env = env,
     resetSourcePath = resetSourcePath,
-    offline = offline
+    offline = offline,
+    isBsp = isBsp
   )
 }
 
@@ -61,13 +63,15 @@ class UnitTester(
     inStream: InputStream,
     debugEnabled: Boolean,
     env: Map[String, String],
-    offline: Boolean
+    offline: Boolean,
+    isBsp: Boolean
 )(using fullName: sourcecode.FullName) extends AutoCloseable {
   assert(
     mill.api.MillURLClassLoader.openClassloaders.isEmpty,
     s"Unit tester detected leaked classloaders on initialization: \n${mill.api.MillURLClassLoader.openClassloaders.mkString("\n")}"
   )
-  val outPath: os.Path = module.moduleDir / "out"
+  val outPath: os.Path = module.moduleDir /
+    OutFiles.outFor(if (isBsp) OutFolderMode.BSP else OutFolderMode.REGULAR).split('/')
 
   if (resetSourcePath) {
     os.remove.all(module.moduleDir)
@@ -136,7 +140,8 @@ class UnitTester(
     exclusiveSystemStreams = new SystemStreams(outStream, errStream, inStream),
     getEvaluator = () => evaluator,
     offline = offline,
-    enableTicker = false
+    enableTicker = false,
+    isBsp = isBsp
   )
 
   val evaluator: Evaluator = new mill.eval.EvaluatorImpl(

@@ -31,7 +31,8 @@ private[mill] case class Execution(
     exclusiveSystemStreams: SystemStreams,
     getEvaluator: () => EvaluatorApi,
     offline: Boolean,
-    enableTicker: Boolean
+    enableTicker: Boolean,
+    isBsp: Boolean
 ) extends GroupExecution with AutoCloseable {
 
   // this (shorter) constructor is used from [[MillBuildBootstrap]] via reflection
@@ -52,7 +53,8 @@ private[mill] case class Execution(
       exclusiveSystemStreams: SystemStreams,
       getEvaluator: () => EvaluatorApi,
       offline: Boolean,
-      enableTicker: Boolean
+      enableTicker: Boolean,
+      isBsp: Boolean
   ) = this(
     baseLogger,
     new JsonArrayLogger.Profile(os.Path(outPath) / millProfile),
@@ -71,7 +73,8 @@ private[mill] case class Execution(
     exclusiveSystemStreams,
     getEvaluator,
     offline,
-    enableTicker
+    enableTicker,
+    isBsp
   )
 
   def withBaseLogger(newBaseLogger: Logger) = this.copy(baseLogger = newBaseLogger)

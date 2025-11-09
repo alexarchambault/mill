@@ -299,7 +299,8 @@ object MillMain0 {
                                 offline = config.offline.value,
                                 reporter = reporter,
                                 skipSelectiveExecution = skipSelectiveExecution,
-                                enableTicker = enableTicker
+                                enableTicker = enableTicker,
+                                isBsp = bspMode
                               ).evaluate()
                             }
                           }

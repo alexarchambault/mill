@@ -38,6 +38,7 @@ trait GroupExecution {
   def exclusiveSystemStreams: SystemStreams
   def getEvaluator: () => EvaluatorApi
   def offline: Boolean
+  def isBsp: Boolean
 
   lazy val constructorHashSignatures: Map[String, Seq[(String, Int)]] =
     CodeSigUtils.constructorHashSignatures(codeSignatures)
@@ -338,7 +339,8 @@ trait GroupExecution {
             destCreator = destCreator,
             evaluator = getEvaluator().asInstanceOf[Evaluator],
             terminal = terminal,
-            classLoader = rootModule.getClass.getClassLoader
+            classLoader = rootModule.getClass.getClassLoader,
+            isBsp = isBsp
           ) {
             try {
               task.evaluate(args) match {
@@ -526,7 +528,8 @@ trait GroupExecution {
               destCreator,
               getEvaluator().asInstanceOf[Evaluator],
               terminal,
-              rootModule.getClass.getClassLoader
+              rootModule.getClass.getClassLoader,
+              isBsp
             ) {
               obsolete.close()
             }
@@ -613,7 +616,8 @@ object GroupExecution {
       destCreator: DestCreator,
       evaluator: Evaluator,
       terminal: Task[?],
-      classLoader: ClassLoader
+      classLoader: ClassLoader,
+      isBsp: Boolean
   )(t: => T): T = {
     // Tasks must be allowed to write to upstream worker's dest folders, because
     // the point of workers is to manualy manage long-lived state which includes
@@ -645,18 +649,20 @@ object GroupExecution {
               )
             )
 
-          Evaluator.withCurrentEvaluator(exposedEvaluator) {
-            // Ensure the class loader used to load user code
-            // is set as context class loader when running user code.
-            // This is useful if users rely on libraries that look
-            // for resources added by other libraries, by using
-            // using java.util.ServiceLoader for example.
-            mill.api.ClassLoader.withContextClassLoader(classLoader) {
-              if (!exclusive) t
-              else {
-                logger.prompt.reportKey(Seq(counterMsg))
-                logger.prompt.withPromptPaused {
-                  t
+          Evaluator.isBsp.withValue(isBsp) {
+            Evaluator.withCurrentEvaluator(exposedEvaluator) {
+              // Ensure the class loader used to load user code
+              // is set as context class loader when running user code.
+              // This is useful if users rely on libraries that look
+              // for resources added by other libraries, by using
+              // using java.util.ServiceLoader for example.
+              mill.api.ClassLoader.withContextClassLoader(classLoader) {
+                if (!exclusive) t
+                else {
+                  logger.prompt.reportKey(Seq(counterMsg))
+                  logger.prompt.withPromptPaused {
+                    t
+                  }
                 }
               }
             }

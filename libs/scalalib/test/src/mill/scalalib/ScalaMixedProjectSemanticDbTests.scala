@@ -4,6 +4,7 @@ import mill.api.Discover
 import mill.testkit.{TestRootModule, UnitTester}
 import mill.util.TokenReaders.*
 import utest.*
+import mill.api.Evaluator
 
 object ScalaMixedProjectSemanticDbTests extends TestSuite {
 
@@ -26,18 +27,23 @@ object ScalaMixedProjectSemanticDbTests extends TestSuite {
         os.sub / "foo/Foo$.class"
       )
 
-      test("fromScratch") - UnitTester(SemanticWorld, sourceRoot = resourcePath).scoped { eval =>
+      test("fromScratch") - UnitTester(SemanticWorld, sourceRoot = resourcePath, isBsp = true).scoped { eval =>
+        val task = Evaluator.isBsp.withValue(true) {
+          SemanticWorld.core.compile
+        }
+
         {
           println("first - expected full compile")
-          val Right(result) = eval.apply(SemanticWorld.core.semanticDbData): @unchecked
+          val Right(result) = eval.apply(task): @unchecked
 
-          val dataPath = eval.outPath / "core/semanticDbDataDetailed.dest/data"
-          val outputFiles =
-            os.walk(result.value.path).filter(os.isFile).map(_.relativeTo(result.value.path))
+          val dataPath = eval.outPath / "core/compile.dest/classes"
+          val outputFiles = os.walk(result.value.classes.path)
+            .filter(os.isFile)
+            .map(_.subRelativeTo(result.value.classes.path))
 
           val expectedSemFiles = semanticDbFiles
           assert(
-            result.value.path == dataPath,
+            result.value.classes.path == dataPath,
             outputFiles.nonEmpty,
             outputFiles.toSet == expectedSemFiles,
             result.evalCount > 0,
@@ -47,7 +53,7 @@ object ScalaMixedProjectSemanticDbTests extends TestSuite {
         {
           println("second - expected no compile")
           // don't recompile if nothing changed
-          val Right(result2) = eval.apply(SemanticWorld.core.semanticDbData): @unchecked
+          val Right(result2) = eval.apply(task): @unchecked
           assert(result2.evalCount == 0)
         }
       }

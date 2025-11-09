@@ -172,4 +172,7 @@ object Evaluator {
   ) extends EvaluatorApi.Result[T]
 
   private[mill] val defaultEnv: Map[String, String] = System.getenv().asScala.toMap
+
+  private[mill] val isBsp: DynamicVariable[Boolean] =
+    new DynamicVariable(false)
 }

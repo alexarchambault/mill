@@ -30,6 +30,7 @@ import os.Path
 
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.matching.Regex
+import mill.api.Evaluator
 
 /**
  * Core configuration required to compile a single Java module
@@ -1617,8 +1618,8 @@ object JavaModule {
   private lazy val removeInternalVersionRegex =
     (":" + Regex.quote(JavaModule.internalVersion) + "(\\w*$|\\n)").r
 
-  private[mill] lazy val bspMode: Boolean =
-    java.lang.Boolean.getBoolean("mill.bsp-mode")
+  private[mill] def bspMode: Boolean =
+    Evaluator.isBsp.value
 }
 
 /**

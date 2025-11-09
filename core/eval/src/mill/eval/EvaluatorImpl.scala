@@ -278,22 +278,25 @@ final class EvaluatorImpl private[mill] (
       reporter: Int => Option[CompileProblemReporter] = _ => None,
       selectiveExecution: Boolean = false
   ): mill.api.Result[Evaluator.Result[Any]] = {
+    val isBsp = execution.isBsp
     val promptLineLogger = new PrefixLogger(
       logger0 = baseLogger,
       key0 = Seq("resolve"),
-      message = "resolve " + scriptArgs.mkString(" ")
+      message = "resolve " + scriptArgs.mkString(" ") + (if (isBsp) " (BSP)" else "")
     )
 
     val resolved = promptLineLogger.withPromptLine {
       os.checker.withValue(ResolveChecker(workspace)) {
-        Evaluator.withCurrentEvaluator(this) {
-          Resolve.Tasks.resolve(
-            rootModule,
-            scriptArgs,
-            selectMode,
-            allowPositionalCommandArgs,
-            scriptModuleResolver = scriptModuleResolver(_, resolveScriptModuleDep)
-          )
+        Evaluator.isBsp.withValue(isBsp) {
+          Evaluator.withCurrentEvaluator(this) {
+            Resolve.Tasks.resolve(
+              rootModule,
+              scriptArgs,
+              selectMode,
+              allowPositionalCommandArgs,
+              scriptModuleResolver = scriptModuleResolver(_, resolveScriptModuleDep)
+            )
+          }
         }
       }
     }
