@@ -540,7 +540,8 @@ trait KotlinJsModule extends KotlinModule { outer =>
 
     override protected def testTask(
         args: Task[Seq[String]],
-        globSelectors: Task[Seq[String]]
+        globSelectors: Task[Seq[String]],
+        interactive: Boolean
     ): Task[(msg: String, results: Seq[TestResult])] = Task.Anon {
       val runTarget = kotlinJsRunTarget()
       if (runTarget.isEmpty) {

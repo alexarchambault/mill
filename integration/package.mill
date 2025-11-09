@@ -74,7 +74,8 @@ object `package` extends mill.Module {
             testReportXml(),
             javaHome().map(_.path),
             testParallelism(),
-            testLogLevel()
+            testLogLevel(),
+            // testInteractive
           )
           testModuleUtil.runTests()
         }

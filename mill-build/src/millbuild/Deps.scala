@@ -121,6 +121,7 @@ object Deps {
       "guru.nidi.com.eclipsesource.j2v8" -> "j2v8_linux_x86_64"
     )
 
+  val isTerminal = mvn"io.github.alexarchambault:is-terminal:0.1.2"
   val jgraphtCore = mvn"org.jgrapht:jgrapht-core:1.4.0" // 1.5.0+ dont support JDK8
   val javet = Seq(
     mvn"com.caoccao.javet:javet:4.0.0",

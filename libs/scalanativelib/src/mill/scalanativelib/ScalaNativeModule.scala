@@ -455,7 +455,8 @@ trait TestScalaNativeModule extends ScalaNativeModule with TestModule {
     Task.Command { testForked(args*)() }
   override protected def testTask(
       args: Task[Seq[String]],
-      globSelectors: Task[Seq[String]]
+      globSelectors: Task[Seq[String]],
+      interactive: Boolean
   ): Task[(msg: String, results: Seq[TestResult])] = Task.Anon {
 
     val (close, framework) = withScalaNativeBridge.apply().apply(_.getFramework(

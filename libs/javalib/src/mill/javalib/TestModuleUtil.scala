@@ -1,5 +1,6 @@
 package mill.javalib
 
+import io.github.alexarchambault.isterminal.IsTerminal
 import mill.api.{PathRef, TaskCtx}
 import mill.api.Result
 import mill.api.daemon.internal.TestReporter
@@ -46,6 +47,7 @@ final class TestModuleUtil(
     javaHome: Option[os.Path],
     testParallelism: Boolean,
     testLogLevel: TestReporter.LogLevel,
+    testInteractive: Boolean,
     propagateEnv: Boolean = true
 )(using ctx: mill.api.TaskCtx) {
 
@@ -156,6 +158,10 @@ final class TestModuleUtil(
 
     os.makeDir.all(sandbox)
 
+    val inherit =
+      if (IsTerminal.isTerminal()) os.InheritRaw
+      else os.Inherit
+
     val proc = BuildCtx.withFilesystemCheckerDisabled {
       Jvm.spawnProcess(
         mainClass = "mill.javalib.testrunner.entrypoint.TestRunnerMain",
@@ -168,8 +174,9 @@ final class TestModuleUtil(
           os.temp(prefix = "run-", suffix = ".jar", deleteOnExit = false)
         ),
         javaHome = javaHome,
-        stdin = os.Inherit,
-        stdout = os.Inherit,
+        stdin = inherit,
+        stdout = inherit,
+        stderr = inherit,
         propagateEnv = false
       )
     }

@@ -21,13 +21,16 @@ object `package` extends MillStableScalaModule {
   def moduleDeps =
     Seq(build.libs.util, build.libs.rpc, build.libs.javalib.api, build.libs.javalib.testrunner)
   def mvnDeps =
-    Seq(Deps.scalaXml) ++
+    Seq(
+      Deps.isTerminal,
       // despite compiling with Scala 3, we need to include scala-reflect
       // for the scala.reflect.internal.util.ScalaClassLoader
       // used in ScalaModule.scalacHelp,
       // (also transitively included by com.eed3si9n.jarjarabrams:jarjar-abrams-core)
       // perhaps the class can be copied here?
-      Seq(Deps.scalaReflect(scalaVersion()))
+      Deps.scalaReflect(scalaVersion()),
+      Deps.scalaXml
+    )
 
   // These are not exposed as transitive compile dependencies to `build.mill`.
   def compileMvnDeps = Seq(Deps.sonatypeCentralClient)

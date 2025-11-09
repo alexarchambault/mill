@@ -391,7 +391,8 @@ trait TestScalaJSModule extends ScalaJSModule with TestModule {
 
   override protected def testTask(
       args: Task[Seq[String]],
-      globSelectors: Task[Seq[String]]
+      globSelectors: Task[Seq[String]],
+      interactive: Boolean
   ): Task[(msg: String, results: Seq[TestResult])] = Task.Anon {
 
     val (close, framework) = ScalaJSWorkerExternalModule.scalaJSWorker().getFramework(

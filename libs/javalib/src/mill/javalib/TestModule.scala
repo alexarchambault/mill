@@ -1,5 +1,6 @@
 package mill.javalib
 
+import io.github.alexarchambault.isterminal.IsTerminal
 import mill.T
 import mill.api.Result
 import mill.api.daemon.internal.TestModuleApi
@@ -90,14 +91,25 @@ trait TestModule
     classes.sorted
   }
 
+  def testInteractive: Boolean = false
+
   /**
    * Discovers and runs the module's tests in a subprocess, reporting the
    * results to the console.
    * @see [[testCached]]
    */
   def testForked(args: String*): Task.Command[(msg: String, results: Seq[TestResult])] =
-    Task.Command {
-      testTask(Task.Anon { args }, Task.Anon { Seq.empty[String] })()
+    Task.Command(exclusive = testInteractive && IsTerminal.isTerminal()) {
+      if (testInteractive && !IsTerminal.isTerminal())
+        System.err.println(
+          "testInteractive is true, but not running in an actual terminal, " +
+          "use -i to run tests with an interactive terminal"
+        )
+      testTask(
+        Task.Anon { args },
+        Task.Anon { Seq.empty[String] },
+        interactive = testInteractive && IsTerminal.isTerminal()
+      )()
     }
 
   def getTestEnvironmentVars(args: String*): Task.Command[(
@@ -124,7 +136,11 @@ trait TestModule
    * @see [[testForked()]]
    */
   def testCached: T[(msg: String, results: Seq[TestResult])] = Task {
-    testTask(testCachedArgs, Task.Anon { Seq.empty[String] })()
+    testTask(
+      testCachedArgs,
+      Task.Anon { Seq.empty[String] },
+      interactive = false
+    )()
   }
 
   /**
@@ -162,8 +178,18 @@ trait TestModule
         val (s, t) = args.splitAt(pos)
         (s, t.tail)
     }
-    Task.Command {
-      testTask(Task.Anon { testArgs }, Task.Anon { selector })()
+
+    Task.Command(exclusive = testInteractive && IsTerminal.isTerminal()) {
+      if (testInteractive && !IsTerminal.isTerminal())
+        System.err.println(
+          "testInteractive is true, but not running in an actual terminal, " +
+          "use -i to run tests with an interactive terminal"
+        )
+      testTask(
+        Task.Anon { testArgs },
+        Task.Anon { selector },
+        interactive = testInteractive && IsTerminal.isTerminal()
+      )()
     }
   }
 
@@ -243,7 +269,8 @@ trait TestModule
    */
   protected def testTask(
       args: Task[Seq[String]],
-      globSelectors: Task[Seq[String]]
+      globSelectors: Task[Seq[String]],
+      interactive: Boolean
   ): Task[(msg: String, results: Seq[TestResult])] =
     Task.Anon {
       val testModuleUtil = new TestModuleUtil(
@@ -265,6 +292,7 @@ trait TestModule
         javaHome().map(_.path),
         testParallelism(),
         testLogLevel(),
+        interactive,
         propagateEnv()
       )
       testModuleUtil.runTests()
