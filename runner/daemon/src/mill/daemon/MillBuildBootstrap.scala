@@ -60,6 +60,7 @@ class MillBuildBootstrap(
     offline: Boolean,
     reporter: EvaluatorApi => Int => Option[CompileProblemReporter],
     defaultSelectiveExecution: Boolean,
+    skipSelectiveExecution: Boolean,
     enableTicker: Boolean
 ) { outer =>
   import MillBuildBootstrap.*
@@ -252,6 +253,7 @@ class MillBuildBootstrap(
                 systemExit,
                 streams0,
                 defaultSelectiveExecution,
+                skipSelectiveExecution,
                 offline,
                 newWorkerCache,
                 nestedState.frames.headOption.map(_.codeSignatures).getOrElse(Map.empty),
@@ -454,6 +456,7 @@ object MillBuildBootstrap {
       systemExit: Server.StopServer,
       streams0: SystemStreams,
       defaultSelectiveExecution: Boolean,
+      skipSelectiveExecution: Boolean,
       offline: Boolean,
       workerCache: Map[String, (Int, Val)],
       codeSignatures: Map[String, Int],
@@ -482,6 +485,7 @@ object MillBuildBootstrap {
     lazy val evaluator: EvaluatorApi = evalImplCls.getConstructors.head.newInstance(
       allowPositionalCommandArgs,
       defaultSelectiveExecution,
+      skipSelectiveExecution,
       // Use the shorter convenience constructor not the primary one
       // TODO: Check if named tuples could make this call more typesafe
       execCls.getConstructors.minBy(_.getParameterCount).newInstance(

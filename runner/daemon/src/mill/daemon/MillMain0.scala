@@ -243,6 +243,7 @@ object MillMain0 {
                   val out = os.Path(OutFiles.outFor(outMode), BuildCtx.workspaceRoot)
                   Using.resources(new TailManager(daemonDir), createEc()) { (tailManager, ec) =>
                     def runMillBootstrap(
+                        skipSelectiveExecution: Boolean,
                         prevState: Option[RunnerState],
                         tasksAndParams: Seq[String],
                         streams: SystemStreams,
@@ -268,7 +269,7 @@ object MillMain0 {
                         // Do this by removing the file rather than disabling selective execution,
                         // because we still want to generate the selective execution metadata json
                         // for subsequent runs that may use it
-                        // if (skipSelectiveExecution) os.remove(out / OutFiles.millSelectiveExecution)
+                        if (skipSelectiveExecution) os.remove(out / OutFiles.millSelectiveExecution)
                         mill.api.SystemStreamsUtils.withStreams(logger.streams) {
                           mill.api.FilesystemCheckerEnabled.withValue(
                             !config.noFilesystemChecker.value
@@ -293,6 +294,7 @@ object MillMain0 {
                                 offline = config.offline.value,
                                 reporter = reporter,
                                 defaultSelectiveExecution = config.watch.value,
+                                skipSelectiveExecution = skipSelectiveExecution,
                                 enableTicker = enableTicker
                               ).evaluate()
                             }
@@ -319,6 +321,7 @@ object MillMain0 {
 
                     if (config.jshell.value) {
                       val bootstrapped = runMillBootstrap(
+                        skipSelectiveExecution = true,
                         prevState = Some(stateCache),
                         tasksAndParams = Seq("jshell") ++ config.leftoverArgs.value,
                         streams = streams,
@@ -329,6 +332,7 @@ object MillMain0 {
                       (true, bootstrapped)
                     } else if (config.repl.value) {
                       val bootstrapped = runMillBootstrap(
+                        skipSelectiveExecution = true,
                         prevState = Some(stateCache),
                         tasksAndParams = Seq("console") ++ config.leftoverArgs.value,
                         streams = streams,
@@ -339,6 +343,7 @@ object MillMain0 {
                       (true, bootstrapped)
                     } else if (config.tabComplete.value) {
                       val bootstrapped = runMillBootstrap(
+                        skipSelectiveExecution = true,
                         Some(stateCache),
                         Seq(
                           "mill.tabcomplete.TabCompleteModule/complete"
@@ -359,6 +364,7 @@ object MillMain0 {
                       val watchLogger = new PrefixLogger(bspLogger, Seq("watch"))
                       while (keepGoing) {
                         val watchRes = runMillBootstrap(
+                          skipSelectiveExecution = true,
                           prevState = prevRunnerStateOpt,
                           tasksAndParams = Seq("version"),
                           streams = initCommandLogger.streams,
@@ -459,8 +465,13 @@ object MillMain0 {
                       config.leftoverArgs.value == Seq("mill.idea.GenIdea/") ||
                       config.leftoverArgs.value == Seq("mill.idea/")
                     ) {
-                      val runnerState =
-                        runMillBootstrap(None, Seq("version"), streams, "BSP:initialize")
+                      val runnerState = runMillBootstrap(
+                        skipSelectiveExecution = true,
+                        prevState = None,
+                        tasksAndParams = Seq("version"),
+                        streams = streams,
+                        millActiveCommandMessage = "BSP:initialize"
+                      )
                       new mill.idea.GenIdeaImpl(runnerState.frames.flatMap(_.evaluator))
                         .run()
                       (true, RunnerState(None, Nil, None))
@@ -469,8 +480,13 @@ object MillMain0 {
                       config.leftoverArgs.value == Seq("mill.eclipse.GenEclipse/") ||
                       config.leftoverArgs.value == Seq("mill.eclipse/")
                     ) {
-                      val runnerState =
-                        runMillBootstrap(None, Seq("version"), streams, "BSP:initialize")
+                      val runnerState = runMillBootstrap(
+                        skipSelectiveExecution = true,
+                        prevState = None,
+                        tasksAndParams = Seq("version"),
+                        streams = streams,
+                        millActiveCommandMessage = "BSP:initialize"
+                      )
                       new mill.eclipse.GenEclipseImpl(runnerState.frames.flatMap(_.evaluator))
                         .run()
                       (true, RunnerState(None, Nil, None))
@@ -485,9 +501,10 @@ object MillMain0 {
                         )),
                         streams = streams,
                         evaluate =
-                          (prevState: Option[RunnerState]) => {
+                          (skipSelectiveExecution: Boolean, prevState: Option[RunnerState]) => {
                             adjustJvmProperties(userSpecifiedProperties, initialSystemProperties)
                             runMillBootstrap(
+                              skipSelectiveExecution,
                               prevState = prevState,
                               tasksAndParams = config.leftoverArgs.value,
                               streams = streams,
