@@ -9,7 +9,6 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   private[mill] override def scriptModuleResolver: Any = delegate.scriptModuleResolver
   private def delegate = delegate0()
   override def allowPositionalCommandArgs = delegate.allowPositionalCommandArgs
-  override def selectiveExecution = delegate.selectiveExecution
   override def workspace = delegate.workspace
   override def baseLogger = delegate.baseLogger
   override def outPath = delegate.outPath
@@ -92,7 +91,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): Evaluator.Result[T] = {
     delegate.execute(
       tasks,
@@ -100,7 +99,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       testReporter,
       logger,
       serialCommandExec,
-      selectiveExecution
+      allowSelectiveExecution
     )
   }
 
@@ -108,9 +107,9 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
       scriptArgs: Seq[String],
       selectMode: SelectMode,
       reporter: Int => Option[CompileProblemReporter] = _ => None,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): mill.api.Result[Evaluator.Result[Any]] = {
-    delegate.evaluate(scriptArgs, selectMode, reporter, selectiveExecution)
+    delegate.evaluate(scriptArgs, selectMode, reporter, allowSelectiveExecution)
   }
   def close = delegate0 = null
 

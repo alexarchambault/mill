@@ -340,11 +340,7 @@ object MainModule {
       .asInstanceOf[Logger]
 
     evaluator.withBaseLogger(redirectLogger)
-      .evaluate(
-        tasks,
-        Separated,
-        selectiveExecution = evaluator.selectiveExecution
-      ).flatMap {
+      .evaluate(tasks, Separated).flatMap {
         case Evaluator.Result(watched, Result.Failure(err), _, _) =>
           watched.foreach(watch0)
           Result.Failure(err)

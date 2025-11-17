@@ -23,7 +23,7 @@ import mill.resolve.{ParseArgs, Resolve}
 
 final class EvaluatorImpl private[mill] (
     private[mill] val allowPositionalCommandArgs: Boolean,
-    private[mill] val selectiveExecution: Boolean = false,
+    defaultSelectiveExecution: Boolean = false,
     private val execution: Execution,
     private[mill] override val scriptModuleResolver: (
         String,
@@ -45,7 +45,7 @@ final class EvaluatorImpl private[mill] (
 
   def withBaseLogger(newBaseLogger: Logger): Evaluator = new EvaluatorImpl(
     allowPositionalCommandArgs,
-    selectiveExecution,
+    defaultSelectiveExecution,
     execution.withBaseLogger(newBaseLogger),
     scriptModuleResolver
   )
@@ -223,9 +223,10 @@ final class EvaluatorImpl private[mill] (
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): Evaluator.Result[T] = {
-    val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.isExclusiveCommand)
+    val selectiveExecutionEnabled =
+      allowSelectiveExecution && defaultSelectiveExecution && !tasks.exists(_.isExclusiveCommand)
 
     val (selectedTasks, selectiveResults, maybeNewMetadata) =
       if (!selectiveExecutionEnabled) (tasks, Map.empty, None)
@@ -342,7 +343,7 @@ final class EvaluatorImpl private[mill] (
       scriptArgs: Seq[String],
       selectMode: SelectMode,
       reporter: Int => Option[CompileProblemReporter] = _ => None,
-      selectiveExecution: Boolean = false
+      allowSelectiveExecution: Boolean = true
   ): mill.api.Result[Evaluator.Result[Any]] = {
     val promptLineLogger = new PrefixLogger(
       logger0 = baseLogger,
@@ -354,7 +355,11 @@ final class EvaluatorImpl private[mill] (
       resolveTasks(scriptArgs, selectMode, allowPositionalCommandArgs)
     }
     for (tasks <- resolved)
-      yield execute(Seq.from(tasks), reporter = reporter, selectiveExecution = selectiveExecution)
+      yield execute(
+        Seq.from(tasks),
+        reporter = reporter,
+        allowSelectiveExecution = allowSelectiveExecution
+      )
   }
 
   def close(): Unit = execution.close()
