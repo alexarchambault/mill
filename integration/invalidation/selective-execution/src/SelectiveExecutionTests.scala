@@ -201,7 +201,8 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
           spawned.clear()
           modifyFile(workspacePath / "bar/bar.txt", _ + "!")
           assertEventually {
-            !spawned.out.text().contains("Computing fooCommand") &&
+            if (spawned.out.text().contains("Computing fooCommand"))
+              sys.error("Unexpectedly found 'Computing fooCommand' in output")
             spawned.out.text().contains("Computing barCommand")
           }
 
@@ -209,15 +210,17 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
           spawned.clear()
           modifyFile(workspacePath / "bar/bar.txt", _ + "!")
           assertEventually {
-            !spawned.out.text().contains("Computing fooCommand") &&
+            if (spawned.out.text().contains("Computing fooCommand"))
+              sys.error("Unexpectedly found 'Computing fooCommand' in output")
             spawned.out.text().contains("Computing barCommand")
           }
 
           spawned.clear()
           modifyFile(workspacePath / "foo/foo.txt", _ + "!")
           assertEventually {
-            spawned.out.text().contains("Computing fooCommand") &&
-            !spawned.out.text().contains("Computing barCommand")
+            if (spawned.out.text().contains("Computing barCommand"))
+              sys.error("Unexpectedly found 'Computing barCommand' in output")
+            spawned.out.text().contains("Computing fooCommand")
           }
         }
       }
@@ -234,15 +237,17 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
           spawned.clear()
           modifyFile(workspacePath / "bar/bar.txt", _ + "!")
           assertEventually {
-            !spawned.err.text().contains("Computing fooCommand") &&
+            if (spawned.err.text().contains("Computing fooCommand"))
+              sys.error("Unexpectedly found 'Computing fooCommand' in output")
             spawned.err.text().contains("Computing barCommand")
           }
 
           spawned.clear()
           modifyFile(workspacePath / "foo/foo.txt", _ + "!")
           assertEventually {
-            spawned.err.text().contains("Computing fooCommand") &&
-            !spawned.err.text().contains("Computing barCommand")
+            if (spawned.err.text().contains("Computing barCommand"))
+              sys.error("Unexpectedly found 'Computing barCommand' in output")
+            spawned.err.text().contains("Computing fooCommand")
           }
         }
       }
@@ -263,7 +268,8 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
           spawned.clear()
           modifyFile(workspacePath / "build.mill", _.replace("\"barHelper \"", "\"barHelper! \""))
           assertEventually {
-            !spawned.out.text().contains("Computing fooCommand") &&
+            if (spawned.out.text().contains("Computing fooCommand"))
+              sys.error("Unexpectedly found 'Computing fooCommand' in output")
             spawned.out.text().contains("Computing barCommand")
           }
 
@@ -274,8 +280,9 @@ object SelectiveExecutionWatchTests extends UtestIntegrationTestSuite {
             _.replace("object foo extends Module {", "object foo extends Module { println(123)")
           )
           assertEventually {
-            spawned.out.text().contains("Computing fooCommand") &&
-            !spawned.out.text().contains("Computing barCommand")
+            if (spawned.out.text().contains("Computing barCommand"))
+              sys.error("Unexpectedly found 'Computing barCommand' in output")
+            spawned.out.text().contains("Computing fooCommand")
           }
         }
       }
