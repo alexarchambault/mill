@@ -161,23 +161,38 @@ object Util {
     fansi.Str.join(output, "\n").render
   }
 
-  def parseHeaderData(scriptFile: os.Path): Result[HeaderData] = {
-    val headerDataOpt = mill.api.BuildCtx.withFilesystemCheckerDisabled {
+  def parseHeaderData(scriptFile: os.Path): Option[Result[HeaderData]] = {
+    val headerDataResOpt = mill.api.BuildCtx.withFilesystemCheckerDisabled {
       // If the module file got deleted, handle that gracefully
-      if (!os.exists(scriptFile)) Result.Success("")
+      if (!os.exists(scriptFile)) Result.Success(None)
       else mill.api.ExecResult.catchWrapException {
-        mill.constants.Util.readBuildHeader(scriptFile.toNIO, scriptFile.last, true)
-          .replace("\r", "")
+        val headerData =
+          mill.constants.Util.readBuildHeader(scriptFile.toNIO, scriptFile.last, true)
+            .replace("\r", "")
+        if (headerData.isEmpty) None
+        else Some(headerData)
       }
+    }
+
+    val headerDataResOpt0 = headerDataResOpt match {
+      case Result.Success(dataOpt) => dataOpt.map(Result.Success(_))
+      case Result.Failure(error) => Some(Result.Failure(error))
     }
 
     def relativePath = scriptFile.relativeTo(mill.api.BuildCtx.workspaceRoot)
     given upickle.Reader[HeaderData] = HeaderData.headerDataReader(scriptFile)
-    headerDataOpt.flatMap(parseYaml0(
-      relativePath.toString,
-      _,
-      upickle.reader[HeaderData]
-    ))
+
+    headerDataResOpt0.map { headerDataRes =>
+      headerDataRes.flatMap(parseYaml0(relativePath.toString, _, upickle.reader[HeaderData])).flatMap { parsed =>
+        try Result.Success(upickle.read[HeaderData](parsed))
+        catch {
+          case e: upickle.core.TraceVisitor.TraceException =>
+            Result.Failure(
+              s"Failed de-serializing config key ${e.jsonPath} in $relativePath: ${e.getCause.getMessage}"
+            )
+        }
+      }
+    }
   }
 
   def parseYaml0[T](

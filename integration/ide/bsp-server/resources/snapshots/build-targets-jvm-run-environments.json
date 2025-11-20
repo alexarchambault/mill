@@ -399,6 +399,7 @@
     },
     {
       "target": {
+<<<<<<< HEAD
         "uri": "file:///workspace/scripts/ignored-folder-2/negated-not-ignored.java"
       },
       "classpath": [
@@ -413,6 +414,8 @@
     },
     {
       "target": {
+=======
+>>>>>>> 3b0e56c4dc2 (Only retain scripts that have a '//| ' section)
         "uri": "file:///workspace/sourcesNeedCompile"
       },
       "classpath": [

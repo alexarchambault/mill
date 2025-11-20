@@ -45,7 +45,11 @@ object TabCompleteTests extends TestSuite {
       ).scoped { tester =>
         os.write(tester.evaluator.workspace / "file1.txt", "")
         os.write(tester.evaluator.workspace / "file2.txt", "")
-        os.write(tester.evaluator.workspace / "folder/file3.scala", "", createFolders = true)
+        os.write(
+          tester.evaluator.workspace / "folder/file3.scala",
+          "//| mill-jvm-version: 17" + System.lineSeparator(),
+          createFolders = true
+        )
         tester.evaluator.evaluate(Seq("mill.tabcomplete.TabCompleteModule/complete") ++ s).get
       }
       outStream.toString.linesIterator.toSet

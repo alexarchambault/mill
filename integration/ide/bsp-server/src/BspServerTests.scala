@@ -346,7 +346,6 @@ object BspServerTests extends UtestIntegrationTestSuite {
               "hello-scala/test" -> Seq("hello-scala/test/src/HelloTest.scala.semanticdb"),
               "scripts/folder1/script.scala" -> Seq(),
               "errored/exception" -> List(),
-              "scripts/ignored-folder-2/negated-not-ignored.java" -> Seq(),
               "app/test" -> Seq(),
               "hello-scala" -> Seq("hello-scala/src/Hello.scala.semanticdb"),
               "scripts/folder2/Foo.java" -> Seq("scripts/folder2/Foo.java.semanticdb"),

@@ -2,6 +2,7 @@
   "targets": [
     {
       "id": {
+<<<<<<< HEAD
         "uri": "file:///workspace/.bsp/mill-bsp-out/mill-build/generatedScriptSources.dest/support/build_/BuildFileImpl.scala"
       },
       "displayName": ".bsp/mill-bsp-out/mill-build/generatedScriptSources.dest/support/build_/BuildFileImpl.scala:",
@@ -174,6 +175,8 @@
     },
     {
       "id": {
+=======
+>>>>>>> 3b0e56c4dc2 (Only retain scripts that have a '//| ' section)
         "uri": "file:///workspace/mill-build"
       },
       "displayName": "mill-build/",
