@@ -98,8 +98,11 @@ class ScriptModuleInit extends ((String, Evaluator) => Seq[Result[ExternalModule
     // of `staticBuildOverrides` which is read from the script file build header
     mill.api.BuildCtx.evalWatch(scriptFile)
 
-    Option.when(os.isFile(scriptFile)) {
-      mill.internal.Util.parseHeaderData(scriptFile).flatMap(parsedHeaderData =>
+    val headerDataResOpt = Option.when(os.isFile(scriptFile)) {
+      mill.internal.Util.parseHeaderData(scriptFile)
+    }
+    headerDataResOpt.flatten.map { headerDataRes =>
+      headerDataRes.flatMap(parsedHeaderData =>
         moduleFor(
           scriptFile,
           parsedHeaderData.`extends`.headOption,

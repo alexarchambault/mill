@@ -163,12 +163,6 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/scripts/ignored-folder-2/negated-not-ignored.java"
-      },
-      "outputPaths": []
-    },
-    {
-      "target": {
         "uri": "file:///workspace/sourcesNeedCompile"
       },
       "outputPaths": []

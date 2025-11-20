@@ -1,3 +1,5 @@
+//| # script
+
 def fetchLinks(title: String): Seq[String] = {
   val resp = requests.get.stream(
     "https://en.wikipedia.org/w/api.php",

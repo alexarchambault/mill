@@ -56,6 +56,10 @@ object ModuleCtx extends LowPriCtx {
       @upickle.implicits.flatten rest: Map[String, ujson.Value]
   ) derives upickle.ReadWriter
 
+  private[mill] object HeaderData {
+    def empty: HeaderData = HeaderData(rest = Map.empty)
+  }
+
   private case class Impl(
       enclosing: String,
       lineNum: Int,

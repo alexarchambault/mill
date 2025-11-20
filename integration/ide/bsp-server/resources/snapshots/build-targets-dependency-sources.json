@@ -222,12 +222,6 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/scripts/ignored-folder-2/negated-not-ignored.java"
-      },
-      "sources": []
-    },
-    {
-      "target": {
         "uri": "file:///workspace/sourcesNeedCompile"
       },
       "sources": [

@@ -288,14 +288,6 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/scripts/ignored-folder-2/negated-not-ignored.java"
-      },
-      "options": [],
-      "classpath": [],
-      "classDirectory": "file:///workspace/out/mill-bsp-out/scripts/ignored-folder-2/negated-not-ignored.java/compiledClassesAndSemanticDbFiles.dest"
-    },
-    {
-      "target": {
         "uri": "file:///workspace/sourcesNeedCompile"
       },
       "options": [],

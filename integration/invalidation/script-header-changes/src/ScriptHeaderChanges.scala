@@ -10,8 +10,7 @@ object ScriptHeaderChanges extends UtestIntegrationTestSuite {
   val tests: Tests = Tests {
     test - integrationTest { tester =>
       val res = tester.eval("./Foo.java")
-      assert(res.out.contains("Hello"))
-      assert(res.isSuccess)
+      assert(!res.isSuccess)
 
       tester.modifyFile(tester.workspacePath / "Foo.java", _.replace("//", "//|"))
 
@@ -34,8 +33,7 @@ object ScriptHeaderChanges extends UtestIntegrationTestSuite {
 
       tester.modifyFile(tester.workspacePath / "Foo.java", _.replace("//|", "//"))
       val res4 = tester.eval("./Foo.java")
-      assert(res4.out.contains("Hello"))
-      assert(res4.isSuccess)
+      assert(!res4.isSuccess)
 
       tester.modifyFile(
         tester.workspacePath / "Foo.java",
@@ -50,8 +48,7 @@ object ScriptHeaderChanges extends UtestIntegrationTestSuite {
 
       tester.modifyFile(tester.workspacePath / "Foo.java", _.replace("//|", "//"))
       val res6 = tester.eval("./Foo.java")
-      assert(res6.out.contains("Hello"))
-      assert(res6.isSuccess)
+      assert(!res6.isSuccess)
 
       tester.modifyFile(
         tester.workspacePath / "Foo.java",
@@ -80,8 +77,7 @@ object ScriptHeaderChanges extends UtestIntegrationTestSuite {
       )
 
       val res10 = tester.eval(("show", "./Foo.java:mvnDeps"))
-      assert(!res10.out.contains("\"org.thymeleaf:thymeleaf:3.1.1.RELEASE\""))
-      assert(res10.isSuccess)
+      assert(!res10.isSuccess)
     }
   }
 }

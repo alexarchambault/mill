@@ -197,7 +197,7 @@ class BspEvaluators(
         isPathIgnored(relativePath, isDirectory) match {
           case None => false
           case Some(msg) =>
-            println(s"Skipping script discovery in $relativePath: $msg")
+            System.err.println(s"Skipping script discovery in $relativePath: $msg")
             true
         }
       }

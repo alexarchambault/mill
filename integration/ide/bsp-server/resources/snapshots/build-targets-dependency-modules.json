@@ -509,12 +509,6 @@
     },
     {
       "target": {
-        "uri": "file:///workspace/scripts/ignored-folder-2/negated-not-ignored.java"
-      },
-      "modules": []
-    },
-    {
-      "target": {
         "uri": "file:///workspace/sourcesNeedCompile"
       },
       "modules": [
