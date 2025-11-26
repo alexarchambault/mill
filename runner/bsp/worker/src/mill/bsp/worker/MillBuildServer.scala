@@ -300,7 +300,12 @@ private class MillBuildServer(
 
   override def workspaceBuildTargets(): CompletableFuture[WorkspaceBuildTargetsResult] =
     handlerTasksEvaluators(
-      targetIds = _.bspModulesIdList.map(_._1),
+      targetIds = { thing =>
+        System.err.println("Target IDs:" + System.lineSeparator() + thing.bspModulesIdList.map(
+          _._1.getUri
+        ).mkString(System.lineSeparator()))
+        thing.bspModulesIdList.map(_._1)
+      },
       tasks = { case m: BspModuleApi => m.bspBuildTargetData },
       requestDescription = "Listing build targets",
       originId = ""
@@ -1007,6 +1012,7 @@ private class MillBuildServer(
   ): ExecutionResultsApi = {
     val goalCount = goals.length
     logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
+    logger.info(goals.map("  " + _).mkString(System.lineSeparator()))
     val result = evaluator.executeApi(
       goals,
       reporter,
