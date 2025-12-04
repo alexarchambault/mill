@@ -19,4 +19,6 @@ private[mill] object HeaderData {
       new Located.UpickleReader[T](path)
     upickle.macroR[HeaderData]
   }
+
+  def empty: HeaderData = HeaderData(rest = Map())
 }
