@@ -411,6 +411,9 @@ private class MillBuildServer(
       val ids = groupList(tasksEvaluators)(_.evaluator)(_.result)
         .flatMap {
           case (ev, ts) =>
+            val goalCount = ts.length
+            logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
+            logger.info(ts.map("  " + _).mkString(System.lineSeparator()))
             ev
               .executeApi(
                 tasks = ts,
