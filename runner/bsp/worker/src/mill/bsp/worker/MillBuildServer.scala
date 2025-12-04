@@ -403,7 +403,7 @@ private class MillBuildServer(
       val tasksEvaluators = state.bspModulesIdList.collect {
         case (id, (m: JavaModuleApi, ev)) =>
           (
-            result = m.bspJavaModule().bspBuildTargetInverseSources(id, p.getTextDocument.getUri),
+            result = (m, m.bspJavaModule().bspBuildTargetInverseSources(id, p.getTextDocument.getUri)),
             evaluator = ev
           )
       }
@@ -413,10 +413,10 @@ private class MillBuildServer(
           case (ev, ts) =>
             val goalCount = ts.length
             logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
-            logger.info(ts.map("  " + _).mkString(System.lineSeparator()))
+            logger.info(ts.map { case (m, t) => s"  $m $t" }.mkString(System.lineSeparator()))
             ev
               .executeApi(
-                tasks = ts,
+                tasks = ts.map(_._2),
                 reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client),
                 logger = logger
               )
@@ -538,7 +538,7 @@ private class MillBuildServer(
           evaluate(
             ev,
             s"Compiling ${ts.map(_._1.bspDisplayName).mkString(", ")}",
-            ts.map(_._2),
+            ts,
             logger,
             getReporter,
             TestReporter.DummyTestReporter,
@@ -601,7 +601,7 @@ private class MillBuildServer(
       val runResult = evaluate(
         ev,
         s"Running ${runModule.bspDisplayName}",
-        Seq(runTask),
+        Seq((runModule, runTask)),
         logger,
         Utils.getBspLoggedReporterPool(runParams.getOriginId, state.bspIdByModule, client)
       )
@@ -667,7 +667,7 @@ private class MillBuildServer(
               val results = evaluate(
                 ev,
                 s"Running tests for ${testModule.bspDisplayName}",
-                Seq(testTask),
+                Seq((testModule, testTask)),
                 logger,
                 reporter = Utils.getBspLoggedReporterPool(
                   testParams.getOriginId,
@@ -728,7 +728,7 @@ private class MillBuildServer(
             val cleanResult = evaluate(
               ev,
               s"Cleaning cache of ${module.bspDisplayName}",
-              Seq(cleanTask),
+              Seq((mainModule, cleanTask)),
               logger = logger,
               reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
             )
@@ -824,7 +824,7 @@ private class MillBuildServer(
           val results = evaluate(
             ev,
             requestDescription0,
-            targetIdTasks.map(_._3),
+            targetIdTasks.map(t => (t._2, t._3)),
             logger = logger,
             reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
           )
@@ -1007,7 +1007,7 @@ private class MillBuildServer(
   private def evaluate(
       evaluator: EvaluatorApi,
       @unused requestDescription: String,
-      goals: Seq[TaskApi[?]],
+      goals: Seq[(ModuleApi, TaskApi[?])],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
@@ -1015,9 +1015,9 @@ private class MillBuildServer(
   ): ExecutionResultsApi = {
     val goalCount = goals.length
     logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
-    logger.info(goals.map("  " + _).mkString(System.lineSeparator()))
+    logger.info(goals.map { case (m, t) => s"  $m $t" }.mkString(System.lineSeparator()))
     val result = evaluator.executeApi(
-      goals,
+      goals.map(_._2),
       reporter,
       testReporter,
       logger,
@@ -1052,7 +1052,7 @@ private class MillBuildServer(
           evaluate(
             ev,
             s"Checking logging for ${ts.map(_._1.bspDisplayName).mkString(", ")}",
-            ts.map(_._2),
+            ts,
             logger,
             reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
           )
