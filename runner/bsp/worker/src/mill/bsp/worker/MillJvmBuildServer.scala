@@ -45,7 +45,7 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
       originId: String
   )(using name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
-      targetIds = _ => targetIds,
+      targetIds = _ => Nil,
       tasks = { case m: (RunModuleApi & TestModuleApi & JavaModuleApi) =>
         m.bspRunModule().bspJvmTestEnvironment
       },
@@ -91,7 +91,7 @@ private trait MillJvmBuildServer extends JvmBuildServer { this: MillBuildServer 
       originId: String
   )(using name: sourcecode.Name): CompletableFuture[V] = {
     handlerTasks(
-      targetIds = _ => targetIds,
+      targetIds = _ => Nil,
       tasks = { case m: RunModuleApi => m.bspRunModule().bspJvmRunEnvironment },
       requestDescription = "Getting JVM run environment of {}",
       originId = originId
