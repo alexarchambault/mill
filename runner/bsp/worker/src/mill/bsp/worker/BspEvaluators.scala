@@ -91,7 +91,7 @@ class BspEvaluators(
       }
     } yield (new BuildTargetIdentifier(uri), (bspModule, eval))
 
-  val nonScriptSources = evaluators.flatMap { ev =>
+  lazy val nonScriptSources = evaluators.flatMap { ev =>
     val bspSourceTasks: Seq[TaskApi[(sources: Seq[Path], generatedSources: Seq[Path])]] =
       transitiveModules(ev.rootModule)
         .collect { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetSources }
@@ -102,7 +102,7 @@ class BspEvaluators(
         sources.map(os.Path(_, workspaceDir).subRelativeTo(workspaceDir))
       }
   }
-  val nonScriptResources = evaluators.flatMap { ev =>
+  lazy val nonScriptResources = evaluators.flatMap { ev =>
     val bspSourceTasks: Seq[TaskApi[Seq[Path]]] =
       transitiveModules(ev.rootModule)
         .collect { case m: JavaModuleApi => m.bspJavaModule().bspBuildTargetResources }
@@ -114,7 +114,7 @@ class BspEvaluators(
       }
   }
 
-  val bspScriptIgnore: Seq[String] = {
+  lazy val bspScriptIgnore: Seq[String] = {
     // look for this in the first meta-build frame, which would be the meta-build configured
     // by a `//|` build header in the main `build.mill` file in the project root folder
     evaluators.lift(1).toSeq.flatMap { ev =>
@@ -131,14 +131,14 @@ class BspEvaluators(
 
   lazy val bspModulesIdList: Seq[(BuildTargetIdentifier, (BspModuleApi, EvaluatorApi))] = {
     // Add script modules
-    val scriptModules = evaluators
+    def scriptModules = evaluators
       .headOption.map { eval =>
         val outDir = os.Path(eval.outPathJava)
         discoverAndInstantiateScriptModules(workspaceDir, outDir, eval)
       }
       .getOrElse(Seq.empty)
 
-    bspModulesIdList0 ++ scriptModules
+    bspModulesIdList0 // ++ scriptModules
   }
 
   private def discoverAndInstantiateScriptModules(
