@@ -408,7 +408,14 @@ private class MillBuildServer(
           )
       }
 
-      val ids = groupList(tasksEvaluators)(_.evaluator)(_.result)
+      val grouped =
+        if (MillBuildServer.debugBspTasks)
+          tasksEvaluators.map {
+            case (res, ev) => (ev, Seq(res))
+          }
+        else
+          groupList(tasksEvaluators)(_.evaluator)(_.result)
+      val ids = grouped
         .flatMap {
           case (ev, ts) =>
             val goalCount = ts.length
@@ -532,8 +539,12 @@ private class MillBuildServer(
         reporters.get(id)
       }
 
-      val result = compileTasksEvs
-        .groupMap(_._2)(_._1)
+      val grouped =
+        if (MillBuildServer.debugBspTasks)
+          compileTasksEvs.map { case (elem, ev) => (ev, Seq(elem)) }
+        else
+          compileTasksEvs.groupMap(_._2)(_._1)
+      val result = grouped
         .map { case (ev, ts) =>
           evaluate(
             ev,
@@ -811,9 +822,15 @@ private class MillBuildServer(
       }
 
       // group by evaluator (different root module)
-      val groups0 = groupList(tasksSeq)(_._2._1) {
-        case (tasks, (_, id, m)) => (id, m, tasks)
-      }
+      val groups0 =
+        if (MillBuildServer.debugBspTasks)
+          tasksSeq.map {
+            case (ts, (ev, id, m)) => (ev, Seq((id, m, ts)))
+          }
+        else
+          groupList(tasksSeq)(_._2._1) {
+            case (tasks, (_, id, m)) => (id, m, tasks)
+          }
 
       val evaluated = groups0.flatMap {
         case (ev, targetIdTasks) =>
@@ -1065,6 +1082,8 @@ private class MillBuildServer(
 }
 
 private object MillBuildServer {
+
+  private def debugBspTasks: Boolean = true
 
   /**
    * Same as Iterable.groupMap, but returns a sequence instead of a map, and preserves
