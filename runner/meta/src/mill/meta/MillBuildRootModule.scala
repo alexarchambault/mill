@@ -339,6 +339,7 @@ trait MillBuildRootModule()(using
         compilerClasspath = scalaCompilerClasspath(),
         scalacPluginClasspath = scalacPluginClasspath(),
         compilerBridgeOpt = scalaCompilerBridge(),
+        keepScala2Library = scalaInternalKeepScala2Library(),
         incrementalCompilation = zincIncrementalCompilation(),
         auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions(),
         workDir = Task.dest
