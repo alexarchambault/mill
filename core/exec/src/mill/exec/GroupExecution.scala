@@ -43,6 +43,7 @@ trait GroupExecution {
 
   import mill.api.internal.Located
   val staticBuildOverrides: Map[String, Located[BufferedValue]] = staticBuildOverrideFiles
+    .filter(_ => false)
     .flatMap { case (path0, rawText) =>
       val path = os.Path(path0)
       val headerDataReader = mill.api.internal.HeaderData.headerDataReader(path)
