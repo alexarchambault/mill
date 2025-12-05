@@ -31,6 +31,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
     override def scalacPluginMvnDeps: T[Seq[Dep]] = outer.scalacPluginMvnDeps()
     override def scalacPluginClasspath: T[Seq[PathRef]] = outer.scalacPluginClasspath()
     override def scalaCompilerBridge: T[Option[PathRef]] = outer.scalaCompilerBridge()
+    override def scalaInternalKeepScala2Library: T[Boolean] = outer.scalaInternalKeepScala2Library()
     override def scalacOptions: T[Seq[String]] = outer.scalacOptions()
     override def mandatoryScalacOptions: T[Seq[String]] =
       Task { super.mandatoryScalacOptions() }
@@ -244,6 +245,8 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
    */
   def scalaCompilerBridge: T[Option[PathRef]] = Task(None)
 
+  def scalaInternalKeepScala2Library: T[Boolean] = Task(false)
+
   /**
    * Classpath of the scaladoc (or dottydoc) tool.
    */
@@ -310,6 +313,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
         compilerClasspath = scalaCompilerClasspath(),
         scalacPluginClasspath = scalacPluginClasspath(),
         compilerBridgeOpt = scalaCompilerBridge(),
+        keepScala2Library = scalaInternalKeepScala2Library(),
         incrementalCompilation = zincIncrementalCompilation(),
         auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions(),
         workDir = Task.dest
@@ -353,6 +357,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
             scalaDocClasspath(),
             scalacPluginClasspath(),
             scalaCompilerBridge(),
+            scalaInternalKeepScala2Library(),
             options ++ compileCp ++ scalaDocOptions() ++ files.map(_.toString()),
             workDir = Task.dest
           ),
@@ -666,6 +671,7 @@ trait ScalaModule extends JavaModule with TestModule.ScalaModuleBase
           compilerClasspath = scalaCompilerClasspath(),
           scalacPluginClasspath = semanticDbPluginClasspath(),
           compilerBridgeOpt = scalaCompilerBridge(),
+          keepScala2Library = scalaInternalKeepScala2Library(),
           incrementalCompilation = zincIncrementalCompilation(),
           auxiliaryClassFileExtensions = zincAuxiliaryClassFileExtensions(),
           workDir = Task.dest
@@ -706,6 +712,7 @@ object ScalaModule {
     override def scalacPluginMvnDeps: T[Seq[Dep]] = outer.scalacPluginMvnDeps()
     override def scalacPluginClasspath: T[Seq[PathRef]] = outer.scalacPluginClasspath()
     override def scalaCompilerBridge: T[Option[PathRef]] = outer.scalaCompilerBridge()
+    override def scalaInternalKeepScala2Library: T[Boolean] = outer.scalaInternalKeepScala2Library()
     override def scalacOptions: T[Seq[String]] = outer.scalacOptions()
     override def mandatoryScalacOptions: T[Seq[String]] =
       Task { super.mandatoryScalacOptions() }

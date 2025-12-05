@@ -32,6 +32,7 @@ object ZincOp {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       incrementalCompilation: Boolean,
       auxiliaryClassFileExtensions: Seq[String],
       workDir: os.Path
@@ -46,6 +47,7 @@ object ZincOp {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       args: Seq[String],
       workDir: os.Path
   ) extends ZincOp {

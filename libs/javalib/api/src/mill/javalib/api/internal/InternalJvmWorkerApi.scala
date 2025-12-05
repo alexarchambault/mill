@@ -62,6 +62,7 @@ trait InternalJvmWorkerApi extends PublicJvmWorkerApi, AutoCloseable {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       reporter: Option[CompileProblemReporter],
       reportCachedProblems: Boolean,
       incrementalCompilation: Boolean,
@@ -81,6 +82,7 @@ trait InternalJvmWorkerApi extends PublicJvmWorkerApi, AutoCloseable {
         compilerClasspath = compilerClasspath,
         scalacPluginClasspath = scalacPluginClasspath,
         compilerBridgeOpt = compilerBridgeOpt,
+        keepScala2Library = keepScala2Library,
         incrementalCompilation = incrementalCompilation,
         auxiliaryClassFileExtensions = auxiliaryClassFileExtensions,
         workDir = workDir
@@ -99,6 +101,7 @@ trait InternalJvmWorkerApi extends PublicJvmWorkerApi, AutoCloseable {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       javaHome: Option[Path],
       args: Seq[String],
       workDir: os.Path
@@ -110,6 +113,7 @@ trait InternalJvmWorkerApi extends PublicJvmWorkerApi, AutoCloseable {
         compilerClasspath = compilerClasspath,
         scalacPluginClasspath = scalacPluginClasspath,
         compilerBridgeOpt = compilerBridgeOpt,
+        keepScala2Library = keepScala2Library,
         args = args,
         workDir = workDir
       ),

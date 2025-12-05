@@ -56,6 +56,50 @@ object JvmWorkerUtil {
       }
   }
 
+  def grepJars(
+      classPath: Seq[PathRef],
+      name: String,
+      versionPrefixes: Seq[String],
+      sources: Boolean = false
+  ): Seq[PathRef] = {
+    val suffix = if (sources) "-sources.jar" else ".jar"
+    lazy val dir = if (sources) "srcs" else "jars"
+
+    def helper(versionPrefix: String): Iterator[PathRef] = {
+      def mavenStyleMatch(fname: String): Boolean =
+        fname.startsWith(s"$name-$versionPrefix") && fname.endsWith(suffix)
+
+      def ivyStyleMatch(p: os.Path): Boolean = {
+        val fname = s"$name$suffix"
+        p.segments.toSeq match {
+          case _ :+ v :+ `dir` :+ `fname` if v.startsWith(versionPrefix) => true
+          case _ => false
+        }
+      }
+
+      classPath.iterator
+        .filter(pathRef => mavenStyleMatch(pathRef.path.last) || ivyStyleMatch(pathRef.path))
+    }
+
+    val res = versionPrefixes
+      .iterator
+      .flatMap(helper)
+      .toVector
+
+    if (res.isEmpty) {
+      val candidates = versionPrefixes
+        .map { versionPrefix =>
+          s"**/$name-$versionPrefix*$suffix or **/$versionPrefix*/$dir/$name$suffix"
+        }
+        .mkString(" or ")
+      throw new Exception(
+        s"Cannot find $candidates in ${classPath.iterator.mkString("[", ", ", "]")}"
+      )
+    }
+
+    res
+  }
+
   @deprecated("Use the override accepting several version prefixes", "Mill after 1.1.0-RC2")
   def grepJar(
       classPath: Seq[PathRef],

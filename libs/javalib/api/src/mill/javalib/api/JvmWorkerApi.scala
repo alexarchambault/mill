@@ -48,6 +48,7 @@ trait JvmWorkerApi {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       reporter: Option[CompileProblemReporter],
       reportCachedProblems: Boolean,
       incrementalCompilation: Boolean,
@@ -79,6 +80,7 @@ trait JvmWorkerApi {
       compilerClasspath: Seq[PathRef],
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
+      keepScala2Library: Boolean,
       javaHome: Option[os.Path],
       args: Seq[String],
       workDir: os.Path
@@ -145,6 +147,7 @@ trait JvmWorkerApi {
       compilerClasspath = compilerClasspath,
       scalacPluginClasspath = scalacPluginClasspath,
       compilerBridgeOpt = None,
+      keepScala2Library = false,
       reporter = reporter,
       reportCachedProblems = reportCachedProblems,
       incrementalCompilation = incrementalCompilation,
@@ -166,6 +169,7 @@ trait JvmWorkerApi {
       compilerClasspath = compilerClasspath,
       scalacPluginClasspath = scalacPluginClasspath,
       compilerBridgeOpt = None,
+      keepScala2Library = false,
       javaHome = javaHome,
       args = args,
       workDir = ctx.dest

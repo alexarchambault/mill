@@ -112,6 +112,7 @@ trait UnidocModule extends ScalaModule {
         scalaDocClasspath(),
         scalacPluginClasspath(),
         scalaCompilerBridge(),
+        keepScala2Library = false,
         options ++ unidocSourceFiles0.map(_.path.toString),
         workDir = Task.dest
       ),

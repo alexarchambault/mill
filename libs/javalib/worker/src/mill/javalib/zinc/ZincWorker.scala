@@ -98,17 +98,18 @@ class ZincWorker(jobs: Int) extends AutoCloseable { self =>
           loader = classLoader,
           loaderCompilerOnly = classLoader,
           loaderLibraryOnly = ClasspathUtil.rootLoader,
-          libraryJars = Array(libraryJarNameGrep(
+          libraryJars = libraryJarNameGrep(
             compilerClasspath,
             // if Dotty or Scala 3.0 - 3.7, use the 2.13 version of the standard library
-            if (JvmWorkerUtil.enforceScala213Library(key.scalaVersion))
+            if (JvmWorkerUtil.enforceScala213Library(key.scalaVersion) || key.keepScala2Library) {
               Seq("2.13.", key.scalaVersion)
+            }
             // otherwise use the library matching the Scala version
             else Seq(key.scalaVersion)
-          ).path.toIO),
+          ).map(_.path.toIO).toArray,
           compilerJars = combinedCompilerJars,
           allJars = combinedCompilerJars,
-          explicitActual = None
+          explicitActual = Some(key.scalaVersion)
         )
         val compilers = incrementalCompiler.compilers(
           javaTools = getLocalOrCreateJavaTools(),
@@ -204,6 +205,7 @@ class ZincWorker(jobs: Int) extends AutoCloseable { self =>
       scalacPluginClasspath = op.scalacPluginClasspath,
       compilerBridgeOpt = op.compilerBridgeOpt,
       javacOptions = op.javacOptions,
+      keepScala2Library = op.keepScala2Library,
       deps.compilerBridgeProvider
     ) { compilers =>
       compileInternal(
@@ -235,6 +237,7 @@ class ZincWorker(jobs: Int) extends AutoCloseable { self =>
       scalacPluginClasspath = op.scalacPluginClasspath,
       compilerBridgeOpt = op.compilerBridgeOpt,
       javacOptions = Nil,
+      keepScala2Library = op.keepScala2Library,
       compilerBridgeProvider = compilerBridgeProvider
     ) { compilers =>
       // Not sure why dotty scaladoc is flaky, but add retries to workaround it
@@ -292,6 +295,7 @@ class ZincWorker(jobs: Int) extends AutoCloseable { self =>
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
       javacOptions: Seq[String],
+      keepScala2Library: Boolean,
       compilerBridgeProvider: ZincCompilerBridgeProvider
   )(f: Compilers => T) = {
     val cacheKey = ScalaCompilerCacheKey(
@@ -300,7 +304,8 @@ class ZincWorker(jobs: Int) extends AutoCloseable { self =>
       scalacPluginClasspath,
       compilerBridgeOpt,
       scalaOrganization,
-      javacOptions
+      javacOptions,
+      keepScala2Library
     )
     scalaCompilerCache.withValue(cacheKey, compilerBridgeProvider) { cached =>
       f(cached.compilers)
@@ -597,7 +602,8 @@ object ZincWorker {
       scalacPluginClasspath: Seq[PathRef],
       compilerBridgeOpt: Option[PathRef],
       scalaOrganization: String,
-      javacOptions: Seq[String]
+      javacOptions: Seq[String],
+      keepScala2Library: Boolean
   ) {
     val combinedCompilerClasspath: Seq[PathRef] = compilerClasspath ++ scalacPluginClasspath
   }
@@ -615,8 +621,8 @@ object ZincWorker {
   private def libraryJarNameGrep(
       compilerClasspath: Seq[PathRef],
       scalaVersions: Seq[String]
-  ): PathRef =
-    JvmWorkerUtil.grepJar(compilerClasspath, "scala-library", scalaVersions, sources = false)
+  ): Seq[PathRef] =
+    JvmWorkerUtil.grepJars(compilerClasspath, "scala-library", scalaVersions, sources = false)
 
   private def fileAnalysisStore(path: os.Path): AnalysisStore =
     ConsistentFileAnalysisStore.binary(
