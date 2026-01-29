@@ -53,22 +53,35 @@ import scala.math.Ordering.Implicits.*
       .flatMap { base =>
         Seq.from[ClassWithFingerprint](
           listClassFiles(base).map { path =>
-            val cls = cl.loadClass(path.stripSuffix(".class").replace('/', '.'))
-            val publicConstructorCount =
-              cls.getConstructors.count(c => Modifier.isPublic(c.getModifiers))
+            val clsName = path.stripSuffix(".class").replace('/', '.')
+            val clsOpt =
+              try Some(cl.loadClass(clsName))
+              catch {
+                case ex: NoClassDefFoundError =>
+                  System.err.println(
+                    s"Caught exception when trying to load $clsName, ignoring it: $ex"
+                  )
+                  None
+              }
+            clsOpt.flatMap { cls =>
+              val publicConstructorCount =
+                cls.getConstructors.count(c => Modifier.isPublic(c.getModifiers))
 
-            if (framework.name() == "Jupiter") {
-              // sbt-jupiter-interface ignores fingerprinting since JUnit5 has its own resolving mechanism
-              Some((cls, fingerprints.head))
-            } else if (
-              Modifier.isAbstract(cls.getModifiers) || cls.isInterface || publicConstructorCount > 1
-            ) {
-              None
-            } else {
-              (cls.getName.endsWith("$"), publicConstructorCount == 0) match {
-                case (true, true) => matchFingerprints(cl, cls, fingerprints, isModule = true)
-                case (false, false) => matchFingerprints(cl, cls, fingerprints, isModule = false)
-                case _ => None
+              if (framework.name() == "Jupiter") {
+                // sbt-jupiter-interface ignores fingerprinting since JUnit5 has its own resolving mechanism
+                Some((cls, fingerprints.head))
+              } else if (
+                Modifier.isAbstract(cls.getModifiers) ||
+                cls.isInterface ||
+                publicConstructorCount > 1
+              ) {
+                None
+              } else {
+                (cls.getName.endsWith("$"), publicConstructorCount == 0) match {
+                  case (true, true) => matchFingerprints(cl, cls, fingerprints, isModule = true)
+                  case (false, false) => matchFingerprints(cl, cls, fingerprints, isModule = false)
+                  case _ => None
+                }
               }
             }
           }
