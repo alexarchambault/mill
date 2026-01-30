@@ -1,5 +1,7 @@
 package mill.javalib.zinc
 
+import mill.api.BuildCtx
+
 private trait TransformingReporter(
     color: Boolean,
     optPositionMapper: (xsbti.Position => xsbti.Position) | Null,
@@ -82,7 +84,7 @@ private object TransformingReporter {
     InterfaceUtil.jo2o(pos.sourcePath()) match {
       case None => message
       case Some(path) =>
-        val absPath = os.Path(path)
+        val absPath = os.Path(path, BuildCtx.workspaceRoot)
         // Render paths within the current workspaceRoot as relative paths to cut down on verbosity
         val displayPath =
           if absPath.startsWith(workspaceRoot) then absPath.subRelativeTo(workspaceRoot).toString
