@@ -90,6 +90,10 @@ bsp-init] BSP disabled for target file:///workspace/skipped
 8-compile] Evaluating 1 task
 8-compile-*] [error] errored.message-check.compiledClassesAndSemanticDbFiles task failed
 8-compile] [warn] errored.message-check.compiledClassesAndSemanticDbFiles
+8-compile] java.lang.Exception: thing
+8-compile]   build_.package_.build_$package_$errored$message$minuscheck$$$_$helperTask$$anonfun$1(build.mill:92)
+8-compile]   mill.api.Task$Anon.evaluate(Task.scala:519)
+8-compile] 
 8-compile] Failed
 8-compile] buildTargetCompile took * msec
 9-buildShutdown] Entered buildShutdown

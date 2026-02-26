@@ -58,21 +58,22 @@ object Result {
     def map[V](f: Nothing => V): Result[Nothing] = this
 
     def flatMap[V](f: Nothing => Result[V]): Result[Nothing] = this
-    def get = {
+
+    private def fullError: String = {
       val nl = System.lineSeparator()
-      sys.error(
-        error + nl +
-          exception
-            .map { ex =>
-              ex.clsName + ": " + ex.msg + nl +
-                ex.stack.map("  " + _ + nl).mkString
-            }
-            .mkString
-      )
+      error + nl +
+        exception
+          .map { ex =>
+            ex.clsName + ": " + ex.msg + nl +
+              ex.stack.map("  " + _ + nl).mkString
+          }
+          .mkString
     }
+
+    def get = sys.error(fullError)
     def toOption: Option[Nothing] = None
-    def toEither: Either[String, Nothing] = Left(error)
-    def errorOpt: Option[String] = Some(error)
+    def toEither: Either[String, Nothing] = Left(fullError)
+    def errorOpt: Option[String] = Some(fullError)
   }
 
   object Failure {
