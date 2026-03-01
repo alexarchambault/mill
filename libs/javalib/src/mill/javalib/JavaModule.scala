@@ -101,6 +101,9 @@ trait JavaModule
     override def resolutionParams: Task[ResolutionParams] =
       outer.resolutionParams
 
+    override protected def resolvedDepsWarnNonPlatform: T[Boolean] =
+      outer.resolvedDepsWarnNonPlatform
+
     override def annotationProcessorsJavacOptions: T[Seq[String]] =
       outer.annotationProcessorsJavacOptions()
     override def javacOptions = outer.javacOptions()

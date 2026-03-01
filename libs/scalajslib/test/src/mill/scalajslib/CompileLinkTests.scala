@@ -55,7 +55,12 @@ object CompileLinkTests extends TestSuite {
       def scalacOptions = Seq("-deprecation")
       def scalaVersion = scala
       def scalaJSVersion = scalaJS
-      object test extends ScalaJSTests with TestModule.Utest
+      def resolvedDepsWarnNonPlatform =
+        !super.resolvedDepsWarnNonPlatform()
+      object test extends ScalaJSTests with TestModule.Utest {
+        def resolvedDepsWarnNonPlatform =
+          super.resolvedDepsWarnNonPlatform
+      }
     }
 
     override lazy val millDiscover = {

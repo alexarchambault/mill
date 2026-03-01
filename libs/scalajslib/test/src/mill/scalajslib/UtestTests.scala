@@ -78,5 +78,16 @@ object UtestTests extends TestSuite {
     test("test-scalacOptions") {
       checkInheritedTasks(_.scalacOptions, Seq("-deprecation"))
     }
+    test("test-resolvedDepsWarnNonPlatform") {
+      UnitTester(HelloJSWorld, millSourcePath).scoped { eval =>
+        val Right(mainResult) =
+          eval(HelloJSWorld.inherited.resolvedDepsWarnNonPlatform).runtimeChecked
+        val Right(testResult) =
+          eval(HelloJSWorld.inherited.test.resolvedDepsWarnNonPlatform).runtimeChecked
+        val expected = false
+        assert(mainResult.value == expected)
+        assert(testResult.value == expected)
+      }
+    }
   }
 }
