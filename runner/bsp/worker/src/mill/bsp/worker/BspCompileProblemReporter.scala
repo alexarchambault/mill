@@ -6,6 +6,7 @@ import mill.api.daemon.internal.{CompileProblemReporter, Problem}
 
 import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Specialized reporter that sends compilation diagnostics
@@ -199,18 +200,21 @@ private class BspCompileProblemReporter(
     client.onBuildTaskProgress(params)
   }
 
-  override def finish(): Unit = {
-    val taskFinishParams =
-      new TaskFinishParams(taskId, if (errors > 0) StatusCode.ERROR else StatusCode.OK).tap { it =>
-        it.setEventTime(System.currentTimeMillis())
-        it.setMessage(s"Compiled ${targetDisplayName}")
-        it.setDataKind(TaskFinishDataKind.COMPILE_REPORT)
-        val compileReport = new CompileReport(targetId, errors, warnings).tap { it =>
-          compilationOriginId.foreach(id => it.setOriginId(id))
+  private val finished = new AtomicBoolean(false)
+  override def finish(): Unit =
+    if (finished.compareAndSet(false, true)) {
+      val taskFinishParams =
+        new TaskFinishParams(taskId, if (errors > 0) StatusCode.ERROR else StatusCode.OK).tap {
+          it =>
+            it.setEventTime(System.currentTimeMillis())
+            it.setMessage(s"Compiled ${targetDisplayName}")
+            it.setDataKind(TaskFinishDataKind.COMPILE_REPORT)
+            val compileReport = new CompileReport(targetId, errors, warnings).tap { it =>
+              compilationOriginId.foreach(id => it.setOriginId(id))
+            }
+            it.setData(compileReport)
         }
-        it.setData(compileReport)
-      }
-    client.onBuildTaskFinish(taskFinishParams)
-  }
+      client.onBuildTaskFinish(taskFinishParams)
+    }
 
 }
