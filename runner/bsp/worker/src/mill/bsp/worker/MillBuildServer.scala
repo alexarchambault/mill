@@ -21,6 +21,7 @@ import mill.api.daemon.internal.*
 import mill.constants.OutFiles.OutFiles
 
 import scala.annotation.unused
+import mill.daemon.Watching
 
 /**
  * Mill's BSP server implementation.
@@ -44,6 +45,14 @@ private abstract class MillBuildServer(
 ) extends EndpointsApi with AutoCloseable {
 
   import MillBuildServer.*
+
+  protected def watchArgs: Watching.WatchArgs =
+    Watching.WatchArgs(
+      setIdle = _ => (),
+      colors = mill.internal.Colors.BlackWhite,
+      useNotify = true, // config.watchViaFsNotify,
+      daemonDir = daemonDir
+    )
 
   // ==========================================================================
   // Session State
@@ -247,8 +256,10 @@ private abstract class MillBuildServer(
           logger = logger,
           reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
         )
+
         val resultsById = targetIdTasks.flatMap { case (id, m, task) =>
-          results.transitiveResultsApi(task)
+          results.executionResults
+            .transitiveResultsApi(task)
             .asSuccess
             .map(_.value.value.asInstanceOf[W])
             .map((id, m, _))
@@ -320,9 +331,24 @@ private abstract class MillBuildServer(
       }
     }
 
+  protected def evaluatorsChanged(current: BspEvaluators): Boolean =
+    !bspEvaluatorsOpt().contains(current)
+
   protected def handlerEvaluators[V](
       checkInitialized: Boolean = true
   )(block: (BspEvaluators, Logger) => V)(using
+      name: sourcecode.Name,
+      enclosing: sourcecode.Enclosing
+  ): CompletableFuture[V] =
+    handlerEvaluators0(checkInitialized)((ev, logger) => (block(ev, logger), Nil))(using
+      name,
+      enclosing
+    )
+
+  protected def handlerEvaluators0[V](
+      checkInitialized: Boolean = true,
+      watch: Boolean = false
+  )(block: (BspEvaluators, Logger) => (V, Seq[Watchable]))(using
       name: sourcecode.Name,
       enclosing: sourcecode.Enclosing
   ): CompletableFuture[V] = {
@@ -335,10 +361,44 @@ private abstract class MillBuildServer(
       logger.error(msg)
       future.completeExceptionally(new Exception(msg))
     } else {
-      queue.put((
+      def enqueue(): Unit = queue.put((
         evaluators => {
           if (!future.isCancelled()) {
-            executeWithTiming(prefix, logger, future)(block(evaluators, logger))
+            var v: Option[(V, Seq[Watchable])] = None
+            executeWithTiming(prefix, logger, future, ignoreValue = watch) {
+              val v0 = block(evaluators, logger)
+              v = Some(v0)
+              v0._1
+            }
+            if (watch) {
+              val watchables = v.map(_._2).getOrElse(Nil)
+              val run: Runnable = () => {
+                var shouldStop = false
+                val watchRes = Watching.watchAndWait(
+                  watchables,
+                  watchArgs,
+                  () => Option.when(evaluatorsChanged(evaluators) || future.isCancelled())(()),
+                  "",
+                  logger.info(_)
+                )
+                shouldStop =
+                  // new evaluators, interrupting watching, letting users reload the build and pick new targets if they want to
+                  watchRes.nonEmpty
+                if (shouldStop)
+                  v match {
+                    case Some(v0) =>
+                      executeWithTiming(prefix, logger, future, ignoreValue = false)(v0._1)
+                    case None =>
+                      future.cancel(true)
+                  }
+                else
+                  enqueue()
+              }
+              // FIXME Use a thread pool for that
+              val t = new Thread(run, "bsp-watch")
+              t.setDaemon(true)
+              t.start()
+            }
           } else {
             logger.info(s"$prefix was cancelled")
           }
@@ -346,12 +406,19 @@ private abstract class MillBuildServer(
         logger,
         prefix
       ))
+
+      enqueue()
     }
     future
   }
 
   /** Executes a block with timing/logging and completes the given future */
-  private def executeWithTiming[V](prefix: String, logger: Logger, future: CompletableFuture[V])(
+  private def executeWithTiming[V](
+      prefix: String,
+      logger: Logger,
+      future: CompletableFuture[V],
+      ignoreValue: Boolean = false
+  )(
       block: => V
   ): Unit = {
     val start = System.currentTimeMillis()
@@ -365,8 +432,12 @@ private abstract class MillBuildServer(
 
     result match {
       case Success(v) =>
-        logger.debug(s"$prefix result: $v")
-        future.complete(v)
+        if (ignoreValue)
+          logger.info(s"$prefix result: $v (ignored)")
+        else {
+          logger.debug(s"$prefix result: $v")
+          future.complete(v)
+        }
       case Failure(e) =>
         logger.error(s"$prefix caught exception: $e")
         e.printStackTrace(logger.streams.err)
@@ -418,7 +489,7 @@ private abstract class MillBuildServer(
       reporter: Int => Option[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       errorOpt: EvaluatorApi.Result[Any] => Option[String] = evaluatorErrorOpt
-  ): ExecutionResultsApi = {
+  ): EvaluatorApi.Result[?] = {
     val goalCount = goals.length
     logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
     val result = evaluator.executeApi(
@@ -436,7 +507,7 @@ private abstract class MillBuildServer(
         logger.info("Failed")
         client.onBuildLogMessage(new LogMessageParams(MessageType.WARNING, error))
     }
-    result.executionResults
+    result
   }
 
   // ==========================================================================

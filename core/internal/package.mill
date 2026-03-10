@@ -16,6 +16,7 @@ object `package` extends MillPublishScalaModule {
     // but we need the latest version to bring the macro improvements.
     Deps.sourcecode,
     Deps.osLib,
+    Deps.osLibWatch,
     Deps.upickle,
     Deps.pprint,
     Deps.fansi,

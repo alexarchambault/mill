@@ -307,7 +307,17 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
   // ==========================================================================
 
   override def buildTargetCompile(p: CompileParams): CompletableFuture[CompileResult] =
-    handlerEvaluators() { (state, logger) =>
+    handlerEvaluators0(
+      watch = p.getArguments.asScala.toSeq == Seq("--watch")
+    ) { (state, logger) =>
+      p.getArguments.asScala.toSeq match {
+        case Seq("--watch") | Seq() =>
+        case other =>
+          logger.warn(
+            s"Unrecognized arguments passed to buildTarget/compile: ${other.mkString(" ")} " +
+              "(expected no arguments or just --watch)"
+          )
+      }
       p.setTargets(state.filterNonSynthetic(p.getTargets))
       val compileTasksEvs = p.getTargets.asScala.distinct.map(state.bspModulesById).collect {
         case (m: SemanticDbJavaModuleApi, ev) if sessionInfo.clientWantsSemanticDb =>
@@ -355,9 +365,11 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
           )
         }
         .toSeq
-      val compileResult = new CompileResult(Utils.getStatusCode(result))
+      val watchables = result.flatMap(_.watchable).distinct
+      val compileResult = new CompileResult(Utils.getStatusCode(result.map(_.executionResults)))
       compileResult.setOriginId(p.getOriginId)
-      compileResult // TODO: See in what form IntelliJ expects data about products of compilation in order to set data field
+      // TODO: See in what form IntelliJ expects data about products of compilation in order to set data field
+      (compileResult, watchables)
     }
 
   override def buildTargetOutputPaths(params: OutputPathsParams)
@@ -402,7 +414,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
         logger,
         Utils.getBspLoggedReporterPool(runParams.getOriginId, state.bspIdByModule, client)
       )
-      val response = runResult.transitiveResultsApi(runTask) match {
+      val response = runResult.executionResults.transitiveResultsApi(runTask) match {
         case r if r.asSuccess.isDefined => new RunResult(StatusCode.OK)
         case _ => new RunResult(StatusCode.ERROR)
       }
@@ -443,7 +455,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
                 ),
                 testReporter
               )
-              val statusCode = Utils.getStatusCode(Seq(results))
+              val statusCode = Utils.getStatusCode(Seq(results.executionResults))
 
               notifyTestFinish(
                 taskId,
@@ -554,8 +566,8 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
       reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
     )
 
-    if (cleanResult.transitiveFailingApi.nonEmpty) {
-      val errorMsg = cleanResult.transitiveResultsApi(cleanTask) match {
+    if (cleanResult.executionResults.transitiveFailingApi.nonEmpty) {
+      val errorMsg = cleanResult.executionResults.transitiveResultsApi(cleanTask) match {
         case ex: ExecResult.Exception => ex.toString()
         case ExecResult.Skipped => "Task was skipped"
         case ExecResult.Aborted => "Task was aborted"
@@ -563,7 +575,8 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
       }
       Left(s" Target $compileTaskName could not be cleaned. See message from mill: \n$errorMsg")
     } else {
-      val cleanedPaths = cleanResult.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
+      val cleanedPaths =
+        cleanResult.executionResults.results.head.get.value.asInstanceOf[Seq[java.nio.file.Path]]
       while (cleanedPaths.exists(p => os.exists(os.Path(p)))) Thread.sleep(10)
       Right(s"${module.bspBuildTarget.displayName} cleaned \n")
     }

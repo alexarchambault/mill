@@ -1,17 +1,12 @@
 package mill.bsp.worker
 
 import ch.epfl.scala.bsp4j.{BuildClient, BuildTargetIdentifier}
-import mill.api.daemon.Logger
-import mill.api.daemon.internal.{
-  CompileProblemReporter,
-  EvaluatorApi,
-  ExecutionResultsApi,
-  TaskApi,
-  TestReporter
-}
+import mill.api.daemon.{Logger, Watchable}
+import mill.api.daemon.internal.{CompileProblemReporter, EvaluatorApi, TaskApi, TestReporter}
 import mill.api.daemon.internal.bsp.{BspModuleApi, BspServerResult}
 
 import java.util.concurrent.CompletableFuture
+import mill.daemon.Watching
 
 /**
  * Context passed to handler blocks for each target being processed.
@@ -43,6 +38,8 @@ trait EndpointsApi {
 
   protected def doneInitializingBuild(): Unit
 
+  protected def evaluatorsChanged(current: BspEvaluators): Boolean
+
   protected def handlerRaw[V](block: Logger => V)(using
       name: sourcecode.Name,
       enclosing: sourcecode.Enclosing
@@ -51,6 +48,15 @@ trait EndpointsApi {
   protected def handlerEvaluators[V](
       checkInitialized: Boolean = true
   )(block: (BspEvaluators, Logger) => V)(using
+      name: sourcecode.Name,
+      enclosing: sourcecode.Enclosing
+  ): CompletableFuture[V]
+
+  protected def watchArgs: Watching.WatchArgs
+  protected def handlerEvaluators0[V](
+      checkInitialized: Boolean = true,
+      watch: Boolean = false
+  )(block: (BspEvaluators, Logger) => (V, Seq[Watchable]))(using
       name: sourcecode.Name,
       enclosing: sourcecode.Enclosing
   ): CompletableFuture[V]
@@ -74,7 +80,7 @@ trait EndpointsApi {
       reporter: Int => Option[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       errorOpt: EvaluatorApi.Result[Any] => Option[String] = evaluatorErrorOpt
-  ): ExecutionResultsApi
+  ): EvaluatorApi.Result[?]
 
   protected def evaluatorErrorOpt(result: EvaluatorApi.Result[Any]): Option[String]
 
