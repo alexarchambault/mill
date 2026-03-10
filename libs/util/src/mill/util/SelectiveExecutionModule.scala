@@ -104,10 +104,11 @@ trait SelectiveExecutionModule extends mill.api.Module {
       } else {
         evaluator.selective.resolveTasks0(tasks).flatMap { resolvedTasks =>
           if (resolvedTasks.isEmpty) Result.Success(())
-          else evaluator.execute(resolvedTasks.toSeq.asInstanceOf[Seq[Task[Any]]]) match {
-            case Evaluator.Result(_, f: Result.Failure, _, _) => f
-            case Evaluator.Result(_, Result.Success(_), _, _) => Result.Success(())
-          }
+          else
+            evaluator.execute(resolvedTasks.toSeq.asInstanceOf[Seq[Task[Any]]], () => false) match {
+              case Evaluator.Result(_, f: Result.Failure, _, _) => f
+              case Evaluator.Result(_, Result.Success(_), _, _) => Result.Success(())
+            }
         }
       }
     }

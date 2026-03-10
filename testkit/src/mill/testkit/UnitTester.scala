@@ -177,7 +177,8 @@ class UnitTester(
       tasks: Seq[Task[?]]
   ): Either[ExecResult.Failing[?], UnitTester.Result[Seq[?]]] = {
 
-    val evaluated = evaluator.execute(tasks.asInstanceOf[Seq[Task[Any]]]).executionResults
+    val evaluated =
+      evaluator.execute(tasks.asInstanceOf[Seq[Task[Any]]], () => false).executionResults
 
     if (evaluated.transitiveFailing.nonEmpty) Left(evaluated.transitiveFailing.values.head)
     else {
@@ -203,7 +204,7 @@ class UnitTester(
       expectedRawValues: Seq[ExecResult[?]]
   ): Unit = {
 
-    val res = evaluator.execute(Seq(task)).executionResults
+    val res = evaluator.execute(Seq(task), () => false).executionResults
 
     val cleaned = res.results.map {
       case ExecResult.Exception(ex, _) =>
@@ -218,11 +219,12 @@ class UnitTester(
 
   def check(tasks: Seq[Task[?]], expected: Seq[Task[?]]): Unit = {
 
-    val evaluated = evaluator.execute(tasks.asInstanceOf[Seq[Task[Any]]]).executionResults
-      .uncached
-      .flatMap(_.asSimple)
-      .filter(module.moduleInternal.simpleTasks.contains)
-      .filter(!_.isInstanceOf[Task.Input[?]])
+    val evaluated =
+      evaluator.execute(tasks.asInstanceOf[Seq[Task[Any]]], () => false).executionResults
+        .uncached
+        .flatMap(_.asSimple)
+        .filter(module.moduleInternal.simpleTasks.contains)
+        .filter(!_.isInstanceOf[Task.Input[?]])
     assert(
       evaluated.toSet == expected.toSet,
       s"evaluated is not equal expected. evaluated=${evaluated}, expected=${expected}"

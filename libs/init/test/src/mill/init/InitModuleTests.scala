@@ -28,7 +28,8 @@ object InitModuleTests extends TestSuite {
         errStream = new PrintStream(OutputStream.nullOutputStream(), true)
       ).scoped { evaluator =>
 
-        val results = evaluator.evaluator.execute(Seq(initmodule.init(None))).executionResults
+        val results =
+          evaluator.evaluator.execute(Seq(initmodule.init(None)), () => false).executionResults
 
         assert(results.transitiveFailing.size == 0)
 
@@ -53,9 +54,12 @@ object InitModuleTests extends TestSuite {
       ).scoped { evaluator =>
 
         val nonExistingModuleId = "nonExistingExampleId"
-        val results = evaluator.evaluator.execute(Seq(
-          initmodule.init(Some(nonExistingModuleId))
-        )).executionResults
+        val results = evaluator.evaluator.execute(
+          Seq(
+            initmodule.init(Some(nonExistingModuleId))
+          ),
+          () => false
+        ).executionResults
         assert(results.transitiveFailing.size == 1)
         val err = errStream.toString
 
@@ -92,7 +96,7 @@ object InitModuleTests extends TestSuite {
 
         val results = evaluator
           .evaluator
-          .execute(Seq(initmodule.init(Some("scalalib/basic/1-simple"))))
+          .execute(Seq(initmodule.init(Some("scalalib/basic/1-simple"))), () => false)
           .executionResults
 
         val expected =

@@ -1,7 +1,7 @@
 package mill.bsp.worker
 
 import ch.epfl.scala.bsp4j.{BuildClient, BuildTargetIdentifier}
-import mill.api.daemon.Logger
+import mill.api.daemon.{CancelChecker, Logger}
 import mill.api.daemon.internal.{
   CompileProblemReporter,
   EvaluatorApi,
@@ -50,7 +50,14 @@ trait EndpointsApi {
 
   protected def handlerEvaluators[V](
       checkInitialized: Boolean = true
-  )(block: (BspEvaluators, Logger) => V)(using
+  )(block: (BspEvaluators, Logger, CancelChecker) => V)(using
+      name: sourcecode.Name,
+      enclosing: sourcecode.Enclosing
+  ): CompletableFuture[V]
+
+  protected def handlerEvaluators0[V](
+      checkInitialized: Boolean = true
+  )(block: (BspEvaluators, Logger, CancelChecker) => CancelChecker.ValueOrCanceled[V])(using
       name: sourcecode.Name,
       enclosing: sourcecode.Enclosing
   ): CompletableFuture[V]
@@ -72,6 +79,7 @@ trait EndpointsApi {
       goals: Seq[TaskApi[?]],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter],
+      cancelChecker: CancelChecker,
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       errorOpt: EvaluatorApi.Result[Any] => Option[String] = evaluatorErrorOpt
   ): ExecutionResultsApi

@@ -53,7 +53,8 @@ class BspEvaluators(
 
         Utils.findInputTasks(tasks) match {
           case Nil => Seq.empty
-          case inputTasks => Utils.extractPathsFromResults(ev.executeApi(inputTasks).values.get)
+          case inputTasks =>
+            Utils.extractPathsFromResults(ev.executeApi(inputTasks, () => false).values.get)
         }
       }
       .map(_.subRelativeTo(workspaceDir))
@@ -68,7 +69,7 @@ class BspEvaluators(
       val bspScriptIgnore: Seq[TaskApi[Seq[String]]] =
         Seq(ev.rootModule).collect { case m: MillBuildRootModuleApi => m.bspScriptIgnoreAll }
 
-      ev.executeApi(bspScriptIgnore)
+      ev.executeApi(bspScriptIgnore, () => false)
         .values
         .get
         .flatMap { (sources: Seq[String]) => sources }

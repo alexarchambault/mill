@@ -2,7 +2,7 @@ package mill.api
 
 import mill.api.daemon.internal.{CompileProblemReporter, TestReporter}
 import mill.api.*
-import mill.api.daemon.Watchable
+import mill.api.daemon.{CancelChecker, Watchable}
 import mill.api.BuildCtx
 import mill.api.daemon.internal.{EvaluatorApi, TaskApi}
 import mill.api.internal.{Located, Resolved, RootModule0}
@@ -92,11 +92,15 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
    */
   def topoSorted(transitiveTasks: IndexedSeq[Task[?]]): mill.api.TopoSorted
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): Evaluator.Result[T] =
-    execute[T](tasks.map(_.asInstanceOf[Task[T]]))
+  private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]],
+      cancelChecker: CancelChecker
+  ): Evaluator.Result[T] =
+    execute[T](tasks.map(_.asInstanceOf[Task[T]]), cancelChecker)
 
   def execute[T](
       tasks: Seq[Task[T]],
+      cancelChecker: CancelChecker,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -113,6 +117,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
+      cancelChecker: CancelChecker,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -122,6 +127,7 @@ trait Evaluator extends AutoCloseable with EvaluatorApi {
     BuildCtx.withFilesystemCheckerDisabled {
       execute(
         tasks.map(_.asInstanceOf[Task[T]]),
+        cancelChecker,
         reporter,
         testReporter,
         logger,

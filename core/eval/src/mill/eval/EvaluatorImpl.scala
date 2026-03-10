@@ -4,7 +4,7 @@ import mill.api.daemon.internal.{CompileProblemReporter, TestReporter}
 import mill.constants.OutFiles.OutFiles
 import mill.api.{PathRef, *}
 import mill.api.internal.{ResolveChecker, Resolved, RootModule0}
-import mill.api.daemon.Watchable
+import mill.api.daemon.{CancelChecker, Watchable}
 import mill.exec.{Execution, PlanImpl}
 import mill.internal.PrefixLogger
 import mill.resolve.Resolve
@@ -286,12 +286,13 @@ final class EvaluatorImpl(
 
   def execute[T](
       tasks: Seq[Task[T]],
+      cancelChecker: CancelChecker,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
       serialCommandExec: Boolean = false,
       selectiveExecution: Boolean = false
-  ): Evaluator.Result[T] = {
+  ): Evaluator.Result[T] = cancelChecker.run(EvaluatorImpl.emptyResult) { checkCanceled =>
     val selectiveExecutionEnabled = selectiveExecution && !tasks.exists(_.isExclusiveCommand)
 
     val (selectedTasks, selectiveResults, maybeNewMetadata) =
@@ -301,11 +302,13 @@ final class EvaluatorImpl(
           tasks.partitionMap { case n: Task.Named[?] => Left(n); case t => Right(t) }
         val newComputedMetadata = this.selective.computeMetadata(named)
 
+        checkCanceled()
         val selectiveExecutionStoredData = for {
           _ <- Option.when(os.exists(outPath / OutFiles.millSelectiveExecution))(())
           changedTasks <- this.selective.computeChangedTasks0(named, newComputedMetadata)
         } yield changedTasks
 
+        checkCanceled()
         selectiveExecutionStoredData match {
           case None =>
             // Ran when previous selective execution metadata is not available, which happens the first time you run
@@ -324,14 +327,17 @@ final class EvaluatorImpl(
         }
       }
 
+    checkCanceled()
     val evaluated: ExecutionResults = execution.executeTasks(
       goals = selectedTasks,
+      cancelChecker = cancelChecker,
       reporter = reporter,
       testReporter = testReporter,
       logger = logger,
       serialCommandExec = serialCommandExec
     )
 
+    checkCanceled()
     val allResults = evaluated.transitiveResults ++ selectiveResults
 
     @scala.annotation.nowarn("msg=cannot be checked at runtime")
@@ -365,6 +371,7 @@ final class EvaluatorImpl(
         ))
     }.flatten.toVector
 
+    checkCanceled()
     for (newMetadata <- maybeNewMetadata) {
       val failingTaskNames = allResults
         .collect { case (t: Task.Named[_], r) if r.asSuccess.isEmpty => t.ctx.segments.render }
@@ -415,6 +422,7 @@ final class EvaluatorImpl(
     for (tasks <- resolved)
       yield execute(
         tasks.asInstanceOf[Seq[Task[Any]]],
+        () => false,
         reporter = reporter,
         selectiveExecution = selectiveExecution
       )
@@ -423,4 +431,15 @@ final class EvaluatorImpl(
   def close(): Unit = execution.close()
 
   val selective = new mill.eval.SelectiveExecutionImpl(this)
+}
+
+private object EvaluatorImpl {
+  case object EmptyResults extends mill.api.ExecutionResults {
+    def results: Seq[ExecResult[Val]] = Nil
+    def uncached: Seq[Task[?]] = Nil
+    def transitiveResults: Map[Task[?], ExecResult[Val]] = Map()
+  }
+
+  def emptyResult[T]: Evaluator.Result[T] =
+    Evaluator.Result(Nil, mill.api.Result.Failure("cancelled"), Nil, EvaluatorImpl.EmptyResults)
 }

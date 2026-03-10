@@ -15,6 +15,7 @@ import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success}
+import mill.api.daemon.CancelChecker
 import mill.api.daemon.internal.NonFatal
 import mill.api.daemon.internal.bsp.{BspModuleApi, BspServerResult}
 import mill.api.daemon.internal.*
@@ -223,54 +224,64 @@ private abstract class MillBuildServer(
       agg: (java.util.List[T], BspEvaluators, Logger) => V
   )(using name: sourcecode.Name, enclosing: sourcecode.Enclosing): CompletableFuture[V] = {
     val prefix = name.value
-    handlerEvaluators() { (state, logger) =>
-      val ids = state.filterNonSynthetic(targetIds(state).asJava).asScala
-      val tasksSeq = ids.flatMap { id =>
-        state.bspModulesById.get(id).flatMap { (m, ev) =>
-          tasks.lift.apply(m).map(ts => (ts, (ev, id, m)))
-        }
-      }
-
-      val groups0 = groupList(tasksSeq)(_._2._1) {
-        case (tasks, (_, id, m)) => (id, m, tasks)
-      }
-
-      val evaluated = groups0.flatMap { case (ev, targetIdTasks) =>
-        val requestDescription0 = requestDescription.replace(
-          "{}",
-          targetIdTasks.map(_._2.bspDisplayName).mkString(", ")
-        )
-        val results = evaluate(
-          ev,
-          requestDescription0,
-          targetIdTasks.map(_._3),
-          logger = logger,
-          reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client)
-        )
-        val resultsById = targetIdTasks.flatMap { case (id, m, task) =>
-          results.transitiveResultsApi(task)
-            .asSuccess
-            .map(_.value.value.asInstanceOf[W])
-            .map((id, m, _))
-        }
-
-        def logError(id: BuildTargetIdentifier, errorMsg: String): Unit = {
-          val msg = s"Request '$prefix' failed for ${id.getUri}: ${errorMsg}"
-          logger.error(msg)
-          client.onBuildLogMessage(new LogMessageParams(MessageType.ERROR, msg))
-        }
-
-        resultsById.flatMap { case (id, m, values) =>
-          try Seq(block(new TaskContext(id, m, values, ev, state), logger))
-          catch {
-            case NonFatal(e) =>
-              logError(id, e.toString)
-              Seq()
+    handlerEvaluators0() { (state, logger, cancelChecker) =>
+      cancelChecker.run0 { checkCanceled =>
+        val ids = state.filterNonSynthetic(targetIds(state).asJava).asScala
+        checkCanceled()
+        val tasksSeq = ids.flatMap { id =>
+          state.bspModulesById.get(id).flatMap { (m, ev) =>
+            tasks.lift.apply(m).map(ts => (ts, (ev, id, m)))
           }
         }
-      }
+        checkCanceled()
 
-      agg(evaluated.asJava, state, logger)
+        val groups0 = groupList(tasksSeq)(_._2._1) {
+          case (tasks, (_, id, m)) => (id, m, tasks)
+        }
+
+        checkCanceled()
+        val evaluated = groups0.flatMap { case (ev, targetIdTasks) =>
+          checkCanceled()
+          val requestDescription0 = requestDescription.replace(
+            "{}",
+            targetIdTasks.map(_._2.bspDisplayName).mkString(", ")
+          )
+          val results = evaluate(
+            ev,
+            requestDescription0,
+            targetIdTasks.map(_._3),
+            logger = logger,
+            reporter = Utils.getBspLoggedReporterPool(originId, state.bspIdByModule, client),
+            cancelChecker
+          )
+          checkCanceled()
+          val resultsById = targetIdTasks.flatMap { case (id, m, task) =>
+            results.transitiveResultsApi(task)
+              .asSuccess
+              .map(_.value.value.asInstanceOf[W])
+              .map((id, m, _))
+          }
+
+          def logError(id: BuildTargetIdentifier, errorMsg: String): Unit = {
+            val msg = s"Request '$prefix' failed for ${id.getUri}: ${errorMsg}"
+            logger.error(msg)
+            client.onBuildLogMessage(new LogMessageParams(MessageType.ERROR, msg))
+          }
+
+          resultsById.flatMap { case (id, m, values) =>
+            checkCanceled()
+            try Seq(block(new TaskContext(id, m, values, ev, state), logger))
+            catch {
+              case NonFatal(e) =>
+                logError(id, e.toString)
+                Seq()
+            }
+          }
+        }
+
+        checkCanceled()
+        agg(evaluated.asJava, state, logger)
+      }
     }
   }
 
@@ -322,7 +333,17 @@ private abstract class MillBuildServer(
 
   protected def handlerEvaluators[V](
       checkInitialized: Boolean = true
-  )(block: (BspEvaluators, Logger) => V)(using
+  )(block: (BspEvaluators, Logger, CancelChecker) => V)(using
+      name: sourcecode.Name,
+      enclosing: sourcecode.Enclosing
+  ): CompletableFuture[V] =
+    handlerEvaluators0(checkInitialized)((ev, logger, cancelChecker) =>
+      CancelChecker.ValueOrCanceled(Some(block(ev, logger, cancelChecker)))
+    )(using name, enclosing)
+
+  protected def handlerEvaluators0[V](
+      checkInitialized: Boolean = true
+  )(block: (BspEvaluators, Logger, CancelChecker) => CancelChecker.ValueOrCanceled[V])(using
       name: sourcecode.Name,
       enclosing: sourcecode.Enclosing
   ): CompletableFuture[V] = {
@@ -338,7 +359,11 @@ private abstract class MillBuildServer(
       queue.put((
         evaluators => {
           if (!future.isCancelled()) {
-            executeWithTiming(prefix, logger, future)(block(evaluators, logger))
+            executeWithTiming(
+              prefix,
+              logger,
+              future
+            )(block(evaluators, logger, () => future.isCancelled()))
           } else {
             logger.info(s"$prefix was cancelled")
           }
@@ -352,7 +377,7 @@ private abstract class MillBuildServer(
 
   /** Executes a block with timing/logging and completes the given future */
   private def executeWithTiming[V](prefix: String, logger: Logger, future: CompletableFuture[V])(
-      block: => V
+      block: => CancelChecker.ValueOrCanceled[V]
   ): Unit = {
     val start = System.currentTimeMillis()
     baseLogger.prompt.beginChromeProfileEntry(prefix)
@@ -364,9 +389,12 @@ private abstract class MillBuildServer(
     logger.info(s"$prefix took ${System.currentTimeMillis() - start} msec")
 
     result match {
-      case Success(v) =>
+      case Success(CancelChecker.ValueOrCanceled(Some(v))) =>
         logger.debug(s"$prefix result: $v")
         future.complete(v)
+      case Success(CancelChecker.ValueOrCanceled(None)) =>
+        logger.debug(s"$prefix was cancelled")
+        future.cancel(true)
       case Failure(e) =>
         logger.error(s"$prefix caught exception: $e")
         e.printStackTrace(logger.streams.err)
@@ -380,7 +408,11 @@ private abstract class MillBuildServer(
   ): CompletableFuture[V] = {
     val logger = createLogger()
     val future = new CompletableFuture[V]
-    executeWithTiming(name.value, logger, future)(block(logger))
+    executeWithTiming(
+      name.value,
+      logger,
+      future
+    )(CancelChecker.ValueOrCanceled(Some(block(logger))))
     future
   }
 
@@ -416,6 +448,7 @@ private abstract class MillBuildServer(
       goals: Seq[TaskApi[?]],
       logger: Logger,
       reporter: Int => Option[CompileProblemReporter],
+      cancelChecker: CancelChecker,
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       errorOpt: EvaluatorApi.Result[Any] => Option[String] = evaluatorErrorOpt
   ): ExecutionResultsApi = {
@@ -423,6 +456,7 @@ private abstract class MillBuildServer(
     logger.info(s"Evaluating $goalCount ${if (goalCount > 1) "tasks" else "task"}")
     val result = evaluator.executeApi(
       goals,
+      cancelChecker,
       reporter,
       testReporter,
       logger,
@@ -445,29 +479,34 @@ private abstract class MillBuildServer(
 
   @JsonRequest("millTest/loggingTest")
   def loggingTest(): CompletableFuture[Object] = {
-    handlerEvaluators() { (state, logger) =>
-      val tasksEvs = state.bspModulesIdList
-        .collectFirst {
-          case (_, (m: JavaModuleApi, ev)) =>
-            Seq(((m, m.bspJavaModule().bspLoggingTest), ev))
-        }
-        .getOrElse {
-          sys.error("No BSP build target available")
-        }
+    handlerEvaluators0() { (state, logger, cancelChecker) =>
+      cancelChecker.run0 { checkCanceled =>
+        val tasksEvs = state.bspModulesIdList
+          .collectFirst {
+            case (_, (m: JavaModuleApi, ev)) =>
+              Seq(((m, m.bspJavaModule().bspLoggingTest), ev))
+          }
+          .getOrElse {
+            sys.error("No BSP build target available")
+          }
 
-      tasksEvs
-        .groupMap(_._2)(_._1)
-        .map { case (ev, ts) =>
-          evaluate(
-            ev,
-            s"Checking logging for ${ts.map(_._1.bspDisplayName).mkString(", ")}",
-            ts.map(_._2),
-            logger,
-            reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
-          )
-        }
-        .toSeq
-      null
+        checkCanceled()
+        tasksEvs
+          .groupMap(_._2)(_._1)
+          .map { case (ev, ts) =>
+            checkCanceled()
+            evaluate(
+              ev,
+              s"Checking logging for ${ts.map(_._1.bspDisplayName).mkString(", ")}",
+              ts.map(_._2),
+              logger,
+              reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client),
+              cancelChecker
+            )
+          }
+          .toSeq
+        null
+      }
     }
   }
 }

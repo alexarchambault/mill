@@ -30,15 +30,21 @@ private[dependency] object VersionsFinder {
     // (see https://github.com/com-lihaoyi/mill/issues/3876).
     val clock = Clock.fixed(Instant.now(), ZoneId.systemDefault())
 
-    val resolvedDependencies = evaluator.execute {
-      val progress = new Progress(javaModules.size)
-      javaModules.map(classpath(progress, ctx.offline, clock, coursierConfigModule))
-    }.values.get
+    val resolvedDependencies = evaluator.execute(
+      {
+        val progress = new Progress(javaModules.size)
+        javaModules.map(classpath(progress, ctx.offline, clock, coursierConfigModule))
+      },
+      () => false
+    ).values.get
 
-    evaluator.execute {
-      val progress = new Progress(resolvedDependencies.map(_._3.size).sum)
-      resolvedDependencies.map(resolveVersions(progress))
-    }.values.get
+    evaluator.execute(
+      {
+        val progress = new Progress(resolvedDependencies.map(_._3.size).sum)
+        resolvedDependencies.map(resolveVersions(progress))
+      },
+      () => false
+    ).values.get
   }
 
   class Progress(val count: Int) {

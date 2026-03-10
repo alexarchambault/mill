@@ -1,6 +1,7 @@
 package mill.api
 
 import mill.api.*
+import mill.api.daemon.CancelChecker
 import mill.api.daemon.internal.*
 import mill.api.internal.*
 
@@ -90,6 +91,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
 
   def execute[T](
       tasks: Seq[Task[T]],
+      cancelChecker: CancelChecker,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = baseLogger,
@@ -98,6 +100,7 @@ final class EvaluatorProxy(var delegate0: () => Evaluator) extends Evaluator {
   ): Evaluator.Result[T] = {
     delegate.execute(
       tasks,
+      cancelChecker,
       reporter,
       testReporter,
       logger,

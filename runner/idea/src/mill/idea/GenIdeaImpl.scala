@@ -166,7 +166,7 @@ class GenIdeaImpl(
 
     val resolvedModules: Seq[ResolvedModule] = {
       resolveTasks.toSeq.flatMap { case (evaluator, tasks) =>
-        evaluator.executeApi(tasks).executionResults match {
+        evaluator.executeApi(tasks, () => false).executionResults match {
           case r if r.transitiveFailingApi.nonEmpty =>
             throw GenIdeaException(
               s"Failure during resolving modules: ${mill.internal.Util.formatFailing(r)}"
@@ -342,7 +342,7 @@ class GenIdeaImpl(
         val bspScriptIgnoreTasks: Seq[TaskApi[Seq[String]]] =
           Seq(ev.rootModule).collect { case m: MillBuildRootModuleApi => m.bspScriptIgnoreAll }
 
-        ev.executeApi(bspScriptIgnoreTasks)
+        ev.executeApi(bspScriptIgnoreTasks, () => false)
           .values
           .get
           .flatMap { case sources: Seq[String] => sources }

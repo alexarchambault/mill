@@ -15,6 +15,7 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def executeApi[T](
       tasks: Seq[TaskApi[T]],
+      cancelChecker: CancelChecker,
       reporter: Int => Option[CompileProblemReporter] = _ => Option.empty[CompileProblemReporter],
       testReporter: TestReporter = TestReporter.DummyTestReporter,
       logger: Logger = null,
@@ -24,7 +25,10 @@ trait EvaluatorApi extends AutoCloseable {
 
   private[mill] def workerCache: mutable.Map[String, (Int, Val, TaskApi[?])]
 
-  private[mill] def executeApi[T](tasks: Seq[TaskApi[T]]): EvaluatorApi.Result[T]
+  private[mill] def executeApi[T](
+      tasks: Seq[TaskApi[T]],
+      cancelChecker: CancelChecker
+  ): EvaluatorApi.Result[T]
   private[mill] def baseLogger: Logger
   private[mill] def rootModule: BaseModuleApi
   private[mill] def outPathJava: java.nio.file.Path

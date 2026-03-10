@@ -222,7 +222,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
 
   override def buildTargetInverseSources(p: InverseSourcesParams)
       : CompletableFuture[InverseSourcesResult] = {
-    handlerEvaluators() { (state, logger) =>
+    handlerEvaluators() { (state, logger, cancelChecker) =>
       val tasksEvaluators = state.bspModulesIdList.collect {
         case (id, (m: JavaModuleApi, ev)) =>
           (
@@ -237,6 +237,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
             ev
               .executeApi(
                 tasks = ts,
+                cancelChecker = cancelChecker,
                 reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client),
                 logger = logger
               )
@@ -307,62 +308,67 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
   // ==========================================================================
 
   override def buildTargetCompile(p: CompileParams): CompletableFuture[CompileResult] =
-    handlerEvaluators() { (state, logger) =>
-      p.setTargets(state.filterNonSynthetic(p.getTargets))
-      val compileTasksEvs = p.getTargets.asScala.distinct.map(state.bspModulesById).collect {
-        case (m: SemanticDbJavaModuleApi, ev) if sessionInfo.clientWantsSemanticDb =>
-          ((m, m.bspBuildTargetCompileSemanticDb), ev)
-        case (m: JavaModuleApi, ev) => (
-            (
-              m,
-              m.bspBuildTargetCompile(sessionInfo.clientType.mergeResourcesIntoClasses)
-            ),
-            ev
-          )
-      }
-
-      val reporterMaker = Utils.getBspLoggedReporterPool(p.getOriginId, state.bspIdByModule, client)
-      val reporters =
-        new java.util.concurrent.ConcurrentHashMap[Int, Option[BspCompileProblemReporter]]
-      val getReporter: Int => Option[CompileProblemReporter] = { id =>
-        if (!reporters.contains(id))
-          reporters.putIfAbsent(id, reporterMaker(id))
-        reporters.get(id)
-      }
-
-      val result = compileTasksEvs
-        .groupMap(_._2)(_._1)
-        .map { case (ev, ts) =>
-          evaluate(
-            ev,
-            s"Compiling ${ts.map(_._1.bspDisplayName).mkString(", ")}",
-            ts.map(_._2).toSeq,
-            logger,
-            getReporter,
-            TestReporter.DummyTestReporter,
-            errorOpt = { result =>
-              val baseErrorOpt = evaluatorErrorOpt(result)
-              def hasCompilationErrors =
-                reporters.asScala.valuesIterator.flatMap(_.iterator).exists(_.hasErrors)
-              if (baseErrorOpt.isEmpty || hasCompilationErrors)
-                // No task errors, or some compilation errors were already reported:
-                // no need to tell more about this to users
-                None
-              else
-                // No compilation errors were reported: report task errors if any
-                baseErrorOpt
-            }
-          )
+    handlerEvaluators0() { (state, logger, cancelChecker) =>
+      cancelChecker.run0 { checkCanceled =>
+        p.setTargets(state.filterNonSynthetic(p.getTargets))
+        checkCanceled()
+        val compileTasksEvs = p.getTargets.asScala.distinct.map(state.bspModulesById).collect {
+          case (m: SemanticDbJavaModuleApi, ev) if sessionInfo.clientWantsSemanticDb =>
+            ((m, m.bspBuildTargetCompileSemanticDb), ev)
+          case (m: JavaModuleApi, ev) => (
+              (
+                m,
+                m.bspBuildTargetCompile(sessionInfo.clientType.mergeResourcesIntoClasses)
+              ),
+              ev
+            )
         }
-        .toSeq
-      val compileResult = new CompileResult(Utils.getStatusCode(result))
-      compileResult.setOriginId(p.getOriginId)
-      compileResult // TODO: See in what form IntelliJ expects data about products of compilation in order to set data field
+
+        val reporterMaker =
+          Utils.getBspLoggedReporterPool(p.getOriginId, state.bspIdByModule, client)
+        val reporters =
+          new java.util.concurrent.ConcurrentHashMap[Int, Option[BspCompileProblemReporter]]
+        val getReporter: Int => Option[CompileProblemReporter] = { id =>
+          if (!reporters.contains(id))
+            reporters.putIfAbsent(id, reporterMaker(id))
+          reporters.get(id)
+        }
+
+        val result = compileTasksEvs
+          .groupMap(_._2)(_._1)
+          .map { case (ev, ts) =>
+            evaluate(
+              ev,
+              s"Compiling ${ts.map(_._1.bspDisplayName).mkString(", ")}",
+              ts.map(_._2).toSeq,
+              logger,
+              getReporter,
+              cancelChecker,
+              TestReporter.DummyTestReporter,
+              errorOpt = { result =>
+                val baseErrorOpt = evaluatorErrorOpt(result)
+                def hasCompilationErrors =
+                  reporters.asScala.valuesIterator.flatMap(_.iterator).exists(_.hasErrors)
+                if (baseErrorOpt.isEmpty || hasCompilationErrors)
+                  // No task errors, or some compilation errors were already reported:
+                  // no need to tell more about this to users
+                  None
+                else
+                  // No compilation errors were reported: report task errors if any
+                  baseErrorOpt
+              }
+            )
+          }
+          .toSeq
+        val compileResult = new CompileResult(Utils.getStatusCode(result))
+        compileResult.setOriginId(p.getOriginId)
+        compileResult // TODO: See in what form IntelliJ expects data about products of compilation in order to set data field
+      }
     }
 
   override def buildTargetOutputPaths(params: OutputPathsParams)
       : CompletableFuture[OutputPathsResult] =
-    handlerEvaluators() { (state, _) =>
+    handlerEvaluators() { (state, _, _) =>
       val synthOutpaths = for {
         synthTarget <- state.syntheticRootBspBuildTarget
         if params.getTargets.contains(synthTarget.id)
@@ -388,7 +394,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
     }
 
   override def buildTargetRun(runParams: RunParams): CompletableFuture[RunResult] =
-    handlerEvaluators() { (state, logger) =>
+    handlerEvaluators() { (state, logger, cancelChecker) =>
       val (runModule, ev) = Seq(runParams.getTarget).map(state.bspModulesById).collectFirst {
         case (m: RunModuleApi, ev) => (m, ev)
       }.get
@@ -400,7 +406,8 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
         s"Running ${runModule.bspDisplayName}",
         Seq(runTask),
         logger,
-        Utils.getBspLoggedReporterPool(runParams.getOriginId, state.bspIdByModule, client)
+        Utils.getBspLoggedReporterPool(runParams.getOriginId, state.bspIdByModule, client),
+        cancelChecker
       )
       val response = runResult.transitiveResultsApi(runTask) match {
         case r if r.asSuccess.isDefined => new RunResult(StatusCode.OK)
@@ -412,7 +419,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
     }
 
   override def buildTargetTest(testParams: TestParams): CompletableFuture[TestResult] =
-    handlerEvaluators() { (state, logger) =>
+    handlerEvaluators() { (state, logger, cancelChecker) =>
       testParams.setTargets(state.filterNonSynthetic(testParams.getTargets))
       val millBuildTargetIds = state.rootModules
         .map { case m: BspModuleApi => state.bspIdByModule(m) }
@@ -441,6 +448,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
                   state.bspIdByModule,
                   client
                 ),
+                cancelChecker,
                 testReporter
               )
               val statusCode = Utils.getStatusCode(Seq(results))
@@ -465,7 +473,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
 
   override def buildTargetCleanCache(cleanCacheParams: CleanCacheParams)
       : CompletableFuture[CleanCacheResult] =
-    handlerEvaluators() { (state, logger) =>
+    handlerEvaluators() { (state, logger, _) =>
       cleanCacheParams.setTargets(state.filterNonSynthetic(cleanCacheParams.getTargets))
 
       val results = cleanCacheParams.getTargets.asScala.map { targetId =>
@@ -480,7 +488,7 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
 
   override def debugSessionStart(debugParams: DebugSessionParams)
       : CompletableFuture[DebugSessionAddress] =
-    handlerEvaluators() { (state, _) =>
+    handlerEvaluators() { (state, _, _) =>
       debugParams.setTargets(state.filterNonSynthetic(debugParams.getTargets))
       throw new NotImplementedError("debugSessionStart endpoint is not implemented")
     }
@@ -551,7 +559,8 @@ trait MillBspEndpoints extends BuildServer with EndpointsApi {
       s"Cleaning cache of ${module.bspDisplayName}",
       Seq(cleanTask),
       logger = logger,
-      reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client)
+      reporter = Utils.getBspLoggedReporterPool("", state.bspIdByModule, client),
+      () => false
     )
 
     if (cleanResult.transitiveFailingApi.nonEmpty) {

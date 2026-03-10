@@ -2,6 +2,7 @@ package mill.exec
 
 import mill.api.ExecResult.{OuterStack, Success}
 import mill.api.*
+import mill.api.daemon.CancelChecker
 import mill.api.daemon.internal.NonFatal
 import mill.api.internal.{Appendable, Cached, Located}
 import mill.internal.{CodeSigUtils, FileLogger, MultiLogger}
@@ -228,7 +229,8 @@ trait GroupExecution {
       allTransitiveClassMethods: Map[Class[?], Map[String, Method]],
       executionContext: mill.api.TaskCtx.Fork.Api,
       exclusive: Boolean,
-      upstreamPathRefs: Seq[PathRef]
+      upstreamPathRefs: Seq[PathRef],
+      cancelChecker: CancelChecker
   ): GroupExecution.Results = {
 
     val inputsHash = {
@@ -330,7 +332,8 @@ trait GroupExecution {
                   exclusive = exclusive,
                   deps = deps,
                   upstreamPathRefs = upstreamPathRefs,
-                  terminal = labelled
+                  terminal = labelled,
+                  cancelChecker = cancelChecker
                 )
 
               val (valueHash, serializedPaths) = newResults(labelled) match {
@@ -458,7 +461,8 @@ trait GroupExecution {
           exclusive = exclusive,
           deps = deps,
           upstreamPathRefs = upstreamPathRefs,
-          terminal = terminal
+          terminal = terminal,
+          cancelChecker = cancelChecker
         )
         GroupExecution.Results(
           newResults = newResults,
@@ -487,86 +491,89 @@ trait GroupExecution {
       exclusive: Boolean,
       deps: Seq[Task[?]],
       upstreamPathRefs: Seq[PathRef],
-      terminal: Task[?]
-  ): (Map[Task[?], ExecResult[(Val, Int)]], mutable.Buffer[Task[?]]) = {
-    val newEvaluated = mutable.Buffer.empty[Task[?]]
-    val newResults = mutable.Map.empty[Task[?], ExecResult[(Val, Int)]]
+      terminal: Task[?],
+      cancelChecker: CancelChecker
+  ): (Map[Task[?], ExecResult[(Val, Int)]], mutable.Buffer[Task[?]]) =
+    cancelChecker.run((Map(), mutable.Buffer.empty)) { checkCanceled =>
+      val newEvaluated = mutable.Buffer.empty[Task[?]]
+      val newResults = mutable.Map.empty[Task[?], ExecResult[(Val, Int)]]
 
-    val nonEvaluatedTasks = group.toIndexedSeq.filterNot(results.contains)
-    val (multiLogger, fileLoggerOpt) = resolveLogger(paths.map(_.log), logger)
+      val nonEvaluatedTasks = group.toIndexedSeq.filterNot(results.contains)
+      val (multiLogger, fileLoggerOpt) = resolveLogger(paths.map(_.log), logger)
 
-    val destCreator = new GroupExecution.DestCreator(paths)
+      val destCreator = new GroupExecution.DestCreator(paths)
 
-    for (task <- nonEvaluatedTasks) {
-      newEvaluated.append(task)
-      val taskInputValues = task.inputs
-        .map { x => newResults.getOrElse(x, results(x)) }
-        .collect { case ExecResult.Success((v, _)) => v }
+      for (task <- nonEvaluatedTasks) {
+        checkCanceled()
+        newEvaluated.append(task)
+        val taskInputValues = task.inputs
+          .map { x => newResults.getOrElse(x, results(x)) }
+          .collect { case ExecResult.Success((v, _)) => v }
 
-      val res = {
-        if (taskInputValues.length != task.inputs.length) ExecResult.Skipped
-        else {
-          val args = new mill.api.TaskCtx.Impl(
-            args = taskInputValues.map(_.value).toIndexedSeq,
-            dest0 = () => destCreator.makeDest(),
-            log = multiLogger,
-            _env = env,
-            reporter = reporter,
-            testReporter = testReporter,
-            workspace = workspace,
-            _systemExitWithReason = systemExit,
-            fork = executionContext,
-            jobs = effectiveThreadCount,
-            offline = offline,
-            useFileLocks = useFileLocks
-          )
+        val res = {
+          if (taskInputValues.length != task.inputs.length) ExecResult.Skipped
+          else {
+            val args = new mill.api.TaskCtx.Impl(
+              args = taskInputValues.map(_.value).toIndexedSeq,
+              dest0 = () => destCreator.makeDest(),
+              log = multiLogger,
+              _env = env,
+              reporter = reporter,
+              testReporter = testReporter,
+              workspace = workspace,
+              _systemExitWithReason = systemExit,
+              fork = executionContext,
+              jobs = effectiveThreadCount,
+              offline = offline,
+              useFileLocks = useFileLocks
+            )
 
-          GroupExecution.wrap(
-            workspace = workspace,
-            deps = deps,
-            outPath = outPath,
-            paths = paths,
-            upstreamPathRefs = upstreamPathRefs,
-            exclusive = exclusive,
-            multiLogger = multiLogger,
-            logger = logger,
-            exclusiveSystemStreams = exclusiveSystemStreams,
-            counterMsg = counterMsg,
-            destCreator = destCreator,
-            evaluator = getEvaluator().asInstanceOf[Evaluator],
-            terminal = terminal,
-            classLoader = rootModule.getClass.getClassLoader
-          ) {
-            try {
-              task.evaluate(args) match {
-                case Result.Success(v) => ExecResult.Success(Val(v))
-                case f: Result.Failure => ExecResult.Failure(f.error, Some(f))
+            GroupExecution.wrap(
+              workspace = workspace,
+              deps = deps,
+              outPath = outPath,
+              paths = paths,
+              upstreamPathRefs = upstreamPathRefs,
+              exclusive = exclusive,
+              multiLogger = multiLogger,
+              logger = logger,
+              exclusiveSystemStreams = exclusiveSystemStreams,
+              counterMsg = counterMsg,
+              destCreator = destCreator,
+              evaluator = getEvaluator().asInstanceOf[Evaluator],
+              terminal = terminal,
+              classLoader = rootModule.getClass.getClassLoader
+            ) {
+              try {
+                task.evaluate(args) match {
+                  case Result.Success(v) => ExecResult.Success(Val(v))
+                  case f: Result.Failure => ExecResult.Failure(f.error, Some(f))
+                }
+              } catch {
+                case ex: Result.Exception => ExecResult.Failure(ex.error, ex.failure)
+                case NonFatal(e) =>
+                  ExecResult.Exception(
+                    e,
+                    new OuterStack(new Exception().getStackTrace.toIndexedSeq.drop(1), cutExtra = 1)
+                  )
+                case e: Throwable => throw e
               }
-            } catch {
-              case ex: Result.Exception => ExecResult.Failure(ex.error, ex.failure)
-              case NonFatal(e) =>
-                ExecResult.Exception(
-                  e,
-                  new OuterStack(new Exception().getStackTrace.toIndexedSeq.drop(1), cutExtra = 1)
-                )
-              case e: Throwable => throw e
             }
           }
         }
+
+        newResults(task) = for (v <- res) yield (v, getValueHash(v, task, inputsHash))
       }
 
-      newResults(task) = for (v <- res) yield (v, getValueHash(v, task, inputsHash))
+      fileLoggerOpt.foreach(_.close())
+
+      if (!failFast) taskLabelOpt.foreach { taskLabel =>
+        val taskFailed = newResults.exists(task => task._2.isInstanceOf[ExecResult.Failing[?]])
+        if (taskFailed) logger.error(s"$taskLabel task failed")
+      }
+
+      (newResults.toMap, newEvaluated)
     }
-
-    fileLoggerOpt.foreach(_.close())
-
-    if (!failFast) taskLabelOpt.foreach { taskLabel =>
-      val taskFailed = newResults.exists(task => task._2.isInstanceOf[ExecResult.Failing[?]])
-      if (taskFailed) logger.error(s"$taskLabel task failed")
-    }
-
-    (newResults.toMap, newEvaluated)
-  }
 
   // Include the classloader identity hash as part of the worker hash. This is
   // because unlike other tasks, workers are long-lived in memory objects,

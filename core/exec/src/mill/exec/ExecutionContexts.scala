@@ -6,7 +6,7 @@ import os.Path
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{PriorityBlockingQueue, ThreadFactory, ThreadPoolExecutor, TimeUnit}
+import java.util.concurrent.{PriorityBlockingQueue, ThreadPoolExecutor, TimeUnit}
 import mill.api.Logger
 import mill.api.daemon.internal.NonFatal
 
