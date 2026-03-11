@@ -350,7 +350,7 @@ trait PublishModule extends JavaModule with PgpWorkerSupport { outer =>
       sources: Boolean = true,
       doc: Boolean = true,
       transitive: Boolean = false
-  ): Task.Command[Unit] = Task.Command {
+  ): Task.Command[Unit] = Task.Command(exclusive = true) {
     publishLocalTask(
       Task.Anon {
         Option(localIvyRepo).map(os.Path(_, BuildCtx.workspaceRoot))
