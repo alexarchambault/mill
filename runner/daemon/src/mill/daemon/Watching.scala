@@ -187,10 +187,11 @@ object Watching {
           onEvent = changedPaths => {
             // Make sure that the changed paths are actually the ones in our watch list and not some adjacent files in the
             // same folder
-            val hasWatchedPath =
-              changedPaths.exists(p =>
-                watchedPathsSet.exists(watchedPath => p.startsWith(watchedPath))
-              )
+            val hasWatchedPath = changedPaths.exists { p =>
+              watchedPathsSeq.exists { watchedPath =>
+                p.wrapped.startsWith(watchedPath.p) && !haveNotChanged(watchedPath)
+              }
+            }
 
             // Do not log if the only thing that changed was the watch log file itself.
             //
