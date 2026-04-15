@@ -6,7 +6,7 @@ bsp] BSP server started
 bsp-init-mill-build/build.mill-*] compiling * Scala source to * ...
 bsp-init-mill-build/build.mill-*] done compiling
 bsp-init-build.mill-*] compiling * Scala source to * ...
-bsp-init-build.mill-*] [warn] build.mill:107:18
+bsp-init-build.mill-*] [warn] build.mill:120:18
 bsp-init-build.mill-*]   def theThing = thing
 bsp-init-build.mill-*]                  ^^^^^
 bsp-init-build.mill-*] method thing in object diag is deprecated since 0.0.1: deprecated
@@ -86,5 +86,11 @@ bsp-init] BSP disabled for target file:///workspace/skipped
 6-compile] Evaluating 1 task
 6-compile] Done
 6-compile] buildTargetCompile took * msec
-8-buildShutdown] Entered buildShutdown
-9-onBuildExit] Entered onBuildExit
+8-compile] Entered buildTargetCompile
+8-compile] Evaluating 1 task
+8-compile-*] [error] errored.message-check.compiledClassesAndSemanticDbFiles task failed
+8-compile] [warn] errored.message-check.compiledClassesAndSemanticDbFiles
+8-compile] Failed
+8-compile] buildTargetCompile took * msec
+9-buildShutdown] Entered buildShutdown
+10-onBuildExit] Entered onBuildExit

@@ -85,6 +85,19 @@ object errored extends Module {
   object `compilation-error` extends scalalib.ScalaModule {
     def scalaVersion = Option(System.getenv("TEST_SCALA_2_13_VERSION")).getOrElse(???)
   }
+
+  object `message-check` extends scalalib.ScalaModule {
+    def scalaVersion = Option(System.getenv("TEST_SCALA_2_13_VERSION")).getOrElse(???)
+    private def helperTask: Task[Unit] = Task.Anon {
+      throw new Exception("thing")
+    }
+
+    def compiledClassesAndSemanticDbFiles = Task {
+      val res = super.compiledClassesAndSemanticDbFiles()
+      helperTask()
+      res
+    }
+  }
 }
 
 object delayed extends scalalib.ScalaModule {

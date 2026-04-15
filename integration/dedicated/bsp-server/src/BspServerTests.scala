@@ -464,6 +464,15 @@ object BspServerTests extends UtestIntegrationTestSuite {
         )
         erroredCompileFuture.cancel(true)
         delayedCompileFuture.get()
+
+        val messageCheckRes = buildServer
+          .buildTargetCompile(
+            new b.CompileParams(
+              targets.filter(_.getDisplayName == "errored.message-check").map(_.getId).asJava
+            )
+          )
+          .get()
+        assert(messageCheckRes.getStatusCode == b.StatusCode.ERROR)
       }
 
       val workspaceUri = tester.workspacePath.toURI.toASCIIString.stripSuffix("/") + "/"
