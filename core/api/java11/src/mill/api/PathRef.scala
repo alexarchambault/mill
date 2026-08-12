@@ -105,6 +105,8 @@ object PathRef {
    *
    * @param path The digested path.
    * @param quick If `true` the digest is only based to some file attributes (like mtime and size).
+   *              The mtime is only taken into account with millisecond precision, so that the
+   *              digest is reproducible across JVMs reporting different sub-millisecond precisions.
    *              If `false` the digest is created of the files content.
    * @return
    */
@@ -140,7 +142,13 @@ object PathRef {
                 updateWithInt(os.perms(path, followLinks = false).value)
               }
               if (quick) {
-                val value = (attrs.mtime, attrs.size).hashCode()
+                // The mtime is truncated to milliseconds, as JVMs disagree on the sub-millisecond
+                // precision they report for file timestamps: JDK 11 truncates Linux mtimes to
+                // microseconds, while more recent JDKs report the full nanoseconds. A `quick`
+                // signature has to be reproducible across JVMs, as it is routinely computed in one
+                // process and re-validated in another running a different JVM (e.g. a classpath
+                // sent to a worker whose `jvmId` pins an older JDK).
+                val value = (attrs.mtime.toMillis, attrs.size).hashCode()
                 updateWithInt(value)
               } else if (jnio.Files.isReadable(path.toNIO)) {
                 val is =

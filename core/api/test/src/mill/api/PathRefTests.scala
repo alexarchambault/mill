@@ -37,6 +37,38 @@ object PathRefTests extends TestSuite {
       test("ref") - check(quick = false)
     }
 
+    test("sub-millisecond-mtime") {
+      // A quick sig is computed in one JVM and re-validated in another, which may report a
+      // different sub-millisecond precision for the very same mtime (JDK 11 truncates Linux
+      // mtimes to microseconds, later JDKs report nanoseconds). Anything below the millisecond
+      // must therefore be ignored.
+      withTmpDir { tmpDir =>
+        val file = tmpDir / "foo.txt"
+        os.write.over(file, "hello")
+
+        def setMtime(nanos: Long): Unit = {
+          val _ = Files.setLastModifiedTime(
+            file.wrapped,
+            java.nio.file.attribute.FileTime.from(nanos, java.util.concurrent.TimeUnit.NANOSECONDS)
+          )
+        }
+
+        val millis = 1786529073356L
+        setMtime(millis * 1000000L)
+        val sig = PathRef(file, quick = true).sig
+
+        // same millisecond, different micro- / nanoseconds
+        setMtime(millis * 1000000L + 21128L)
+        assert(PathRef(file, quick = true).sig == sig)
+        setMtime(millis * 1000000L + 999999L)
+        assert(PathRef(file, quick = true).sig == sig)
+
+        // the millisecond itself is still taken into account
+        setMtime((millis + 1) * 1000000L)
+        assert(PathRef(file, quick = true).sig != sig)
+      }
+    }
+
     test("perms") {
       def check(quick: Boolean) =
         if (isPosixFs()) withTmpDir { tmpDir =>
