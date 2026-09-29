@@ -80,6 +80,31 @@ object PathRefTests extends TestSuite {
       test("ref") - check(quick = false)
     }
 
+    test("toAbsStringStripsForwarders") - withTmpDir { tmpDir =>
+      val workspace = tmpDir / "workspace"
+      os.makeDir.all(workspace / "out/foo.dest")
+      // Like the forwarder of a --no-daemon run
+      val forwarder = tmpDir / "workspace/out/mill-no-daemon/abc/mill-workspace"
+      os.makeDir.all(forwarder / os.up)
+      os.symlink(forwarder, workspace)
+
+      assert(
+        PathRef.toAbsString(forwarder / "out/foo.dest") == (workspace / "out/foo.dest").toString
+      )
+      assert(PathRef.toAbsString(forwarder / "out/bar") == (workspace / "out/bar").toString)
+      assert(PathRef.toAbsString(forwarder) == workspace.toString)
+      // the last forwarder is the one that counts
+      assert(
+        PathRef.toAbsString(forwarder / "out/mill-no-daemon/abc/mill-workspace/out") ==
+          (workspace / "out").toString
+      )
+
+      // Directories that happen to be named like forwarders are left alone
+      val notForwarder = tmpDir / "other/mill-workspace/foo"
+      os.makeDir.all(notForwarder)
+      assert(PathRef.toAbsString(notForwarder) == notForwarder.toString)
+    }
+
     test("json") {
       def check(quick: Boolean) = withTmpDir { tmpDir =>
         val file = tmpDir / "foo.txt"

@@ -1,0 +1,13 @@
+package build
+import mill.*
+
+// A cached task whose value holds an absolute path, like `forkArgs` often does
+def cachedPath = Task {
+  os.write(Task.dest / "file.txt", "hello")
+  PathRef.toAbsString(Task.dest / "file.txt")
+}
+
+def check() = Task.Command {
+  val path = cachedPath()
+  println(s"exists: ${java.nio.file.Files.exists(java.nio.file.Paths.get(path))}")
+}

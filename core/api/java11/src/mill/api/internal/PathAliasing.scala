@@ -20,6 +20,35 @@ object PathAliasing {
     os.home -> (os.up / "mill-home")
   )
 
+  private val forwarderNames = Set(workspaceAlias, homeAlias).map(_.stripPrefix("../"))
+
+  /**
+   * Replace the `mill-workspace` / `mill-home` forwarder symlink in `path`, if any, with its
+   * target. `path` must be absolute and normalized.
+   *
+   * Forwarders can be short-lived (those of `--no-daemon` runs are under
+   * `out/mill-no-daemon/<run-id>/`), so paths meant to be used outside of Mill, or after the
+   * current run, shouldn't go through them.
+   */
+  def stripForwarders(path: java.nio.file.Path): java.nio.file.Path = {
+    // Only the last forwarder matters, as the part of the path before it gets replaced
+    val forwarderOpt = (path.getNameCount - 1 to 0 by -1).iterator
+      .filter(idx => forwarderNames.contains(path.getName(idx).toString))
+      .map(idx => (idx, path.getRoot.resolve(path.subpath(0, idx + 1))))
+      .find { case (_, forwarder) => Files.isSymbolicLink(forwarder) }
+    forwarderOpt
+      .flatMap { case (idx, forwarder) =>
+        try {
+          val target = forwarder.getParent.resolve(Files.readSymbolicLink(forwarder)).normalize()
+          Some(
+            if (idx + 1 == path.getNameCount) target
+            else target.resolve(path.subpath(idx + 1, path.getNameCount))
+          )
+        } catch { case _: java.io.IOException => None }
+      }
+      .getOrElse(path)
+  }
+
   /**
    * The env vars a Mill subprocess needs to participate in path relativization: the workspace
    * root (so it can locate `out/`), and the os-lib relativizer base (so its serialized paths

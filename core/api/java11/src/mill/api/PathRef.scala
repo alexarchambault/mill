@@ -56,10 +56,16 @@ object PathRef {
    * runs in some other directory, or treats relative paths differently from
    * absolute ones (or only accepts absolute paths). For a consumer that does run
    * in an aliased cwd and accepts relative paths, prefer [[toRelString]].
+   *
+   * Paths going through one of these forwarder symlinks (typically, paths read back from
+   * relativized forms) have it replaced by its target, so that the result doesn't depend on
+   * where the forwarder lives: the forwarders of `--no-daemon` runs only last as long as the
+   * run, as they live under `out/mill-no-daemon/<run-id>/`.
    */
   def toAbsString(p: os.Path): String = toAbsNioPath(p).toString
   def toAbsString(p: PathRef): String = toAbsString(p.path)
-  def toAbsNioPath(p: os.Path): jnio.Path = p.wrapped.toAbsolutePath.normalize()
+  def toAbsNioPath(p: os.Path): jnio.Path =
+    PathAliasing.stripForwarders(p.wrapped.toAbsolutePath.normalize())
   def toAbsNioPath(p: PathRef): jnio.Path = toAbsNioPath(p.path)
   def toAbsFile(p: os.Path): java.io.File = toAbsNioPath(p).toFile
   def toAbsFile(p: PathRef): java.io.File = toAbsFile(p.path)
